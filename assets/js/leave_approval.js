@@ -40,6 +40,22 @@ async function loadPendingLeaves() {
             tbody.innerHTML = res.data.map(item => {
                 const sDate = new Date(item.start_date).toLocaleDateString('th-TH');
                 const eDate = new Date(item.end_date).toLocaleDateString('th-TH');
+                const itemId = Number.parseInt(item.id, 10) || 0;
+                const firstName = escapeHtml(item.first_name_th);
+                const lastName = escapeHtml(item.last_name_th);
+                const employeeCode = escapeHtml(item.employee_code);
+                const typeName = escapeHtml(item.type_name);
+                const reason = escapeHtml(item.reason);
+                const totalDays = Number.parseFloat(item.total_days) || 0;
+                item.file_path = escapeAttr(safeUploadPath(item.file_path));
+                item.profile_img_url = escapeAttr(safeUploadPath(item.profile_img_url, 'assets/img/user.png'));
+                item.id = itemId;
+                item.first_name_th = firstName;
+                item.last_name_th = lastName;
+                item.employee_code = employeeCode;
+                item.type_name = typeName;
+                item.reason = reason;
+                item.total_days = totalDays;
                 
                 // รูปไฟล์แนบ
                 let fileLink = '';
@@ -48,7 +64,7 @@ async function loadPendingLeaves() {
                 }
 
                 // รูปโปรไฟล์
-                const img = item.profile_img_url && item.profile_img_url !== 'default.png' ? item.profile_img_url : 'assets/img/user.png';
+                const img = item.profile_img_url;
 
                 return `
                     <tr>
@@ -69,10 +85,10 @@ async function loadPendingLeaves() {
                             ${fileLink}
                         </td>
                         <td>
-                            <button class="btn btn-sm btn-success me-1" onclick="openActionModal(${item.id}, 'approve', '${item.first_name_th}')">
+                            <button class="btn btn-sm btn-success me-1" data-id="${item.id}" data-action="approve" data-name="${escapeAttr(item.first_name_th)}" onclick="openActionModalFromButton(this)">
                                 <i class="fas fa-check"></i> อนุมัติ
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="openActionModal(${item.id}, 'reject', '${item.first_name_th}')">
+                            <button class="btn btn-sm btn-danger" data-id="${item.id}" data-action="reject" data-name="${escapeAttr(item.first_name_th)}" onclick="openActionModalFromButton(this)">
                                 <i class="fas fa-times"></i> ไม่
                             </button>
                         </td>
@@ -101,6 +117,11 @@ async function loadHistoryLeaves() {
             tbody.innerHTML = res.data.map(item => {
                 const appDate = item.approval_date ? new Date(item.approval_date).toLocaleDateString('th-TH') : '-';
                 const sDate = new Date(item.start_date).toLocaleDateString('th-TH');
+                item.first_name_th = escapeHtml(item.first_name_th);
+                item.last_name_th = escapeHtml(item.last_name_th);
+                item.type_name = escapeHtml(item.type_name);
+                item.rejection_reason = escapeHtml(item.rejection_reason || '-');
+                item.total_days = Number.parseFloat(item.total_days) || 0;
                 
                 let statusBadge = item.status === 'approved' 
                     ? '<span class="badge bg-success">อนุมัติแล้ว</span>' 
@@ -134,6 +155,8 @@ window.openActionModal = function(id, type, name) {
     document.getElementById('actionType').value = type;
     reasonInput.value = ''; // Clear
 
+    name = escapeHtml(name);
+
     if (type === 'approve') {
         title.innerText = 'ยืนยันการอนุมัติ';
         title.className = 'modal-title text-success';
@@ -153,6 +176,14 @@ window.openActionModal = function(id, type, name) {
     }
 
     modal.show();
+}
+
+window.openActionModalFromButton = function(button) {
+    openActionModal(
+        Number.parseInt(button.dataset.id, 10) || 0,
+        button.dataset.action,
+        button.dataset.name || ''
+    );
 }
 
 // Submit การอนุมัติ/ไม่อนุมัติ

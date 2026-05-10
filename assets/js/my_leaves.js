@@ -35,6 +35,9 @@ async function loadMyLeaves() {
                 const createdDate = new Date(item.created_at).toLocaleDateString('th-TH');
                 const startDate = new Date(item.start_date).toLocaleDateString('th-TH');
                 const endDate = new Date(item.end_date).toLocaleDateString('th-TH');
+                const itemId = Number.parseInt(item.id, 10) || 0;
+                const typeName = escapeHtml(item.type_name);
+                const reason = escapeHtml(item.reason);
                 
                 // Badge สถานะ
                 let statusBadge = '';
@@ -43,7 +46,7 @@ async function loadMyLeaves() {
                 if (item.status === 'pending') {
                     statusBadge = '<span class="badge bg-warning text-dark">รออนุมัติ</span>';
                     // ปุ่มยกเลิก แสดงเฉพาะตอนรออนุมัติ
-                    actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${item.id}">
+                    actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${itemId}">
                                     <i class="fas fa-times"></i> ยกเลิก
                                  </button>`;
                 } else if (item.status === 'approved') {
@@ -57,10 +60,10 @@ async function loadMyLeaves() {
                 tbody.innerHTML += `
                     <tr>
                         <td>${createdDate}</td>
-                        <td><span class="fw-bold text-primary">${item.type_name}</span></td>
+                        <td><span class="fw-bold text-primary">${typeName}</span></td>
                         <td>${startDate} - ${endDate}</td>
                         <td>${parseFloat(item.total_days)} วัน</td>
-                        <td><small class="text-muted">${item.reason}</small></td>
+                        <td><small class="text-muted">${reason}</small></td>
                         <td>${statusBadge}</td>
                         <td>${actionBtn}</td>
                     </tr>

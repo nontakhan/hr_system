@@ -69,7 +69,8 @@ try {
     }
 
 } catch (Throwable $e) {
-    sendJsonError('System Error: ' . $e->getMessage());
+    error_log($e->getMessage());
+    sendJsonError('System Error');
 }
 
 $mysqli->close();
@@ -160,7 +161,8 @@ function createEmployee($mysqli, $data, $files) {
     } catch (Throwable $e) {
         $mysqli->rollback();
         if ($mysqli->errno == 1062) return ['status'=>'error', 'message'=>'ข้อมูลซ้ำ (บัตรประชาชน หรือ Username)'];
-        return ['status'=>'error', 'message'=> $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status'=>'error', 'message'=> 'System Error'];
     }
 }
 
@@ -258,7 +260,8 @@ function updateEmployee($mysqli, $data, $files) {
 
     } catch (Throwable $e) {
         $mysqli->rollback();
-        return ['status'=>'error', 'message'=> $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status'=>'error', 'message'=> 'System Error'];
     }
 }
 
@@ -312,7 +315,8 @@ function getAllEmployees($mysqli) {
         return ['status'=>'success', 'data'=>$res->fetch_all(MYSQLI_ASSOC)];
 
     } catch (Throwable $e) {
-        return ['status'=>'error', 'message'=>$e->getMessage()];
+        error_log($e->getMessage());
+        return ['status'=>'error', 'message'=>'System Error'];
     }
 }
 
@@ -355,7 +359,8 @@ function transferEmployee($mysqli, $data) {
         return ['status'=>'success', 'message'=>'บันทึกการโยกย้ายสำเร็จ'];
     } catch (Throwable $e) {
         $mysqli->rollback();
-        return ['status'=>'error', 'message'=>$e->getMessage()];
+        error_log($e->getMessage());
+        return ['status'=>'error', 'message'=>'System Error'];
     }
 }
 
@@ -371,7 +376,8 @@ function deleteEmployee($mysqli, $id) {
         throw new Exception("ลบไม่สำเร็จ");
     } catch (Throwable $e) {
         $mysqli->rollback();
-        return ['status' => 'error', 'message' => $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status' => 'error', 'message' => 'System Error'];
     }
 }
 
@@ -398,7 +404,8 @@ function getTransferHistory($mysqli, $emp_id) {
         $stmt->execute();
         return ['status'=>'success', 'data'=>$stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
     } catch (Throwable $e) {
-        return ['status'=>'error', 'message'=> $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status'=>'error', 'message'=> 'System Error'];
     }
 }
 ?>

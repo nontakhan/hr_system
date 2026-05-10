@@ -94,7 +94,8 @@ try {
     echo json_encode(['status' => 'success', 'data' => $data]);
 
 } catch (Throwable $e) {
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    error_log($e->getMessage());
+    echo json_encode(['status' => 'error', 'message' => 'System Error']);
 }
 $mysqli->close();
 ?>

@@ -65,7 +65,8 @@ try {
     }
 
 } catch (Throwable $e) {
-    sendJsonError($e->getMessage());
+    error_log($e->getMessage());
+    sendJsonError('System Error');
 }
 
 $mysqli->close();

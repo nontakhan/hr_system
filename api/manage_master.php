@@ -41,7 +41,8 @@ try {
         }
     }
 } catch (Exception $e) {
-    $response = ['status' => 'error', 'message' => 'API Error: ' . $e->getMessage()];
+    error_log($e->getMessage());
+    $response = ['status' => 'error', 'message' => 'System Error'];
 }
 
 echo json_encode($response);
@@ -110,7 +111,8 @@ function createMasterData($mysqli, $type, $data) {
             throw new Exception($stmt->error);
         }
     } catch (Exception $e) {
-        return ['status' => 'error', 'message' => 'DB Error (Create): ' . $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status' => 'error', 'message' => 'System Error'];
     }
 }
 
@@ -149,7 +151,8 @@ function updateMasterData($mysqli, $type, $data) {
             throw new Exception($stmt->error);
         }
     } catch (Exception $e) {
-        return ['status' => 'error', 'message' => 'DB Error (Update): ' . $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status' => 'error', 'message' => 'System Error'];
     }
 }
 

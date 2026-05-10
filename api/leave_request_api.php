@@ -43,7 +43,8 @@ try {
     }
 
 } catch (Throwable $e) {
-    sendJsonError($e->getMessage());
+    error_log($e->getMessage());
+    sendJsonError('System Error');
 }
 
 $mysqli->close();
@@ -110,7 +111,8 @@ function submitLeaveRequest($mysqli, $data, $files) {
 
     } catch (Exception $e) {
         $mysqli->rollback();
-        sendJsonError($e->getMessage());
+        error_log($e->getMessage());
+        sendJsonError('System Error');
     }
 }
 ?>

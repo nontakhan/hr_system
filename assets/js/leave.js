@@ -88,14 +88,18 @@ async function loadLeaveTypes() {
             }
             res.data.forEach(item => {
                 // เก็บข้อมูลใส่ data-info เพื่อใช้ตอน Edit
-                const jsonInfo = JSON.stringify(item).replace(/"/g, '&quot;');
+                const jsonInfo = JSON.stringify(item);
+                const itemId = Number.parseInt(item.id, 10) || 0;
+                const typeName = escapeHtml(item.type_name);
+                const description = escapeHtml(item.description || '-');
+                const daysPerYear = Number.parseFloat(item.days_per_year) || 0;
                 
                 tbody.innerHTML += `
                     <tr>
-                        <td>${item.id}</td>
+                        <td>${itemId}</td>
                         <td>
-                            <strong>${item.type_name}</strong>
-                            <div class="small text-muted">${item.description || '-'}</div>
+                            <strong>${typeName}</strong>
+                            <div class="small text-muted">${description}</div>
                         </td>
                         <td>${item.days_per_year} วัน</td>
                         <td>
@@ -106,10 +110,10 @@ async function loadLeaveTypes() {
                                 data-bs-toggle="modal" 
                                 data-bs-target="#leaveTypeModal" 
                                 data-action="edit" 
-                                data-info="${jsonInfo}">
+                                data-info="${escapeAttr(jsonInfo)}">
                                 <i class="fas fa-pencil-alt"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger btn-delete" data-id="${item.id}">
+                            <button class="btn btn-sm btn-danger btn-delete" data-id="${itemId}">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </td>
