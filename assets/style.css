@@ -177,37 +177,92 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    background: radial-gradient(circle at 15% 20%, #7f1d1d 0%, #450a0a 40%, #111827 100%);
+    padding: 24px;
+}
+
+.login-shell {
+    width: min(1100px, 100%);
+    display: grid;
+    grid-template-columns: 1.2fr 0.9fr;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+}
+
+.login-info-panel {
+    background: linear-gradient(160deg, rgba(127, 29, 29, 0.95) 0%, rgba(69, 10, 10, 0.95) 100%);
+    color: #fff;
+    padding: 56px 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.login-kicker {
+    margin: 0 0 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fecaca;
+    font-weight: 600;
+}
+
+.login-system-title {
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 16px;
+}
+
+.login-system-desc {
+    margin: 0;
+    color: #fee2e2;
+    line-height: 1.7;
+    font-size: 1.02rem;
 }
 
 .login-card {
-    width: 100%;
-    max-width: 450px;
-    padding: 2.5rem;
+    margin: 0;
     border: none;
-    border-radius: 0.75rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 44px 40px;
+    display: flex;
+    align-items: center;
 }
 
 .login-card .form-control {
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.6rem;
+    border: 1px solid #e5e7eb;
 }
 
 .login-card .btn-primary {
-    background-color: var(--secondary-color);
-    border-color: var(--secondary-color);
-    padding: 0.75rem;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border-color: #b91c1c;
+    padding: 0.85rem;
     font-weight: 600;
-    border-radius: 0.5rem;
+    border-radius: 0.6rem;
     transition: all 0.3s ease;
 }
 
 .login-card .btn-primary:hover {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    border-color: #991b1b;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    box-shadow: 0 10px 20px rgba(185, 28, 28, 0.35);
+}
+
+@media (max-width: 991.98px) {
+    .login-shell {
+        grid-template-columns: 1fr;
+    }
+    .login-info-panel {
+        padding: 36px 28px;
+    }
+    .login-card {
+        padding: 32px 24px;
+    }
 }
 
 /* --- SweetAlert Custom Colors --- */
