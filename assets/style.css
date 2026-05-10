@@ -4,11 +4,11 @@
  */
 
 :root {
-    --primary-color: #111827;
-    --secondary-color: #c89b3c;
-    --light-gray: #f5f6f8;
+    --primary-color: #b91c1c;
+    --secondary-color: #dc2626;
+    --light-gray: #f3f1f1;
     --dark-text: #111827;
-    --border-color: #e7e9ee;
+    --border-color: #e5dfdf;
     --sidebar-width: 260px;     /* ความกว้างของเมนู Sidebar */
     --header-height: 70px;      /* (เพิ่ม) กำหนดความสูงของ Header ให้เท่ากัน */
 }
@@ -108,7 +108,7 @@ body {
     border: 1px solid var(--border-color);
 }
 .navbar-top .btn-light:hover {
-    background-color: #f9fafb;
+    background-color: #f3f4f6;
     color: #111827;
 }
 .navbar-top .nav-link { color: #111827 !important; }
@@ -157,7 +157,7 @@ body {
 /* Card Header */
 .card-header {
     background-color: #fff;
-    border-bottom: 2px solid #f0dfb8;
+    border-bottom: 2px solid #f5caca;
     font-size: 1.25rem;
     font-weight: 600;
     border-top-left-radius: 0.75rem !important;
@@ -287,17 +287,17 @@ canvas#deptChart {
     border: 1px solid transparent;
 }
 .btn-primary {
-    background-color: #111827;
-    border-color: #111827;
+    background-color: #b91c1c;
+    border-color: #b91c1c;
 }
 .btn-primary:hover {
-    background-color: #0b1220;
-    border-color: #0b1220;
+    background-color: #991b1b;
+    border-color: #991b1b;
 }
 .table {
-    --bs-table-bg: #fff;
-    --bs-table-striped-bg: #fafafa;
-    --bs-table-hover-bg: #f5f7fb;
+    --bs-table-bg: #fcfbfb;
+    --bs-table-striped-bg: #f7f4f4;
+    --bs-table-hover-bg: #f3ecec;
 }
 .table thead th {
     color: #4b5563;
