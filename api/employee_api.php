@@ -161,6 +161,7 @@ function createEmployee($mysqli, $data, $files) {
     } catch (Throwable $e) {
         $mysqli->rollback();
         if ($mysqli->errno == 1062) return ['status'=>'error', 'message'=>'ข้อมูลซ้ำ (บัตรประชาชน หรือ Username)'];
+        if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=> 'System Error'];
     }
@@ -260,6 +261,7 @@ function updateEmployee($mysqli, $data, $files) {
 
     } catch (Throwable $e) {
         $mysqli->rollback();
+        if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=> 'System Error'];
     }

@@ -12,15 +12,17 @@ require_once 'includes/header.php';
 // --- (NEW) ดึงข้อมูลสาขาสำหรับ Filter ---
 $branches = [];
 try {
-    $sql_branch = "SELECT id, branch_name_th FROM branches";
+    $sql_branch = "SELECT b.id, b.branch_name_th, c.company_name_th
+                   FROM branches b
+                   JOIN companies c ON b.company_id = c.id";
     
     // ถ้าเป็น HR ให้เห็นแค่สาขาของบริษัทตัวเอง
     if ($_SESSION['role'] === 'hr') {
-        $company_id = $_SESSION['company_id'] ?? 0;
-        $sql_branch .= " WHERE company_id = $company_id";
+        $company_id = (int)($_SESSION['company_id'] ?? 0);
+        $sql_branch .= " WHERE b.company_id = $company_id";
     }
     
-    $sql_branch .= " ORDER BY branch_name_th";
+    $sql_branch .= " ORDER BY c.company_name_th, b.branch_name_th";
     $branches = $mysqli->query($sql_branch)->fetch_all(MYSQLI_ASSOC);
 } catch (Exception $e) { /* Ignore error */ }
 ?>
@@ -41,11 +43,11 @@ try {
             <!-- (NEW) Filter Section -->
             <div class="col-md-6">
                 <div class="d-flex justify-content-md-end align-items-center gap-2">
-                    <label for="filterBranch" class="form-label mb-0 text-nowrap">กรองตามสาขา:</label>
-                    <select id="filterBranch" class="form-select form-select-sm" style="max-width: 200px;">
+                    <label for="filterBranch" class="form-label mb-0 text-nowrap">กรองตามบริษัท - สาขา:</label>
+                    <select id="filterBranch" class="form-select form-select-sm" style="max-width: 320px;">
                         <option value="">-- ทุกสาขา --</option>
                         <?php foreach ($branches as $b): ?>
-                            <option value="<?php echo $b['id']; ?>"><?php echo $b['branch_name_th']; ?></option>
+                            <option value="<?php echo (int)$b['id']; ?>"><?php echo htmlspecialchars($b['company_name_th'] . ' - ' . $b['branch_name_th']); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

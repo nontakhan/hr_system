@@ -3,22 +3,31 @@
 function saveUploadedFile(array $file, string $targetDir, string $publicPrefix, array $allowedTypes, int $maxBytes, string $namePrefix): string
 {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-        throw new Exception('File upload failed');
+        $messages = [
+            UPLOAD_ERR_INI_SIZE => 'ไฟล์มีขนาดใหญ่เกินกว่าที่เซิร์ฟเวอร์อนุญาต',
+            UPLOAD_ERR_FORM_SIZE => 'ไฟล์มีขนาดใหญ่เกินกว่าที่ฟอร์มอนุญาต',
+            UPLOAD_ERR_PARTIAL => 'อัปโหลดไฟล์ไม่ครบ กรุณาลองใหม่',
+            UPLOAD_ERR_NO_FILE => 'กรุณาเลือกไฟล์',
+            UPLOAD_ERR_NO_TMP_DIR => 'เซิร์ฟเวอร์ไม่มีโฟลเดอร์ชั่วคราวสำหรับอัปโหลด',
+            UPLOAD_ERR_CANT_WRITE => 'เซิร์ฟเวอร์ไม่สามารถบันทึกไฟล์ได้',
+            UPLOAD_ERR_EXTENSION => 'ไฟล์ถูกบล็อกโดยส่วนขยายของ PHP',
+        ];
+        throw new InvalidArgumentException($messages[$file['error'] ?? UPLOAD_ERR_NO_FILE] ?? 'อัปโหลดไฟล์ไม่สำเร็จ');
     }
 
     if (($file['size'] ?? 0) <= 0 || $file['size'] > $maxBytes) {
-        throw new Exception('File size is not allowed');
+        throw new InvalidArgumentException('ไฟล์มีขนาดใหญ่เกินกำหนด');
     }
 
     $tmpName = $file['tmp_name'] ?? '';
     if (!is_uploaded_file($tmpName)) {
-        throw new Exception('Invalid uploaded file');
+        throw new InvalidArgumentException('ไฟล์อัปโหลดไม่ถูกต้อง');
     }
 
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = $finfo->file($tmpName);
     if (!isset($allowedTypes[$mime])) {
-        throw new Exception('File type is not allowed');
+        throw new InvalidArgumentException('ชนิดไฟล์ไม่รองรับ');
     }
 
     $extension = $allowedTypes[$mime];
@@ -44,10 +53,13 @@ function saveProfileImage(array $file): string
         'assets/uploads/profile_images',
         [
             'image/jpeg' => 'jpg',
+            'image/pjpeg' => 'jpg',
             'image/png' => 'png',
+            'image/x-png' => 'png',
             'image/webp' => 'webp',
+            'image/gif' => 'gif',
         ],
-        2 * 1024 * 1024,
+        5 * 1024 * 1024,
         'profile'
     );
 }

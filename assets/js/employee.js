@@ -90,23 +90,30 @@ async function loadEmployeeData() {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">ไม่พบข้อมูลพนักงาน</td></tr>`;
             } else {
                 const rowsHtml = result.data.map(emp => {
-                    let imgSrc = emp.profile_img_url;
-                    if (!imgSrc || imgSrc === 'default.png') imgSrc = 'assets/img/user.png';
-                    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.first_name_th)}&background=random&color=fff&size=128`;
-                    const idDisplay = emp.citizen_id ? emp.citizen_id : '-';
+                    const empId = Number.parseInt(emp.id, 10) || 0;
+                    const firstName = escapeHtml(emp.first_name_th);
+                    const lastName = escapeHtml(emp.last_name_th);
+                    const fullName = `${firstName} ${lastName}`.trim();
+                    const imgSrc = safeUploadPath(emp.profile_img_url, 'assets/img/user.png');
+                    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(`${emp.first_name_th || ''} ${emp.last_name_th || ''}`.trim())}&background=random&color=fff&size=128`;
+                    const idDisplay = emp.citizen_id ? escapeHtml(emp.citizen_id) : '-';
+                    const position = escapeHtml(emp.position_name_th || '-');
+                    const department = escapeHtml(emp.dept_name_th || '-');
+                    const company = escapeHtml(emp.company_name_th || '-');
+                    const branch = escapeHtml(emp.branch_name_th || '-');
 
                     return `
                         <tr>
                             <td><strong>${idDisplay}</strong></td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <img src="${imgSrc}" onerror="this.onerror=null;this.src='${fallback}'" class="rounded-circle me-2 border" style="width:35px;height:35px;object-fit:cover;">
-                                    ${emp.first_name_th} ${emp.last_name_th}
+                                    <img src="${escapeAttr(imgSrc)}" onerror="this.onerror=null;this.src='${escapeAttr(fallback)}'" class="rounded-circle me-2 border" style="width:35px;height:35px;object-fit:cover;">
+                                    ${fullName || '-'}
                                 </div>
                             </td>
-                            <td>${emp.position_name_th || '-'}</td>
-                            <td>${emp.dept_name_th || '-'}</td>
-                            <td>${(emp.company_name_th || '')}/${emp.branch_name_th || ''}</td>
+                            <td>${position}</td>
+                            <td>${department}</td>
+                            <td><div class="fw-semibold">${company}</div><small class="text-muted">${branch}</small></td>
                             <td>${renderEmployeeStatus(emp.status)}</td>
                             <td>
                                 <div class="btn-group" role="group">

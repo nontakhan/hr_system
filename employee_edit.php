@@ -62,7 +62,7 @@ require_once 'includes/header.php';
               data-district="<?php echo htmlspecialchars($emp['district'] ?? ''); ?>">
             
             <input type="hidden" name="id" value="<?php echo $emp['id']; ?>">
-            <input type="hidden" name="old_profile_image" value="<?php echo $emp['profile_img_url']; ?>">
+            <input type="hidden" name="old_profile_image" value="<?php echo htmlspecialchars($emp['profile_img_url'] ?? 'assets/img/user.png'); ?>">
 
             <!-- รูปโปรไฟล์ -->
              <div class="card mb-3 border-warning">
@@ -74,10 +74,11 @@ require_once 'includes/header.php';
                         <?php 
                             $img_src = (!empty($emp['profile_img_url']) && $emp['profile_img_url'] !== 'default.png') ? $emp['profile_img_url'] : 'assets/img/user.png';
                         ?>
-                        <img id="previewImage" src="<?php echo $img_src; ?>" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        <img id="previewImage" src="<?php echo htmlspecialchars($img_src); ?>" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.onerror=null;this.src='assets/img/user.png';">
                     </div>
                     <div class="col-md-6 mx-auto">
-                        <input type="file" class="form-control" name="profile_image" id="profileImageInput" accept="image/*">
+                        <input type="hidden" name="MAX_FILE_SIZE" value="5242880">
+                        <input type="file" class="form-control" name="profile_image" id="profileImageInput" accept="image/jpeg,image/png,image/webp,image/gif">
                         <small class="text-muted">อัปโหลดใหม่เพื่อเปลี่ยนรูป (ถ้าไม่เลือก จะใช้รูปเดิม)</small>
                     </div>
                 </div>
