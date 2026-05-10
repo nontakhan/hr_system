@@ -80,13 +80,10 @@ async function loadEmployeeData() {
     const branchId = document.getElementById('filterBranch')?.value || '';
 
     try {
-        console.log('Fetching data with branch_id:', branchId); // Debug: เช็คค่าที่ส่งไป
         const response = await fetch(`api/employee_api.php?branch_id=${branchId}`, { method: 'GET' });
         const result = await response.json();
         
         if (result.status === 'success') {
-            console.log('Data received:', result.data.length, 'rows'); // Debug: เช็คจำนวนที่ได้กลับมา
-            
             // Destroy Old DataTable
             if ($.fn.DataTable.isDataTable('#employeeTable')) {
                 $('#employeeTable').DataTable().destroy();
@@ -101,7 +98,6 @@ async function loadEmployeeData() {
                     const lastName = escapeHtml(emp.last_name_th);
                     const fullName = `${firstName} ${lastName}`.trim();
                     const imgSrc = safeUploadPath(emp.profile_img_url, 'assets/img/user.png');
-                    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(`${emp.first_name_th || ''} ${emp.last_name_th || ''}`.trim())}&background=random&color=fff&size=128`;
                     const idDisplay = emp.citizen_id ? escapeHtml(emp.citizen_id) : '-';
                     const position = escapeHtml(emp.position_name_th || '-');
                     const department = escapeHtml(emp.dept_name_th || '-');
@@ -113,7 +109,7 @@ async function loadEmployeeData() {
                             <td><strong>${idDisplay}</strong></td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <img src="${escapeAttr(imgSrc)}" onerror="this.onerror=null;this.src='${escapeAttr(fallback)}'" class="rounded-circle me-2 border" style="width:35px;height:35px;object-fit:cover;">
+                                    <img src="${escapeAttr(imgSrc)}" onerror="this.onerror=null;this.src='assets/img/user.png'" class="rounded-circle me-2 border" style="width:35px;height:35px;object-fit:cover;">
                                     ${fullName || '-'}
                                 </div>
                             </td>
@@ -153,7 +149,9 @@ async function loadEmployeeData() {
                     "paginate": { "first": "หน้าแรก", "last": "สุดท้าย", "next": "ถัดไป", "previous": "ก่อนหน้า" }
                 },
                 "order": [[ 0, "asc" ]],
-                "pageLength": 10
+                "pageLength": 10,
+                "deferRender": true,
+                "autoWidth": false
             });
 
         }
