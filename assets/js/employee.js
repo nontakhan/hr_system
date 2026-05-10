@@ -40,15 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editEmployeeForm) {
         editEmployeeForm.addEventListener('submit', handleEditEmployeeForm);
         setupFormInteractions();
+        setupEditProfileImageUpload(editEmployeeForm);
         
         const savedProv = editEmployeeForm.getAttribute('data-province');
         const savedDist = editEmployeeForm.getAttribute('data-district');
         loadSouthernProvinces(savedProv, savedDist);
-    }
-
-    const historyImageForm = document.getElementById('historyProfileImageForm');
-    if (historyImageForm) {
-        setupHistoryProfileImageUpload(historyImageForm);
     }
 
     const transferForm = document.getElementById('transferForm');
@@ -302,9 +298,9 @@ function loadSouthernProvinces(defaultProv = null, defaultDist = null) {
     });
 }
 
-function setupHistoryProfileImageUpload(form) {
-    const input = document.getElementById('historyProfileImageInput');
-    const preview = document.getElementById('profileHistoryImage');
+function setupEditProfileImageUpload(form) {
+    const input = document.getElementById('profileImageInput');
+    const preview = document.getElementById('previewImage');
     if (!input || !preview) return;
 
     input.addEventListener('change', async () => {
@@ -332,6 +328,8 @@ function setupHistoryProfileImageUpload(form) {
 
             if (result.status === 'success') {
                 preview.src = `${result.profile_img_url}?t=${Date.now()}`;
+                const oldImageInput = form.querySelector('input[name="old_profile_image"]');
+                if (oldImageInput) oldImageInput.value = result.profile_img_url;
                 Swal.fire('สำเร็จ', result.message, 'success');
             } else {
                 preview.src = originalSrc;
