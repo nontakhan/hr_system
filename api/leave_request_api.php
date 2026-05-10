@@ -11,6 +11,7 @@ function sendJsonError($message) {
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
     require_once '../includes/db_connect.php';
+    require_once '../includes/upload_security.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -95,20 +96,13 @@ function submitLeaveRequest($mysqli, $data, $files) {
         $request_id = $mysqli->insert_id;
 
         // 5. จัดการไฟล์แนบ (ถ้ามี)
-        if (isset($files['attachment']) && $files['attachment']['error'] === UPLOAD_ERR_OK) {
-            $ext = pathinfo($files['attachment']['name'], PATHINFO_EXTENSION);
-            $new_name = 'leave_' . $request_id . '_' . time() . '.' . $ext;
-            $upload_dir = '../assets/uploads/leaves/';
-            
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-            
-            if (move_uploaded_file($files['attachment']['tmp_name'], $upload_dir . $new_name)) {
-                $file_path = 'assets/uploads/leaves/' . $new_name;
-                $sql_file = "INSERT INTO leave_attachments (leave_request_id, file_name, file_path) VALUES (?, ?, ?)";
-                $stmt_file = $mysqli->prepare($sql_file);
-                $stmt_file->bind_param('iss', $request_id, $files['attachment']['name'], $file_path);
-                $stmt_file->execute();
-            }
+        if (isset($files['attachment']) && $files['attachment']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $file_path = saveLeaveAttachment($files['attachment'], $request_id);
+            $original_name = basename($files['attachment']['name']);
+            $sql_file = "INSERT INTO leave_attachments (leave_request_id, file_name, file_path) VALUES (?, ?, ?)";
+            $stmt_file = $mysqli->prepare($sql_file);
+            $stmt_file->bind_param('iss', $request_id, $original_name, $file_path);
+            $stmt_file->execute();
         }
 
         $mysqli->commit();

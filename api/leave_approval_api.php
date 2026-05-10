@@ -99,9 +99,32 @@ try {
         $reason = $input['reason'] ?? null;
 
         if ($action === 'approve' || $action === 'reject') {
-            
-            // (Optional) เพิ่มการตรวจสอบสิทธิ์ว่า User นี้มีสิทธิ์อนุมัติ Request ID นี้หรือไม่ตรงนี้ได้
+            if ($req_id <= 0) {
+                sendJsonError('Invalid request ID');
+            }
 
+            $auth_sql = "SELECT lr.id
+                         FROM leave_requests lr
+                         JOIN employees e ON lr.employee_id = e.id
+                         WHERE lr.id = ? AND lr.status = 'pending'";
+            if ($my_role === 'hr') {
+                $auth_sql .= " AND e.company_id = ?";
+            } elseif ($my_role !== 'admin') {
+                $auth_sql .= " AND e.supervisor_id = ?";
+            }
+
+            $auth_stmt = $mysqli->prepare($auth_sql);
+            if ($my_role === 'admin') {
+                $auth_stmt->bind_param('i', $req_id);
+            } elseif ($my_role === 'hr') {
+                $auth_stmt->bind_param('ii', $req_id, $my_company_id);
+            } else {
+                $auth_stmt->bind_param('ii', $req_id, $my_emp_id);
+            }
+            $auth_stmt->execute();
+            if ($auth_stmt->get_result()->num_rows !== 1) {
+                sendJsonError('Access Denied');
+            }
             $new_status = ($action === 'approve') ? 'approved' : 'rejected';
             $now = date('Y-m-d H:i:s');
 
@@ -110,15 +133,15 @@ try {
                     approver_id = ?, 
                     approval_date = ?, 
                     rejection_reason = ? 
-                    WHERE id = ?";
+                    WHERE id = ? AND status = 'pending'";
             
             $stmt = $mysqli->prepare($sql);
             $stmt->bind_param('sissi', $new_status, $my_emp_id, $now, $reason, $req_id);
             
-            if ($stmt->execute()) {
+            if ($stmt->execute() && $stmt->affected_rows === 1) {
                 echo json_encode(['status' => 'success', 'message' => 'บันทึกผลการพิจารณาเรียบร้อย']);
             } else {
-                throw new Exception($stmt->error);
+                throw new Exception($stmt->error ?: 'Leave request was already processed');
             }
         } else {
             sendJsonError('Invalid Action');

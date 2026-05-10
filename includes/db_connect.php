@@ -1,31 +1,35 @@
 <?php
 /*
- * ไฟล์สำหรับเชื่อมต่อฐานข้อมูล MySQL
+ * MySQL connection bootstrap.
  *
- * (สำคัญ!) กรุณาแก้ไขค่าเหล่านี้ให้ตรงกับสภาพแวดล้อมของคุณ
+ * Put production credentials in environment variables, or create
+ * includes/db_config.php from includes/db_config.example.php.
  */
 
-define('DB_HOST', '10.10.202.156');    // เช่น 'localhost' หรือ IP ของเซิร์ฟเวอร์
-define('DB_USER', 'nr');         // Username ของ MySQL
-define('DB_PASS', 'P@ssw0rd');             // Password ของ MySQL
-define('DB_NAME', 'hr_system');    // ชื่อฐานข้อมูลที่เราสร้าง (hr_database.sql)
+$localConfig = __DIR__ . '/db_config.php';
+if (is_file($localConfig)) {
+    require $localConfig;
+}
 
-// พยายามเชื่อมต่อฐานข้อมูล
+define('DB_HOST', getenv('HR_DB_HOST') ?: ($db_config['host'] ?? 'localhost'));
+define('DB_USER', getenv('HR_DB_USER') ?: ($db_config['user'] ?? ''));
+define('DB_PASS', getenv('HR_DB_PASS') ?: ($db_config['pass'] ?? ''));
+define('DB_NAME', getenv('HR_DB_NAME') ?: ($db_config['name'] ?? 'hr_system'));
+
+mysqli_report(MYSQLI_REPORT_OFF);
 $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
-// ตรวจสอบการเชื่อมต่อ
 if ($mysqli->connect_errno) {
-    // หากเชื่อมต่อไม่ได้ (เช่น ใส่รหัสผิด, ไม่มีฐานข้อมูล)
-    // ให้แสดงข้อผิดพลาดและหยุดการทำงานทันที
-    echo "Failed to connect to MySQL: " . $mysqli->connect_error;
+    error_log('MySQL connection failed: ' . $mysqli->connect_error);
+    http_response_code(500);
+    echo 'Database connection failed';
     exit();
 }
 
-// ตั้งค่า Character Set เป็น utf8mb4 (สำคัญมากสำหรับภาษาไทย)
-if (!$mysqli->set_charset("utf8mb4")) {
-    echo "Error loading character set utf8mb4: " . $mysqli->error;
+if (!$mysqli->set_charset('utf8mb4')) {
+    error_log('Error loading charset utf8mb4: ' . $mysqli->error);
+    http_response_code(500);
+    echo 'Database initialization failed';
     exit();
 }
-
-// (เราจะใช้ $mysqli ตัวแปรนี้ในไฟล์ API ต่างๆ)
 ?>

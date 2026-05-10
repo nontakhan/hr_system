@@ -22,6 +22,7 @@ try {
         sendJsonError('Database connection file not found');
     }
     require_once '../includes/db_connect.php';
+    require_once '../includes/upload_security.php';
     header('Content-Type: application/json');
 
     // 2. Check Login
@@ -96,14 +97,8 @@ function createEmployee($mysqli, $data, $files) {
     try {
         // 1. Upload Image
         $profile_img_url = 'assets/img/user.png';
-        if (isset($files['profile_image']) && $files['profile_image']['error'] === UPLOAD_ERR_OK) {
-            $ext = pathinfo($files['profile_image']['name'], PATHINFO_EXTENSION);
-            $new_name = time() . '_' . rand(1000,9999) . '.' . $ext;
-            $dir = '../assets/uploads/profile_images/';
-            if (!is_dir($dir)) mkdir($dir, 0777, true);
-            if (move_uploaded_file($files['profile_image']['tmp_name'], $dir . $new_name)) {
-                $profile_img_url = 'assets/uploads/profile_images/' . $new_name;
-            }
+        if (isset($files['profile_image']) && $files['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $profile_img_url = saveProfileImage($files['profile_image']);
         }
 
         // 2. Prepare Variables (29 items)
@@ -177,14 +172,8 @@ function updateEmployee($mysqli, $data, $files) {
 
         // 1. Image Logic
         $profile_img_url = getVal($data, 'old_profile_image', 'assets/img/user.png');
-        if (isset($files['profile_image']) && $files['profile_image']['error'] === UPLOAD_ERR_OK) {
-            $ext = pathinfo($files['profile_image']['name'], PATHINFO_EXTENSION);
-            $new_name = time() . '_' . rand(1000,9999) . '.' . $ext;
-            $dir = '../assets/uploads/profile_images/';
-            if (!is_dir($dir)) mkdir($dir, 0777, true);
-            if (move_uploaded_file($files['profile_image']['tmp_name'], $dir . $new_name)) {
-                $profile_img_url = 'assets/uploads/profile_images/' . $new_name;
-            }
+        if (isset($files['profile_image']) && $files['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $profile_img_url = saveProfileImage($files['profile_image']);
         }
 
         // 2. Prepare Variables (30 items: 29 updates + 1 ID)
