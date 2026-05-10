@@ -121,7 +121,7 @@ function createEmployee($mysqli, $data, $files) {
             // Ints (7)
             (int)getVal($data, 'company_id', 0), (int)getVal($data, 'branch_id', 0), (int)getVal($data, 'department_id', 0),
             (int)getVal($data, 'position_id', 0), (int)getVal($data, 'employment_type_id', 0),
-            getVal($data, 'supervisor_id') ? (int)getVal($data, 'supervisor_id') : null,
+            (int)getVal($data, 'supervisor_id', 0),
             (int)getVal($data, 'default_shift_id', 0),
             // Strings (2)
             getVal($data, 'start_date', date('Y-m-d')), getVal($data, 'status')
@@ -132,7 +132,7 @@ function createEmployee($mysqli, $data, $files) {
         citizen_id, birth_date, gender, religion, blood_group, marital_status,
         phone_number, current_address, district, province, education_level, emergency_contact_name, emergency_contact_phone,
         profile_img_url, company_id, branch_id, department_id, position_id, employment_type_id, supervisor_id, default_shift_id, start_date, status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULLIF(?,0),?,?,?)";
 
         $stmt = $mysqli->prepare($sql);
         if(!$stmt) throw new Exception("Prepare failed: " . $mysqli->error);
@@ -198,7 +198,7 @@ function updateEmployee($mysqli, $data, $files) {
             // Ints (7)
             (int)getVal($data, 'company_id', 0), (int)getVal($data, 'branch_id', 0), (int)getVal($data, 'department_id', 0),
             (int)getVal($data, 'position_id', 0), (int)getVal($data, 'employment_type_id', 0),
-            getVal($data, 'supervisor_id') ? (int)getVal($data, 'supervisor_id') : null,
+            (int)getVal($data, 'supervisor_id', 0),
             (int)getVal($data, 'default_shift_id', 0),
             // Strings (2)
             getVal($data, 'start_date', date('Y-m-d')), getVal($data, 'status'),
@@ -211,7 +211,7 @@ function updateEmployee($mysqli, $data, $files) {
             citizen_id=?, birth_date=?, gender=?, religion=?, blood_group=?, marital_status=?,
             phone_number=?, current_address=?, district=?, province=?, education_level=?, emergency_contact_name=?, emergency_contact_phone=?,
             profile_img_url=?, company_id=?, branch_id=?, department_id=?, position_id=?, 
-            employment_type_id=?, supervisor_id=?, default_shift_id=?, start_date=?, status=?
+            employment_type_id=?, supervisor_id=NULLIF(?,0), default_shift_id=?, start_date=?, status=?
             WHERE id=?";
 
         $stmt = $mysqli->prepare($sql);
@@ -267,6 +267,8 @@ function updateEmployee($mysqli, $data, $files) {
 
     } catch (Throwable $e) {
         $mysqli->rollback();
+        if ($mysqli->errno == 1062) return ['status'=>'error', 'message'=>'ข้อมูลซ้ำ (เช่น เลขบัตรประชาชน หรือ Username)'];
+        if ($mysqli->errno == 1452) return ['status'=>'error', 'message'=>'ข้อมูลอ้างอิงไม่ถูกต้อง กรุณาตรวจสอบ บริษัท/สาขา/แผนก/ตำแหน่ง/หัวหน้างาน'];
         if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=> 'System Error'];
