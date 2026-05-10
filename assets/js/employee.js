@@ -50,6 +50,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (historyImageForm) {
         setupHistoryProfileImageUpload(historyImageForm);
     }
+
+    const transferForm = document.getElementById('transferForm');
+    if (transferForm) {
+        setupTransferHistoryForm(transferForm);
+    }
 });
 
 function setupFormInteractions() {
@@ -339,4 +344,136 @@ function setupHistoryProfileImageUpload(form) {
             input.value = '';
         }
     });
+}
+
+function setupTransferHistoryForm(form) {
+    const companySelect = document.getElementById('trans_company');
+    const branchSelect = document.getElementById('trans_branch');
+
+    if (companySelect && branchSelect) {
+        companySelect.addEventListener('change', () => filterBranches(companySelect, branchSelect));
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const logId = formData.get('transfer_log_id');
+        formData.append('action', logId ? 'update_transfer_history' : 'transfer_employee');
+
+        Swal.fire({
+            title: 'กำลังบันทึก...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch('api/employee_api.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                Swal.fire('สำเร็จ', result.message, 'success');
+                bootstrap.Modal.getInstance(document.getElementById('transferModal')).hide();
+                loadTransferHistory(Number.parseInt(formData.get('employee_id'), 10) || 0);
+            } else {
+                Swal.fire('บันทึกไม่สำเร็จ', result.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', error.message, 'error');
+        }
+    });
+
+    document.getElementById('transferModal')?.addEventListener('hidden.bs.modal', () => {
+        resetTransferForm(form);
+    });
+}
+
+function resetTransferForm(form) {
+    document.getElementById('transferLogId').value = '';
+    document.getElementById('transferModalTitle').innerHTML = '<i class="fas fa-exchange-alt"></i> บันทึกการโยกย้าย/ปรับตำแหน่ง';
+    document.getElementById('transferSubmitBtn').textContent = 'บันทึกการโยกย้าย';
+    document.getElementById('transferEffectiveDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('transferType').value = 'transfer';
+    document.getElementById('transferNotes').value = '';
+}
+
+function parseTransferNote(notes) {
+    const text = String(notes || '');
+    const match = text.match(/^\[(transfer|promote|demote)\]\s*(.*)$/);
+    return {
+        type: match ? match[1] : 'transfer',
+        note: match ? match[2] : text
+    };
+}
+
+window.loadTransferHistory = async function(empId) {
+    const tbody = document.querySelector('#transferHistoryTable tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>';
+
+    try {
+        const response = await fetch(`api/employee_api.php?action=get_history&employee_id=${encodeURIComponent(empId)}`);
+        const result = await response.json();
+
+        if (result.status !== 'success') {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">${escapeHtml(result.message || 'โหลดข้อมูลไม่สำเร็จ')}</td></tr>`;
+            return;
+        }
+
+        if (result.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีประวัติการโยกย้าย</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = result.data.map(row => {
+            const noteInfo = parseTransferNote(row.notes);
+            const payload = escapeAttr(JSON.stringify(row));
+            const fromText = `${escapeHtml(row.from_comp || '-')}/${escapeHtml(row.from_branch || '-')}<br><small>${escapeHtml(row.from_dept || '-')} - ${escapeHtml(row.from_pos || '-')}</small>`;
+            const toText = `${escapeHtml(row.to_comp || '-')}/${escapeHtml(row.to_branch || '-')}<br><small>${escapeHtml(row.to_dept || '-')} - ${escapeHtml(row.to_pos || '-')}</small>`;
+
+            return `
+                <tr>
+                    <td>${escapeHtml(row.effective_date || '-')}</td>
+                    <td>${escapeHtml(noteInfo.type)}</td>
+                    <td>${fromText}</td>
+                    <td>${toText}</td>
+                    <td>${escapeHtml(noteInfo.note || '-')}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-warning" data-history="${payload}" onclick="openTransferHistoryEdit(this)">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+    }
+}
+
+window.openTransferHistoryEdit = function(button) {
+    const row = JSON.parse(button.dataset.history);
+    const noteInfo = parseTransferNote(row.notes);
+
+    document.getElementById('transferLogId').value = row.id || '';
+    document.getElementById('transferEffectiveDate').value = row.effective_date || new Date().toISOString().slice(0, 10);
+    document.getElementById('transferType').value = noteInfo.type;
+    document.getElementById('trans_company').value = row.to_company_id || '';
+    document.getElementById('trans_branch').value = row.to_branch_id || '';
+    document.getElementById('trans_department').value = row.to_department_id || '';
+    document.getElementById('trans_position').value = row.to_position_id || '';
+    document.getElementById('transferNotes').value = noteInfo.note || '';
+    document.getElementById('transferModalTitle').innerHTML = '<i class="fas fa-pencil-alt"></i> แก้ไขประวัติการโยกย้าย';
+    document.getElementById('transferSubmitBtn').textContent = 'บันทึกการแก้ไข';
+
+    const companySelect = document.getElementById('trans_company');
+    const branchSelect = document.getElementById('trans_branch');
+    if (companySelect && branchSelect) filterBranches(companySelect, branchSelect);
+    document.getElementById('trans_branch').value = row.to_branch_id || '';
+
+    new bootstrap.Modal(document.getElementById('transferModal')).show();
 }

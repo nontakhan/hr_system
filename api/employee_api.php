@@ -52,6 +52,9 @@ try {
         elseif ($action === 'transfer_employee') {
             echo json_encode(transferEmployee($mysqli, $_POST));
         }
+        elseif ($action === 'update_transfer_history') {
+            echo json_encode(updateTransferHistory($mysqli, $_POST));
+        }
         else {
             sendJsonError('Invalid Action: ' . $action);
         }
@@ -392,6 +395,66 @@ function transferEmployee($mysqli, $data) {
         return ['status'=>'success', 'message'=>'บันทึกการโยกย้ายสำเร็จ'];
     } catch (Throwable $e) {
         $mysqli->rollback();
+        error_log($e->getMessage());
+        return ['status'=>'error', 'message'=>'System Error'];
+    }
+}
+
+function updateTransferHistory($mysqli, $data) {
+    $mysqli->begin_transaction();
+    try {
+        $log_id = (int)getVal($data, 'transfer_log_id', 0);
+        $emp_id = (int)getVal($data, 'employee_id', 0);
+        if ($log_id <= 0 || $emp_id <= 0) throw new InvalidArgumentException("Invalid history ID");
+
+        $check = $mysqli->prepare("SELECT id FROM employee_transfer_log WHERE id = ? AND employee_id = ?");
+        $check->bind_param('ii', $log_id, $emp_id);
+        $check->execute();
+        if ($check->get_result()->num_rows !== 1) throw new InvalidArgumentException("History record not found");
+
+        $new_company = (int)getVal($data, 'new_company_id', 0);
+        $new_branch = (int)getVal($data, 'new_branch_id', 0);
+        $new_dept = (int)getVal($data, 'new_department_id', 0);
+        $new_pos = (int)getVal($data, 'new_position_id', 0);
+        if ($new_company <= 0 || $new_branch <= 0 || $new_dept <= 0 || $new_pos <= 0) {
+            throw new InvalidArgumentException("กรุณาเลือกข้อมูลใหม่ให้ครบถ้วน");
+        }
+
+        $eff_date = getVal($data, 'effective_date', date('Y-m-d'));
+        $full_notes = "[" . getVal($data, 'transfer_type', 'transfer') . "] " . getVal($data, 'notes');
+
+        $sql = "UPDATE employee_transfer_log
+                SET effective_date = ?, to_company_id = ?, to_branch_id = ?,
+                    to_department_id = ?, to_position_id = ?, notes = ?
+                WHERE id = ? AND employee_id = ?";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param('siiiisii', $eff_date, $new_company, $new_branch, $new_dept, $new_pos, $full_notes, $log_id, $emp_id);
+        if (!$stmt->execute()) throw new Exception("Update transfer history failed: " . $stmt->error);
+
+        $latest = $mysqli->prepare("SELECT id, to_company_id, to_branch_id, to_department_id, to_position_id
+                                    FROM employee_transfer_log
+                                    WHERE employee_id = ?
+                                    ORDER BY effective_date DESC, id DESC
+                                    LIMIT 1");
+        $latest->bind_param('i', $emp_id);
+        $latest->execute();
+        $latest_row = $latest->get_result()->fetch_assoc();
+
+        if ($latest_row) {
+            $current_company = (int)$latest_row['to_company_id'];
+            $current_branch = (int)$latest_row['to_branch_id'];
+            $current_dept = (int)$latest_row['to_department_id'];
+            $current_pos = (int)$latest_row['to_position_id'];
+            $up_stmt = $mysqli->prepare("UPDATE employees SET company_id=?, branch_id=?, department_id=?, position_id=? WHERE id=?");
+            $up_stmt->bind_param('iiiii', $current_company, $current_branch, $current_dept, $current_pos, $emp_id);
+            $up_stmt->execute();
+        }
+
+        $mysqli->commit();
+        return ['status'=>'success', 'message'=>'แก้ไขประวัติสำเร็จ'];
+    } catch (Throwable $e) {
+        $mysqli->rollback();
+        if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=>'System Error'];
     }

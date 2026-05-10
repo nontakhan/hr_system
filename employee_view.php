@@ -350,10 +350,11 @@ require_once 'includes/header.php';
                                 <th>จาก</th>
                                 <th>ไปเป็น</th>
                                 <th>หมายเหตุ</th>
+                                <th>จัดการ</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -368,12 +369,13 @@ require_once 'includes/header.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-exchange-alt"></i> บันทึกการโยกย้าย/ปรับตำแหน่ง</h5>
+                <h5 class="modal-title" id="transferModalTitle"><i class="fas fa-exchange-alt"></i> บันทึกการโยกย้าย/ปรับตำแหน่ง</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="transferForm">
                 <div class="modal-body">
                     <input type="hidden" name="employee_id" value="<?php echo $emp['id']; ?>">
+                    <input type="hidden" name="transfer_log_id" id="transferLogId" value="">
                     
                     <div class="alert alert-info py-2">
                         <small><strong>ตำแหน่งปัจจุบัน:</strong> <?php echo $emp['position_name_th']; ?> | <strong>แผนก:</strong> <?php echo $emp['dept_name_th']; ?></small>
@@ -382,11 +384,11 @@ require_once 'includes/header.php';
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">วันที่เริ่มมีผล <span class="text-danger">*</span></label>
-                            <input type="date" name="effective_date" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+                            <input type="date" name="effective_date" id="transferEffectiveDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">ประเภทการเคลื่อนไหว</label>
-                            <select name="transfer_type" class="form-select">
+                            <select name="transfer_type" id="transferType" class="form-select">
                                 <option value="transfer">โยกย้าย (Transfer)</option>
                                 <option value="promote">เลื่อนตำแหน่ง (Promote)</option>
                                 <option value="demote">ลดตำแหน่ง (Demote)</option>
@@ -412,14 +414,14 @@ require_once 'includes/header.php';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">แผนกใหม่</label>
-                            <select name="new_department_id" class="form-select">
+                            <select name="new_department_id" id="trans_department" class="form-select">
                                 <option value="<?php echo $emp['department_id']; ?>">(เดิม) <?php echo $emp['dept_name_th']; ?></option>
                                 <?php foreach ($departments as $d) echo "<option value='{$d['id']}'>{$d['dept_name_th']}</option>"; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">ตำแหน่งใหม่</label>
-                            <select name="new_position_id" class="form-select">
+                            <select name="new_position_id" id="trans_position" class="form-select">
                                 <option value="<?php echo $emp['position_id']; ?>">(เดิม) <?php echo $emp['position_name_th']; ?></option>
                                 <?php foreach ($positions as $p) echo "<option value='{$p['id']}'>{$p['position_name_th']}</option>"; ?>
                             </select>
@@ -427,13 +429,13 @@ require_once 'includes/header.php';
                         
                         <div class="col-12">
                             <label class="form-label">หมายเหตุ/สาเหตุ</label>
-                            <textarea name="notes" class="form-control" rows="2" placeholder="เช่น ย้ายตามโครงสร้างองค์กรใหม่, เลื่อนตำแหน่งประจำปี"></textarea>
+                            <textarea name="notes" id="transferNotes" class="form-control" rows="2" placeholder="เช่น ย้ายตามโครงสร้างองค์กรใหม่, เลื่อนตำแหน่งประจำปี"></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="submit" class="btn btn-primary">บันทึกการโยกย้าย</button>
+                    <button type="submit" class="btn btn-primary" id="transferSubmitBtn">บันทึกการโยกย้าย</button>
                 </div>
             </form>
         </div>
