@@ -34,12 +34,16 @@ function saveUploadedFile(array $file, string $targetDir, string $publicPrefix, 
     $safeName = $namePrefix . '_' . bin2hex(random_bytes(12)) . '.' . $extension;
 
     if (!is_dir($targetDir) && !mkdir($targetDir, 0755, true)) {
-        throw new Exception('Upload directory is not available');
+        throw new InvalidArgumentException('ไม่สามารถสร้างโฟลเดอร์อัปโหลดได้ กรุณาตรวจสอบสิทธิ์โฟลเดอร์');
+    }
+
+    if (!is_writable($targetDir)) {
+        throw new InvalidArgumentException('โฟลเดอร์อัปโหลดไม่สามารถเขียนไฟล์ได้ กรุณาตรวจสอบสิทธิ์โฟลเดอร์');
     }
 
     $targetPath = rtrim($targetDir, '/\\') . DIRECTORY_SEPARATOR . $safeName;
     if (!move_uploaded_file($tmpName, $targetPath)) {
-        throw new Exception('Could not save uploaded file');
+        throw new InvalidArgumentException('บันทึกไฟล์อัปโหลดไม่สำเร็จ กรุณาตรวจสอบสิทธิ์และพื้นที่จัดเก็บบนเซิร์ฟเวอร์');
     }
 
     return rtrim($publicPrefix, '/\\') . '/' . $safeName;
