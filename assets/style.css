@@ -311,3 +311,18 @@ canvas#deptChart {
     font-weight: 600;
     border-bottom-width: 1px;
 }
+
+/* Theme Overrides: remove remaining bootstrap blue accents */
+.text-primary { color: #b91c1c !important; }
+.btn-info {
+    background-color: #b91c1c !important;
+    border-color: #b91c1c !important;
+    color: #fff !important;
+}
+.btn-info:hover {
+    background-color: #991b1b !important;
+    border-color: #991b1b !important;
+}
+.theme-welcome {
+    background: linear-gradient(135deg, #c81e1e 0%, #8f1414 100%) !important;
+}

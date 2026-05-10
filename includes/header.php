@@ -110,7 +110,7 @@ function isActive($page) {
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom navbar-top">
             <div class="container-fluid">
                 <!-- Toggle Button -->
-                <button class="btn btn-light text-primary" id="sidebarToggle">
+                <button class="btn btn-light text-white" id="sidebarToggle">
                     <i class="fas fa-bars fa-lg"></i>
                 </button>
 
@@ -122,7 +122,7 @@ function isActive($page) {
                     <ul class="navbar-nav ms-auto mt-2 mt-lg-0">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                <div class="bg-light text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                                <div class="bg-light text-danger rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
                                     <i class="fas fa-user"></i>
                                 </div>
                                 <div class="d-none d-sm-block text-start">

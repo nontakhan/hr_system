@@ -7,7 +7,7 @@ require_once 'includes/header.php';
 <!-- Welcome Banner -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card shadow-sm border-0 bg-primary text-white">
+        <div class="card shadow-sm border-0 theme-welcome text-white">
             <div class="card-body p-4">
                 <h2 class="mb-1">สวัสดี, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h2>
                 <p class="mb-0 opacity-75">ยินดีต้อนรับสู่ระบบบริหารทรัพยากรบุคคล (HR System)</p>
