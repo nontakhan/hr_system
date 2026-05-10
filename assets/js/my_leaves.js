@@ -1,0 +1,106 @@
+/*
+ * Logic สำหรับหน้าประวัติการลาของฉัน (my_leaves.php)
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    const table = document.getElementById('myLeavesTable');
+    if (table) {
+        loadMyLeaves();
+
+        // Event Delegation สำหรับปุ่มยกเลิก
+        table.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-cancel')) {
+                const id = e.target.closest('.btn-cancel').getAttribute('data-id');
+                handleCancelLeave(id);
+            }
+        });
+    }
+});
+
+async function loadMyLeaves() {
+    const tbody = document.getElementById('myLeavesTableBody');
+    
+    try {
+        const response = await fetch('api/leave_history_api.php');
+        const res = await response.json();
+
+        if (res.status === 'success') {
+            tbody.innerHTML = '';
+            if (res.data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">ไม่พบประวัติการลา</td></tr>`;
+                return;
+            }
+
+            res.data.forEach(item => {
+                const createdDate = new Date(item.created_at).toLocaleDateString('th-TH');
+                const startDate = new Date(item.start_date).toLocaleDateString('th-TH');
+                const endDate = new Date(item.end_date).toLocaleDateString('th-TH');
+                
+                // Badge สถานะ
+                let statusBadge = '';
+                let actionBtn = '';
+                
+                if (item.status === 'pending') {
+                    statusBadge = '<span class="badge bg-warning text-dark">รออนุมัติ</span>';
+                    // ปุ่มยกเลิก แสดงเฉพาะตอนรออนุมัติ
+                    actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${item.id}">
+                                    <i class="fas fa-times"></i> ยกเลิก
+                                 </button>`;
+                } else if (item.status === 'approved') {
+                    statusBadge = '<span class="badge bg-success">อนุมัติแล้ว</span>';
+                } else if (item.status === 'rejected') {
+                    statusBadge = '<span class="badge bg-danger">ไม่อนุมัติ</span>';
+                } else if (item.status === 'cancelled') {
+                    statusBadge = '<span class="badge bg-secondary">ยกเลิกแล้ว</span>';
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${createdDate}</td>
+                        <td><span class="fw-bold text-primary">${item.type_name}</span></td>
+                        <td>${startDate} - ${endDate}</td>
+                        <td>${parseFloat(item.total_days)} วัน</td>
+                        <td><small class="text-muted">${item.reason}</small></td>
+                        <td>${statusBadge}</td>
+                        <td>${actionBtn}</td>
+                    </tr>
+                `;
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
+    }
+}
+
+function handleCancelLeave(id) {
+    Swal.fire({
+        title: 'ยืนยันการยกเลิก?',
+        text: "คุณต้องการยกเลิกคำขอลาใบนี้ใช่หรือไม่?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'ใช่, ยกเลิกเลย',
+        cancelButtonText: 'ไม่'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('api/leave_history_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'cancel_leave', id: id })
+                });
+                const res = await response.json();
+
+                if (res.status === 'success') {
+                    Swal.fire('สำเร็จ', 'ยกเลิกใบลาเรียบร้อยแล้ว', 'success');
+                    loadMyLeaves(); // โหลดตารางใหม่
+                } else {
+                    Swal.fire('ทำรายการไม่ได้', res.message, 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            }
+        }
+    });
+}

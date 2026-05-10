@@ -1,0 +1,231 @@
+/*
+ * ไฟล์ CSS หลักสำหรับโปรเจกต์ HR System (Full Version)
+ * รองรับ Sidebar Layout, Modern Card UI, และ Responsive Design
+ */
+
+:root {
+    --primary-color: #005A9C;   /* สีน้ำเงินเข้ม (สีหลัก) */
+    --secondary-color: #007BFF; /* สีน้ำเงินสว่าง (สำหรับปุ่ม/Highlight) */
+    --light-gray: #eff3f6;      /* สีพื้นหลัง (เทาอมฟ้าอ่อนๆ) */
+    --dark-text: #333;
+    --border-color: #dee2e6;
+    --sidebar-width: 260px;     /* ความกว้างของเมนู Sidebar */
+    --header-height: 70px;      /* (เพิ่ม) กำหนดความสูงของ Header ให้เท่ากัน */
+}
+
+/* --- Base Styles --- */
+body {
+    font-family: 'Kanit', sans-serif;
+    background-color: var(--light-gray);
+    color: var(--dark-text);
+    overflow-x: hidden; /* ป้องกัน Scrollbar แนวนอน */
+    padding-top: 0;     /* ไม่ต้องมี padding-top เพราะไม่ได้ใช้ Fixed Navbar แล้ว */
+}
+
+/* --- Layout Wrapper --- */
+.d-flex#wrapper {
+    overflow-x: hidden;
+    width: 100%; /* เพิ่มความกว้างเต็มจอ */
+}
+
+/* --- Sidebar Styling --- */
+#sidebar-wrapper {
+    min-height: 100vh;
+    margin-left: -15rem; /* ค่าเริ่มต้นซ่อนใน Mobile (-width) */
+    transition: margin 0.25s ease-out;
+    background-color: #fff;
+    border-right: 1px solid #dee2e6;
+    width: var(--sidebar-width);
+    flex-shrink: 0; /* (สำคัญ) ห้าม Sidebar หดตัว */
+}
+
+#sidebar-wrapper .sidebar-heading {
+    height: var(--header-height); /* (แก้ไข) บังคับความสูงให้เท่า Navbar */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    font-size: 1.2rem;
+    background-color: var(--primary-color); /* สีน้ำเงิน */
+    color: white;
+}
+
+#sidebar-wrapper .list-group {
+    width: var(--sidebar-width);
+}
+
+/* รายการเมนูใน Sidebar */
+#sidebar-wrapper .list-group-item {
+    border: none;
+    padding: 12px 25px;
+    font-size: 0.95rem;
+    color: #555;
+    background-color: transparent;
+    transition: all 0.2s ease;
+}
+
+#sidebar-wrapper .list-group-item:hover {
+    background-color: #f8f9fa;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+/* เมนูที่กำลังใช้งาน (Active) */
+#sidebar-wrapper .list-group-item.active {
+    background-color: #e3f2fd; /* สีฟ้าอ่อน */
+    color: var(--primary-color);
+    font-weight: 500;
+    border-right: 4px solid var(--primary-color); /* เส้นขอบขวา */
+    z-index: auto; /* แก้ปัญหา Bootstrap ทับซ้อน */
+}
+
+/* เมนูย่อย (Dropdown) */
+.sidebar-submenu .list-group-item {
+    padding-left: 3rem !important; /* ย่อหน้าเข้าไป */
+    font-size: 0.9rem;
+}
+
+/* --- Page Content Wrapper --- */
+#page-content-wrapper {
+    flex-grow: 1; /* (สำคัญ) ให้ Content ยืดเต็มพื้นที่ที่เหลือ */
+    min-width: 0; /* (สำคัญ) ป้องกัน Flex item ล้นจอ */
+    width: 100%;
+}
+
+/* --- Top Navigation (Topbar) --- */
+.navbar-top {
+    height: var(--header-height); /* (แก้ไข) บังคับความสูง */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    background-color: var(--primary-color) !important; /* (แก้ไข) เปลี่ยนเป็นสีน้ำเงิน */
+    padding: 0 20px; /* ปรับ padding */
+    color: white; /* ตัวหนังสือสีขาว */
+}
+
+/* (เพิ่ม) ปรับสีปุ่มและไอคอนใน Navbar ให้เป็นสีขาว */
+.navbar-top .btn-light {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+}
+.navbar-top .btn-light:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+.navbar-top .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+.navbar-top .nav-link:hover {
+    color: #fff !important;
+}
+.navbar-top .dropdown-menu {
+    margin-top: 10px; /* ขยับ Dropdown ลงมานิดนึง */
+}
+
+/* --- Responsive Behavior (การแสดงผลบนมือถือ vs จอใหญ่) --- */
+@media (min-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: 0; /* จอใหญ่: แสดง Sidebar ปกติ */
+    }
+
+    /* สถานะเมื่อกดปุ่มย่อเมนู (Toggled) บนจอใหญ่ */
+    body.sb-sidenav-toggled #sidebar-wrapper {
+        margin-left: calc(-1 * var(--sidebar-width)); /* ซ่อนไปทางซ้าย */
+    }
+}
+
+@media (max-width: 768px) {
+    /* สถานะเมื่อกดปุ่มเมนู (Toggled) บนมือถือ */
+    body.sb-sidenav-toggled #sidebar-wrapper {
+        margin-left: 0; /* เลื่อนออกมาแสดง */
+    }
+}
+
+/* --- General Components --- */
+
+/* Modern Card Style */
+.card {
+    border: none; /* ลบเส้นขอบแข็ง */
+    border-radius: 0.75rem; /* มุมโค้งมน */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1); /* เงานุ่ม */
+    margin-bottom: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background-color: #fff;
+}
+
+/* Effect ตอนเอาเมาส์ชี้ Card */
+.card:hover {
+    transform: translateY(-2px); /* ลอยขึ้นนิดนึง */
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); /* เงาชัดขึ้น */
+}
+
+/* Card Header */
+.card-header {
+    background-color: #fff;
+    border-bottom: 2px solid var(--primary-color);
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-top-left-radius: 0.75rem !important;
+    border-top-right-radius: 0.75rem !important;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+/* สีพื้นหลัง Custom */
+.bg-primary-custom {
+    background-color: var(--primary-color) !important;
+}
+
+/* --- Login Page Styling --- */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 450px;
+    padding: 2.5rem;
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.login-card .form-control {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+}
+
+.login-card .btn-primary {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    padding: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.login-card .btn-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+/* --- SweetAlert Custom Colors --- */
+.swal2-confirm {
+    background-color: var(--secondary-color) !important;
+}
+
+.swal2-cancel {
+    background-color: #6c757d !important;
+}
+
+/* --- Dashboard Specific --- */
+/* Fix ความสูงของกราฟไม่ให้ยืดจนเกินไป */
+canvas#deptChart {
+    max-height: 300px !important;
+    width: 100% !important;
+}
