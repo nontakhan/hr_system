@@ -96,23 +96,23 @@ body {
 .navbar-top {
     height: var(--header-height); /* (แก้ไข) บังคับความสูง */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    background-color: #ffffff !important;
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
     padding: 0 20px; /* ปรับ padding */
-    color: var(--dark-text);
+    color: #ffffff;
 }
 
 /* (เพิ่ม) ปรับสีปุ่มและไอคอนใน Navbar ให้เป็นสีขาว */
 .navbar-top .btn-light {
-    background-color: #ffffff;
-    color: #111827;
-    border: 1px solid var(--border-color);
+    background-color: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
 }
 .navbar-top .btn-light:hover {
-    background-color: #f3f4f6;
-    color: #111827;
+    background-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
 }
-.navbar-top .nav-link { color: #111827 !important; }
-.navbar-top .nav-link:hover { color: #111827 !important; }
+.navbar-top .nav-link { color: #ffffff !important; }
+.navbar-top .nav-link:hover { color: #ffffff !important; }
 .navbar-top .dropdown-menu {
     margin-top: 10px; /* ขยับ Dropdown ลงมานิดนึง */
 }
