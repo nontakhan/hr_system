@@ -46,6 +46,9 @@ try {
         elseif ($action === 'update_employee') {
             echo json_encode(updateEmployee($mysqli, $_POST, $_FILES));
         }
+        elseif ($action === 'update_profile_image') {
+            echo json_encode(updateEmployeeProfileImage($mysqli, $_POST, $_FILES));
+        }
         elseif ($action === 'transfer_employee') {
             echo json_encode(transferEmployee($mysqli, $_POST));
         }
@@ -261,6 +264,34 @@ function updateEmployee($mysqli, $data, $files) {
 
     } catch (Throwable $e) {
         $mysqli->rollback();
+        if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status'=>'error', 'message'=> 'System Error'];
+    }
+}
+
+function updateEmployeeProfileImage($mysqli, $data, $files) {
+    try {
+        $id = (int)getVal($data, 'id', 0);
+        if ($id <= 0) throw new InvalidArgumentException("Invalid employee ID");
+
+        if (!isset($files['profile_image']) || $files['profile_image']['error'] === UPLOAD_ERR_NO_FILE) {
+            throw new InvalidArgumentException("กรุณาเลือกรูปภาพ");
+        }
+
+        $profile_img_url = saveProfileImage($files['profile_image']);
+        $stmt = $mysqli->prepare("UPDATE employees SET profile_img_url = ? WHERE id = ?");
+        if (!$stmt) throw new Exception("Prepare profile image update failed: " . $mysqli->error);
+
+        $stmt->bind_param('si', $profile_img_url, $id);
+        if (!$stmt->execute()) throw new Exception("Profile image update failed: " . $stmt->error);
+
+        return [
+            'status' => 'success',
+            'message' => 'อัปโหลดรูปโปรไฟล์สำเร็จ',
+            'profile_img_url' => $profile_img_url
+        ];
+    } catch (Throwable $e) {
         if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=> 'System Error'];

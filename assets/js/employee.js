@@ -45,6 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedDist = editEmployeeForm.getAttribute('data-district');
         loadSouthernProvinces(savedProv, savedDist);
     }
+
+    const historyImageForm = document.getElementById('historyProfileImageForm');
+    if (historyImageForm) {
+        setupHistoryProfileImageUpload(historyImageForm);
+    }
 });
 
 function setupFormInteractions() {
@@ -289,5 +294,49 @@ function loadSouthernProvinces(defaultProv = null, defaultDist = null) {
 
     pSelect.addEventListener('change', function() {
         populateDistricts(this.value);
+    });
+}
+
+function setupHistoryProfileImageUpload(form) {
+    const input = document.getElementById('historyProfileImageInput');
+    const preview = document.getElementById('profileHistoryImage');
+    if (!input || !preview) return;
+
+    input.addEventListener('change', async () => {
+        const file = input.files[0];
+        if (!file) return;
+
+        const originalSrc = preview.src;
+        preview.src = URL.createObjectURL(file);
+
+        const formData = new FormData(form);
+        formData.append('action', 'update_profile_image');
+
+        Swal.fire({
+            title: 'กำลังอัปโหลดรูป...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch('api/employee_api.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                preview.src = `${result.profile_img_url}?t=${Date.now()}`;
+                Swal.fire('สำเร็จ', result.message, 'success');
+            } else {
+                preview.src = originalSrc;
+                Swal.fire('อัปโหลดไม่สำเร็จ', result.message, 'error');
+            }
+        } catch (error) {
+            preview.src = originalSrc;
+            Swal.fire('Error', error.message, 'error');
+        } finally {
+            input.value = '';
+        }
     });
 }

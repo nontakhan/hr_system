@@ -104,8 +104,21 @@ require_once 'includes/header.php';
                 ?>
                 <img src="<?php echo $img_src; ?>" 
                      onerror="this.onerror=null; this.src='<?php echo $fallback_avatar; ?>';" 
+                     id="profileHistoryImage"
                      class="rounded-circle img-thumbnail mb-3 shadow-sm" 
                      style="width: 180px; height: 180px; object-fit: cover;">
+
+                <?php if($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'hr'): ?>
+                <form id="historyProfileImageForm" class="mb-3" enctype="multipart/form-data">
+                    <input type="hidden" name="id" value="<?php echo (int)$emp['id']; ?>">
+                    <input type="hidden" name="MAX_FILE_SIZE" value="5242880">
+                    <label for="historyProfileImageInput" class="btn btn-sm btn-outline-primary mb-2">
+                        <i class="fas fa-camera"></i> เพิ่ม/เปลี่ยนรูป
+                    </label>
+                    <input type="file" name="profile_image" id="historyProfileImageInput" class="d-none" accept="image/jpeg,image/png,image/webp,image/gif">
+                    <div class="small text-muted">รองรับ JPG, PNG, WebP, GIF ไม่เกิน 5MB</div>
+                </form>
+                <?php endif; ?>
                 
                 <h4 class="mb-1 text-dark fw-bold"><?php echo $emp['prefix_th'] . $emp['first_name_th'] . ' ' . $emp['last_name_th']; ?></h4>
                 <p class="text-muted mb-2"><?php echo $emp['first_name_en'] . ' ' . $emp['last_name_en']; ?></p>
