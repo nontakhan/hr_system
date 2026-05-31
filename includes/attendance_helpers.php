@@ -53,17 +53,84 @@ function attendanceMapCsvRow(array $row) {
     ];
 }
 
+function attendanceImportMonthFromWorkDate($workDate) {
+    $workDate = trim((string)$workDate);
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate) ? substr($workDate, 0, 7) : null;
+}
+
+function attendanceBuildImportSummaryMonths(array $monthlyRows, $baseDate = 'now', $limit = 6) {
+    $indexed = [];
+    foreach ($monthlyRows as $row) {
+        $month = (string)($row['import_month'] ?? '');
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            continue;
+        }
+
+        $indexed[$month] = [
+            'import_month' => $month,
+            'record_count' => (int)($row['record_count'] ?? 0),
+            'employee_count' => (int)($row['employee_count'] ?? 0),
+            'latest_work_date' => $row['latest_work_date'] ?? null,
+        ];
+    }
+
+    $months = [];
+    $start = new DateTimeImmutable($baseDate);
+    $start = $start->modify('first day of this month');
+    for ($i = 0; $i < $limit; $i++) {
+        $month = $start->modify("-{$i} months")->format('Y-m');
+        $data = $indexed[$month] ?? [
+            'import_month' => $month,
+            'record_count' => 0,
+            'employee_count' => 0,
+            'latest_work_date' => null,
+        ];
+        $data['has_data'] = $data['record_count'] > 0;
+        $months[] = $data;
+    }
+
+    return $months;
+}
+
 function attendanceDayName($date) {
     return date('D', strtotime($date));
 }
 
-function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, array $holidays = []) {
+function attendanceBuildApprovedLeaveMap(array $leaveRows, $month) {
+    $start = new DateTimeImmutable($month . '-01');
+    $end = $start->modify('last day of this month');
+    $leaves = [];
+
+    foreach ($leaveRows as $row) {
+        $leaveStart = new DateTimeImmutable($row['start_date']);
+        $leaveEnd = new DateTimeImmutable($row['end_date']);
+        $typeName = (string)($row['type_name'] ?? 'ลา');
+
+        if ($leaveEnd < $start || $leaveStart > $end) {
+            continue;
+        }
+
+        $from = $leaveStart < $start ? $start : $leaveStart;
+        $to = $leaveEnd > $end ? $end : $leaveEnd;
+        for ($date = $from; $date <= $to; $date = $date->modify('+1 day')) {
+            $workDate = $date->format('Y-m-d');
+            if (!isset($leaves[$workDate])) {
+                $leaves[$workDate] = $typeName;
+            }
+        }
+    }
+
+    return $leaves;
+}
+
+function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, array $holidays = [], array $leaves = []) {
     if (isset($holidays[$workDate])) {
         return [
             'status' => 'holiday',
             'label' => 'วันหยุด',
             'is_late' => false,
             'holiday_name' => $holidays[$workDate],
+            'leave_name' => null,
         ];
     }
 
@@ -72,19 +139,23 @@ function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, 
     $isWorkday = empty($workDays) || in_array($dayName, $workDays, true);
 
     if (!$isWorkday) {
-        return ['status' => 'holiday', 'label' => 'วันหยุด', 'is_late' => false, 'holiday_name' => null];
+        return ['status' => 'holiday', 'label' => 'วันหยุด', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null];
+    }
+
+    if (isset($leaves[$workDate])) {
+        return ['status' => 'leave', 'label' => 'ลา', 'is_late' => false, 'holiday_name' => null, 'leave_name' => $leaves[$workDate]];
     }
 
     if ($checkIn === null && $checkOut === null) {
-        return ['status' => 'absent', 'label' => 'ขาด', 'is_late' => false, 'holiday_name' => null];
+        return ['status' => 'absent', 'label' => 'ขาด', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null];
     }
 
     if ($checkIn === null && $checkOut !== null) {
-        return ['status' => 'missing_in', 'label' => 'ไม่สแกนเข้า', 'is_late' => false, 'holiday_name' => null];
+        return ['status' => 'missing_in', 'label' => 'ไม่สแกนเข้า', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null];
     }
 
     if ($checkIn !== null && $checkOut === null) {
-        return ['status' => 'missing_out', 'label' => 'ไม่สแกนออก', 'is_late' => false, 'holiday_name' => null];
+        return ['status' => 'missing_out', 'label' => 'ไม่สแกนออก', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null];
     }
 
     $startTime = attendanceNormalizeTime($shift['start_time'] ?? '');
@@ -93,11 +164,11 @@ function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, 
         $start = strtotime($workDate . ' ' . $startTime);
         $in = strtotime($workDate . ' ' . $checkIn);
         if ($in > ($start + ($lateTolerance * 60))) {
-            return ['status' => 'late', 'label' => 'สาย', 'is_late' => true, 'holiday_name' => null];
+            return ['status' => 'late', 'label' => 'สาย', 'is_late' => true, 'holiday_name' => null, 'leave_name' => null];
         }
     }
 
-    return ['status' => 'present', 'label' => 'ปกติ', 'is_late' => false, 'holiday_name' => null];
+    return ['status' => 'present', 'label' => 'ปกติ', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null];
 }
 
 function attendanceReadCsvRows($filePath) {

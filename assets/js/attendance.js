@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const importForm = document.getElementById('attendanceImportForm');
     if (importForm) {
         importForm.addEventListener('submit', handleAttendanceImport);
+        initAttendanceImportSummary();
     }
 
     const filters = document.getElementById('attendanceFilters');
@@ -32,6 +33,7 @@ async function handleAttendanceImport(e) {
             'success'
         );
         form.reset();
+        loadAttendanceImportSummary();
     } catch (err) {
         Swal.fire('Error', err.message, 'error');
     } finally {
@@ -100,6 +102,70 @@ function hideAttendanceImportProgress(elements) {
     elements.bar.style.width = '0%';
     elements.bar.textContent = '0%';
     if (elements.percent) elements.percent.textContent = '0%';
+}
+
+function initAttendanceImportSummary() {
+    const refreshBtn = document.getElementById('attendanceImportSummaryRefresh');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadAttendanceImportSummary);
+    }
+    loadAttendanceImportSummary();
+}
+
+async function loadAttendanceImportSummary() {
+    const target = document.getElementById('attendanceImportSummary');
+    if (!target) return;
+
+    target.innerHTML = '<div class="col-12 text-muted small">กำลังโหลดสรุปการนำเข้า...</div>';
+    try {
+        const response = await fetch('api/attendance_api.php?action=import_summary');
+        const res = await response.json();
+        if (res.status !== 'success') {
+            target.innerHTML = `<div class="col-12 text-danger small">${res.message || 'โหลดสรุปการนำเข้าไม่สำเร็จ'}</div>`;
+            return;
+        }
+        renderAttendanceImportSummary(res.data || []);
+    } catch (err) {
+        target.innerHTML = `<div class="col-12 text-danger small">${err.message}</div>`;
+    }
+}
+
+function renderAttendanceImportSummary(items) {
+    const target = document.getElementById('attendanceImportSummary');
+    if (!target) return;
+
+    if (!items.length) {
+        target.innerHTML = '<div class="col-12 text-muted small">ยังไม่มีข้อมูลสรุปการนำเข้า</div>';
+        return;
+    }
+
+    target.innerHTML = items.map(item => {
+        const hasData = Boolean(item.has_data);
+        const tone = hasData ? 'success' : 'light';
+        const textClass = hasData ? 'text-white' : 'text-dark';
+        const borderClass = hasData ? 'border-0' : 'border';
+        const icon = hasData ? 'fa-circle-check' : 'fa-circle-minus';
+        const status = hasData ? 'นำเข้าแล้ว' : 'ยังไม่มีข้อมูล';
+        const latest = item.latest_work_date ? formatThaiDate(item.latest_work_date) : '-';
+
+        return `
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="rounded-3 p-3 bg-${tone} ${textClass} ${borderClass} h-100">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold">${formatThaiMonth(item.import_month)}</div>
+                            <div class="small ${hasData ? 'opacity-75' : 'text-muted'}">${status}</div>
+                        </div>
+                        <i class="fas ${icon} fs-5 ${hasData ? 'opacity-75' : 'text-muted'}"></i>
+                    </div>
+                    <div class="d-flex justify-content-between gap-3 mt-3 small">
+                        <span>รายการ <strong>${Number(item.record_count || 0).toLocaleString('th-TH')}</strong></span>
+                        <span>พนักงาน <strong>${Number(item.employee_count || 0).toLocaleString('th-TH')}</strong></span>
+                    </div>
+                    <div class="small ${hasData ? 'opacity-75' : 'text-muted'} mt-2">ล่าสุด ${latest}</div>
+                </div>
+            </div>`;
+    }).join('');
 }
 
 async function initAttendanceReport(canManage) {
@@ -223,19 +289,20 @@ async function loadAttendanceReport(employeeId, month) {
 function renderAttendanceReport(res) {
     const tbody = document.getElementById('attendanceTableBody');
     const summary = document.getElementById('attendanceSummary');
-    const counts = { present: 0, late: 0, absent: 0, missing_in: 0, missing_out: 0, holiday: 0 };
+    const counts = { present: 0, late: 0, absent: 0, missing_in: 0, missing_out: 0, holiday: 0, leave: 0 };
 
     tbody.innerHTML = '';
     res.data.forEach(row => {
         counts[row.status] = (counts[row.status] || 0) + 1;
-        const trClass = row.is_late ? 'table-warning' : (row.status === 'absent' ? 'table-danger' : '');
+        const trClass = row.is_late ? 'table-warning' : (row.status === 'absent' ? 'table-danger' : (row.status === 'leave' ? 'table-info' : ''));
+        const rowNote = row.holiday_name || row.leave_name || '';
         tbody.innerHTML += `
             <tr class="${trClass}">
                 <td>${formatThaiDate(row.work_date)}</td>
                 <td>${formatAttendanceDay(row.day_name)}</td>
                 <td>${formatAttendanceTime(row.check_in)}</td>
                 <td>${formatAttendanceTime(row.check_out)}</td>
-                <td>${attendanceStatusBadge(row.status, row.status_label)}${row.holiday_name ? `<span class="small text-muted ms-2">${row.holiday_name}</span>` : ''}</td>
+                <td>${attendanceStatusBadge(row.status, row.status_label)}${rowNote ? `<span class="small text-muted ms-2">${rowNote}</span>` : ''}</td>
             </tr>`;
     });
 
@@ -254,12 +321,13 @@ function renderAttendanceReport(res) {
             ${attendanceSummaryCard('สาย', counts.late || 0, 'warning', 'fa-clock')}
             ${attendanceSummaryCard('ขาด', counts.absent || 0, 'danger', 'fa-circle-xmark')}
             ${attendanceSummaryCard('สแกนไม่ครบ', incompleteTotal, 'secondary', 'fa-triangle-exclamation')}
+            ${attendanceSummaryCard('ลา', counts.leave || 0, 'info', 'fa-file-signature')}
             ${attendanceSummaryCard('วันหยุด', counts.holiday || 0, 'light', 'fa-calendar-day')}
         </div>`;
 }
 
 function attendanceSummaryCard(label, count, tone, icon) {
-    const textClass = tone === 'warning' || tone === 'light' ? 'text-dark' : 'text-white';
+    const textClass = tone === 'warning' || tone === 'light' || tone === 'info' ? 'text-dark' : 'text-white';
     const borderClass = tone === 'light' ? 'border' : 'border-0';
     return `
         <div class="col-6 col-md">
@@ -284,6 +352,7 @@ function attendanceStatusBadge(status, label) {
         missing_in: 'bg-secondary',
         missing_out: 'bg-secondary',
         holiday: 'bg-light text-dark border',
+        leave: 'bg-info text-dark',
     };
     return `<span class="badge ${classes[status] || 'bg-secondary'}">${label}</span>`;
 }
