@@ -35,6 +35,7 @@ async function loadMyLeaves() {
                 const createdDate = formatThaiDate(item.created_at);
                 const startDate = formatThaiDate(item.start_date);
                 const endDate = formatThaiDate(item.end_date);
+                const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
                 const itemId = Number.parseInt(item.id, 10) || 0;
                 const typeName = escapeHtml(item.type_name);
                 const reason = escapeHtml(item.reason);
@@ -61,7 +62,7 @@ async function loadMyLeaves() {
                     <tr>
                         <td>${createdDate}</td>
                         <td><span class="fw-bold text-primary">${typeName}</span></td>
-                        <td>${startDate} - ${endDate}</td>
+                        <td>${dateRange || `${startDate} - ${endDate}`}</td>
                         <td>${parseFloat(item.total_days)} วัน</td>
                         <td><small class="text-muted">${reason}</small></td>
                         <td>${statusBadge}</td>
@@ -106,4 +107,27 @@ function handleCancelLeave(id) {
             }
         }
     });
+}
+
+function formatLeaveDateRange(startDate, endDate, startPart, endPart) {
+    const start = formatThaiDate(startDate);
+    const end = formatThaiDate(endDate);
+    const startLabel = getLeavePartLabel(startPart);
+    const endLabel = getLeavePartLabel(endPart);
+
+    if (!startDate || !endDate) return '';
+    if (startDate === endDate) {
+        const label = startLabel !== 'เต็มวัน' ? startLabel : endLabel;
+        return `${start}${label !== 'เต็มวัน' ? ` (${label})` : ''}`;
+    }
+
+    return `${start}${startLabel !== 'เต็มวัน' ? ` (${startLabel})` : ''} - ${end}${endLabel !== 'เต็มวัน' ? ` (${endLabel})` : ''}`;
+}
+
+function getLeavePartLabel(part) {
+    return {
+        morning: 'ครึ่งวันเช้า',
+        afternoon: 'ครึ่งวันบ่าย',
+        full: 'เต็มวัน',
+    }[part] || 'เต็มวัน';
 }

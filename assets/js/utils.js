@@ -123,6 +123,10 @@ function setThaiDateInputValue(input, value) {
 
 function setupThaiDateInputs(root = document) {
     root.querySelectorAll('input[type="date"]').forEach(input => {
+        if (input.dataset.nativeDatePicker === 'true') {
+            return;
+        }
+
         input.dataset.originalType = 'date';
         input.type = 'text';
         input.inputMode = 'numeric';

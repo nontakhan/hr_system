@@ -12,6 +12,7 @@ try {
     if (session_status() == PHP_SESSION_NONE) session_start();
     require_once '../includes/db_connect.php';
     require_once '../includes/upload_security.php';
+    require_once '../includes/leave_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -20,19 +21,34 @@ try {
 
     $method = $_SERVER['REQUEST_METHOD'];
 
-    // --- GET: ดึงประเภทการลา (สำหรับ Dropdown) ---
     if ($method === 'GET') {
         $action = $_GET['action'] ?? '';
-        
+
         if ($action === 'get_leave_types') {
             $sql = "SELECT id, type_name, days_per_year, requires_file FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
             echo json_encode(['status' => 'success', 'data' => $result->fetch_all(MYSQLI_ASSOC)]);
+        } elseif ($action === 'calculate_leave') {
+            $emp_id = (int)$_SESSION['employee_id'];
+            $start = trim((string)($_GET['start_date'] ?? ''));
+            $end = trim((string)($_GET['end_date'] ?? ''));
+            $summary = leaveBuildDateSummary(
+                $start,
+                $end,
+                $_GET['start_day_part'] ?? 'full',
+                $_GET['end_day_part'] ?? 'full',
+                leaveFetchEmployeeWorkDays($mysqli, $emp_id),
+                leaveFetchCompanyHolidays($mysqli, $start, $end)
+            );
+            echo json_encode([
+                'status' => $summary['valid'] ? 'success' : 'error',
+                'message' => $summary['message'],
+                'data' => $summary,
+            ]);
+        } else {
+            sendJsonError('Invalid Action');
         }
-    }
-
-    // --- POST: ส่งใบลา ---
-    elseif ($method === 'POST') {
+    } elseif ($method === 'POST') {
         $action = $_POST['action'] ?? '';
 
         if ($action === 'submit_leave') {
@@ -41,7 +57,6 @@ try {
             sendJsonError('Invalid Action');
         }
     }
-
 } catch (Throwable $e) {
     error_log($e->getMessage());
     sendJsonError('System Error');
@@ -50,53 +65,66 @@ try {
 $mysqli->close();
 exit();
 
-// ฟังก์ชันบันทึกการลา
 function submitLeaveRequest($mysqli, $data, $files) {
     $mysqli->begin_transaction();
     try {
-        $emp_id = $_SESSION['employee_id']; // ID ของพนักงานที่ Login
+        $emp_id = (int)$_SESSION['employee_id'];
         $type_id = (int)$data['leave_type_id'];
-        $start = $data['start_date'];
-        $end = $data['end_date'];
-        $reason = trim($data['reason']);
+        $start = trim((string)($data['start_date'] ?? ''));
+        $end = trim((string)($data['end_date'] ?? ''));
+        $start_part = leaveNormalizeDayPart($data['start_day_part'] ?? 'full');
+        $end_part = leaveNormalizeDayPart($data['end_day_part'] ?? 'full');
+        $reason = trim((string)($data['reason'] ?? ''));
 
-        // 1. ตรวจสอบข้อมูลเบื้องต้น
-        if (empty($start) || empty($end) || empty($reason)) {
-            throw new Exception("กรุณากรอกข้อมูลให้ครบถ้วน");
+        if ($type_id <= 0 || $start === '' || $end === '' || $reason === '') {
+            throw new Exception('กรุณากรอกข้อมูลให้ครบถ้วน');
         }
         if ($end < $start) {
-            throw new Exception("วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม");
+            throw new Exception('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
         }
 
-        // 2. คำนวณจำนวนวัน (Logic ง่ายๆ: จบ - เริ่ม + 1)
-        // (ในอนาคตอาจต้องตัดวันหยุดเสาร์-อาทิตย์ ออก)
-        $d_start = new DateTime($start);
-        $d_end = new DateTime($end);
-        $interval = $d_start->diff($d_end);
-        $total_days = $interval->days + 1;
+        $summary = leaveBuildDateSummary(
+            $start,
+            $end,
+            $start_part,
+            $end_part,
+            leaveFetchEmployeeWorkDays($mysqli, $emp_id),
+            leaveFetchCompanyHolidays($mysqli, $start, $end)
+        );
+        if (!$summary['valid']) {
+            throw new Exception($summary['message']);
+        }
 
-        // 3. ตรวจสอบเงื่อนไขไฟล์แนบ
+        $total_days = (float)$summary['total_days'];
+        if ($total_days <= 0) {
+            throw new Exception('ช่วงวันที่เลือกไม่มีวันทำงานที่สามารถลาได้');
+        }
+
         $stmt_type = $mysqli->prepare("SELECT requires_file FROM leave_types WHERE id = ?");
         $stmt_type->bind_param('i', $type_id);
         $stmt_type->execute();
         $type_info = $stmt_type->get_result()->fetch_assoc();
+        if (!$type_info) {
+            throw new Exception('ไม่พบประเภทการลา');
+        }
 
-        if ($type_info['requires_file'] == 1) {
+        if ((int)$type_info['requires_file'] === 1) {
             if (!isset($files['attachment']) || $files['attachment']['error'] !== UPLOAD_ERR_OK) {
-                throw new Exception("ประเภทการลานี้ต้องแนบไฟล์หลักฐาน");
+                throw new Exception('ประเภทการลานี้ต้องแนบไฟล์หลักฐาน');
             }
         }
 
-        // 4. บันทึกข้อมูลลงตาราง leave_requests
-        $sql = "INSERT INTO leave_requests (employee_id, leave_type_id, start_date, end_date, total_days, reason, status) 
-                VALUES (?, ?, ?, ?, ?, ?, 'pending')";
+        leaveEnsureRequestPartColumns($mysqli);
+        $sql = "INSERT INTO leave_requests (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, total_days, reason, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')";
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('iissds', $emp_id, $type_id, $start, $end, $total_days, $reason);
-        
-        if (!$stmt->execute()) throw new Exception("บันทึกข้อมูลไม่สำเร็จ: " . $stmt->error);
+        $stmt->bind_param('iissssds', $emp_id, $type_id, $start, $end, $start_part, $end_part, $total_days, $reason);
+
+        if (!$stmt->execute()) {
+            throw new Exception('บันทึกข้อมูลไม่สำเร็จ: ' . $stmt->error);
+        }
         $request_id = $mysqli->insert_id;
 
-        // 5. จัดการไฟล์แนบ (ถ้ามี)
         if (isset($files['attachment']) && $files['attachment']['error'] !== UPLOAD_ERR_NO_FILE) {
             $file_path = saveLeaveAttachment($files['attachment'], $request_id);
             $original_name = basename($files['attachment']['name']);
@@ -107,12 +135,14 @@ function submitLeaveRequest($mysqli, $data, $files) {
         }
 
         $mysqli->commit();
-        echo json_encode(['status' => 'success', 'message' => 'ส่งใบลาเรียบร้อยแล้ว รอการอนุมัติ']);
-
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'ส่งใบลาเรียบร้อยแล้ว รอการอนุมัติ',
+            'data' => $summary,
+        ]);
     } catch (Exception $e) {
         $mysqli->rollback();
         error_log($e->getMessage());
-        sendJsonError('System Error');
+        sendJsonError($e->getMessage() ?: 'System Error');
     }
 }
-?>

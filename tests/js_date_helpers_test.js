@@ -21,4 +21,26 @@ assertSame('03/01/2569', toThaiDateInputValue('2026-01-03'), 'Date inputs should
 assertSame('2026-01-03', toGregorianDateInputValue('03/01/2569'), 'Buddhist Era date input should submit Gregorian values.');
 assertSame('-', formatThaiDate(null), 'Empty dates should use the fallback.');
 
+const nativeDateInput = {
+    dataset: { nativeDatePicker: 'true' },
+    type: 'date',
+    value: '2026-01-03',
+    inputMode: '',
+    placeholder: '',
+};
+const thaiDateInput = {
+    dataset: {},
+    type: 'date',
+    value: '2026-01-03',
+    inputMode: '',
+    placeholder: '',
+};
+setupThaiDateInputs({
+    querySelectorAll() {
+        return [nativeDateInput, thaiDateInput];
+    },
+});
+assertSame('date', nativeDateInput.type, 'Native date picker inputs should not be converted to text.');
+assertSame('text', thaiDateInput.type, 'Ordinary date inputs should still use Thai date text display.');
+
 console.log('js_date_helpers_test passed');

@@ -40,6 +40,7 @@ async function loadPendingLeaves() {
             tbody.innerHTML = res.data.map(item => {
                 const sDate = formatThaiDate(item.start_date);
                 const eDate = formatThaiDate(item.end_date);
+                const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
                 const itemId = Number.parseInt(item.id, 10) || 0;
                 const firstName = escapeHtml(item.first_name_th);
                 const lastName = escapeHtml(item.last_name_th);
@@ -78,7 +79,7 @@ async function loadPendingLeaves() {
                             </div>
                         </td>
                         <td><span class="badge bg-primary bg-opacity-10 text-primary">${item.type_name}</span></td>
-                        <td>${sDate} - ${eDate}</td>
+                        <td>${dateRange || `${sDate} - ${eDate}`}</td>
                         <td><strong>${parseFloat(item.total_days)}</strong> วัน</td>
                         <td>
                             <small class="d-block text-muted text-truncate" style="max-width: 200px;">${item.reason}</small>
@@ -132,7 +133,7 @@ async function loadHistoryLeaves() {
                         <td>${appDate}</td>
                         <td>${item.first_name_th} ${item.last_name_th}</td>
                         <td>${item.type_name}</td>
-                        <td>${sDate} (${parseFloat(item.total_days)} วัน)</td>
+                        <td>${dateRange || sDate} (${parseFloat(item.total_days)} วัน)</td>
                         <td>${statusBadge}</td>
                         <td><small class="text-muted">${item.rejection_reason || '-'}</small></td>
                     </tr>
@@ -187,6 +188,29 @@ window.openActionModalFromButton = function(button) {
 }
 
 // Submit การอนุมัติ/ไม่อนุมัติ
+function formatLeaveDateRange(startDate, endDate, startPart, endPart) {
+    const start = formatThaiDate(startDate);
+    const end = formatThaiDate(endDate);
+    const startLabel = getLeavePartLabel(startPart);
+    const endLabel = getLeavePartLabel(endPart);
+
+    if (!startDate || !endDate) return '';
+    if (startDate === endDate) {
+        const label = startLabel !== 'เต็มวัน' ? startLabel : endLabel;
+        return `${start}${label !== 'เต็มวัน' ? ` (${label})` : ''}`;
+    }
+
+    return `${start}${startLabel !== 'เต็มวัน' ? ` (${startLabel})` : ''} - ${end}${endLabel !== 'เต็มวัน' ? ` (${endLabel})` : ''}`;
+}
+
+function getLeavePartLabel(part) {
+    return {
+        morning: 'ครึ่งวันเช้า',
+        afternoon: 'ครึ่งวันบ่าย',
+        full: 'เต็มวัน',
+    }[part] || 'เต็มวัน';
+}
+
 async function handleSubmitApproval(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
