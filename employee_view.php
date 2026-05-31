@@ -133,7 +133,7 @@ require_once 'includes/header.php';
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-4 py-3">
                         <span class="text-muted"><i class="fas fa-calendar-check me-2"></i> เริ่มงาน</span>
-                        <span><?php echo date('d/m/Y', strtotime($emp['start_date'])); ?></span>
+                        <span><?php echo formatThaiDate($emp['start_date']); ?></span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-4 py-3">
                         <span class="text-muted"><i class="fas fa-hourglass-half me-2"></i> อายุงาน</span>
@@ -166,7 +166,7 @@ require_once 'includes/header.php';
                     <div class="col-sm-6 col-md-4">
                         <label class="text-muted small">วันเกิด</label>
                         <div class="fw-bold text-dark">
-                            <?php echo date('d/m/Y', strtotime($emp['birth_date'])); ?> 
+                            <?php echo formatThaiDate($emp['birth_date']); ?> 
                             <span class="text-muted fw-normal">(อายุ <?php echo calculateAge($emp['birth_date']); ?> ปี)</span>
                         </div>
                     </div>
@@ -314,7 +314,7 @@ require_once 'includes/header.php';
                     </div>
                     <div class="col-sm-6">
                         <label class="text-muted small">วันที่บันทึกข้อมูลเข้าระบบ</label>
-                        <div class="text-dark"><?php echo date('d/m/Y H:i', strtotime($emp['created_at'])); ?></div>
+                        <div class="text-dark"><?php echo formatThaiDateTime($emp['created_at']); ?></div>
                     </div>
                 </div>
             </div>

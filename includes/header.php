@@ -6,6 +6,8 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . '/date_helpers.php';
+
 // ฟังก์ชันช่วยเช็ค Active Menu
 function isActive($page) {
     return basename($_SERVER['PHP_SELF']) == $page ? 'active' : '';
@@ -26,6 +28,9 @@ function isActive($page) {
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <?php if (!empty($use_select2)) : ?>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <?php endif; ?>
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -71,22 +76,30 @@ function isActive($page) {
             </a>
             <?php endif; ?>
 
-            <!-- Time Attendance (Next Phase Placeholder) -->
-            <a href="#" class="list-group-item list-group-item-action bg-transparent text-muted">
-                <i class="fas fa-clock me-2"></i> ลงเวลา (เร็วๆ นี้)
+            <!-- Time Attendance -->
+            <a href="attendance.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance.php'); ?>">
+                <i class="fas fa-clock me-2"></i> ลงเวลา
             </a>
+            <?php if (in_array($_SESSION['role'], ['admin', 'hr'])) : ?>
+            <a href="attendance_import.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance_import.php'); ?>">
+                <i class="fas fa-file-import me-2"></i> นำเข้าลงเวลา
+            </a>
+            <?php endif; ?>
 
             <!-- Settings (Dropdown) -->
             <?php if (in_array($_SESSION['role'], ['admin', 'hr'])) : ?>
             <a href="#settingsSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
                 <i class="fas fa-cogs me-2"></i> ตั้งค่าระบบ
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('leave_types.php') || isActive('shifts.php') || isActive('manage_master_data.php')) ? 'show' : ''; ?>" id="settingsSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('leave_types.php') || isActive('shifts.php') || isActive('company_holidays.php') || isActive('manage_master_data.php')) ? 'show' : ''; ?>" id="settingsSubmenu">
                 <a href="leave_types.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_types.php'); ?>">
                     <small>ประเภทการลา</small>
                 </a>
                 <a href="shifts.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('shifts.php'); ?>">
                     <small>กะการทำงาน</small>
+                </a>
+                <a href="company_holidays.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('company_holidays.php'); ?>">
+                    <small>วันหยุดพิเศษ</small>
                 </a>
                 <?php if ($_SESSION['role'] === 'admin') : ?>
                 <a href="manage_master_data.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('manage_master_data.php'); ?>">

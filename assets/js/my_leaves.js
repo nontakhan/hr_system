@@ -32,9 +32,9 @@ async function loadMyLeaves() {
             }
 
             res.data.forEach(item => {
-                const createdDate = new Date(item.created_at).toLocaleDateString('th-TH');
-                const startDate = new Date(item.start_date).toLocaleDateString('th-TH');
-                const endDate = new Date(item.end_date).toLocaleDateString('th-TH');
+                const createdDate = formatThaiDate(item.created_at);
+                const startDate = formatThaiDate(item.start_date);
+                const endDate = formatThaiDate(item.end_date);
                 const itemId = Number.parseInt(item.id, 10) || 0;
                 const typeName = escapeHtml(item.type_name);
                 const reason = escapeHtml(item.reason);

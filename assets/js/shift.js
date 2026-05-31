@@ -91,6 +91,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+const THAI_WORK_DAYS = {
+    Mon: 'จันทร์',
+    Tue: 'อังคาร',
+    Wed: 'พุธ',
+    Thu: 'พฤหัสบดี',
+    Fri: 'ศุกร์',
+    Sat: 'เสาร์',
+    Sun: 'อาทิตย์'
+};
+
+function formatWorkDaysThai(workDays) {
+    if (!workDays) return '-';
+
+    return workDays
+        .split(',')
+        .map(day => day.trim())
+        .filter(Boolean)
+        .map(day => THAI_WORK_DAYS[day] || day)
+        .join(', ');
+}
+
 async function loadShifts() {
     const tbody = document.getElementById('shiftTableBody');
     try {
@@ -105,13 +126,14 @@ async function loadShifts() {
             }
             res.data.forEach(item => {
                 const info = JSON.stringify(item).replace(/"/g, '&quot;');
+                const workDaysThai = formatWorkDaysThai(item.work_days);
                 tbody.innerHTML += `
                     <tr>
                         <td><strong>${item.shift_name}</strong></td>
                         <td>${item.start_time.substring(0,5)}</td>
                         <td>${item.end_time.substring(0,5)}</td>
                         <td>${item.late_tolerance_mins} นาที</td>
-                        <td><span class="badge bg-secondary">${item.work_days}</span></td>
+                        <td><span class="badge bg-secondary">${workDaysThai}</span></td>
                         <td>
                             <button class="btn btn-warning btn-sm me-1" 
                                 data-bs-toggle="modal" data-bs-target="#shiftModal" data-action="edit" data-info="${info}">

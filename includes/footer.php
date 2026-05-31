@@ -11,6 +11,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<?php if (!empty($use_select2)) : ?>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<?php endif; ?>
 
 <!-- Custom JS -->
 <script src="assets/js/utils.js"></script>
@@ -23,6 +26,8 @@
 <script src="assets/js/leave_approval.js"></script>
 <script src="assets/js/dashboard.js"></script>
 <script src="assets/js/shift.js"></script>
+<script src="assets/js/attendance.js"></script>
+<script src="assets/js/company_holidays.js"></script>
 
 <!-- (NEW) Script สำหรับ Toggle Sidebar -->
 <script>

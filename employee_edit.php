@@ -41,6 +41,7 @@ try {
 }
 
 $page_title = "แก้ไขข้อมูล: " . $emp['first_name_th'];
+$use_select2 = true;
 require_once 'includes/header.php';
 ?>
 

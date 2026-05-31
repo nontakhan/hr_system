@@ -30,7 +30,14 @@ body {
 
 /* --- Sidebar Styling --- */
 #sidebar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1040;
     min-height: 100vh;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
     margin-left: -15rem; /* ค่าเริ่มต้นซ่อนใน Mobile (-width) */
     transition: margin 0.25s ease-out;
     background: linear-gradient(180deg, #fffefe 0%, #f8f4f4 100%);
@@ -96,10 +103,17 @@ body {
     flex-grow: 1; /* (สำคัญ) ให้ Content ยืดเต็มพื้นที่ที่เหลือ */
     min-width: 0; /* (สำคัญ) ป้องกัน Flex item ล้นจอ */
     width: 100%;
+    margin-left: 0;
+    padding-top: var(--header-height);
 }
 
 /* --- Top Navigation (Topbar) --- */
 .navbar-top {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1030;
     height: var(--header-height); /* (แก้ไข) บังคับความสูง */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     background: linear-gradient(135deg, #c81e1e 0%, #8f1414 100%) !important;
@@ -131,9 +145,25 @@ body {
         margin-left: 0; /* จอใหญ่: แสดง Sidebar ปกติ */
     }
 
+    #page-content-wrapper {
+        margin-left: var(--sidebar-width);
+    }
+
+    .navbar-top {
+        left: var(--sidebar-width);
+    }
+
     /* สถานะเมื่อกดปุ่มย่อเมนู (Toggled) บนจอใหญ่ */
     body.sb-sidenav-toggled #sidebar-wrapper {
         margin-left: calc(-1 * var(--sidebar-width)); /* ซ่อนไปทางซ้าย */
+    }
+
+    body.sb-sidenav-toggled #page-content-wrapper {
+        margin-left: 0;
+    }
+
+    body.sb-sidenav-toggled .navbar-top {
+        left: 0;
     }
 }
 
@@ -313,6 +343,31 @@ canvas#deptChart {
     border-bottom-width: 1px;
 }
 
+.select2-container--default .select2-selection--single {
+    min-height: 38px;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px;
+    padding-left: 0.75rem;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #f1aeb5;
+    box-shadow: 0 0 0 0.25rem rgba(220, 38, 38, 0.15);
+}
+
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+    background-color: #b91c1c;
+}
+
 /* Theme Overrides: remove remaining bootstrap blue accents */
 .text-primary { color: #b91c1c !important; }
 .btn-info {
@@ -323,6 +378,16 @@ canvas#deptChart {
 .btn-info:hover {
     background-color: #991b1b !important;
     border-color: #991b1b !important;
+}
+.btn-view {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+.btn-view:hover {
+    background-color: #0b5ed7 !important;
+    border-color: #0a58ca !important;
+    color: #ffffff !important;
 }
 .theme-welcome {
     background: linear-gradient(135deg, #c81e1e 0%, #8f1414 100%) !important;

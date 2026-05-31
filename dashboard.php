@@ -43,7 +43,7 @@ require_once 'includes/header.php';
         <div class="card shadow-sm border-0 h-100">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-building me-2"></i> สรุปภาพรวม</h5>
-                <small class="text-muted"><?php echo date('d/m/Y'); ?></small>
+                <small class="text-muted"><?php echo formatThaiDate(date('Y-m-d')); ?></small>
             </div>
             <div class="card-body p-0">
                 <div class="list-group list-group-flush" id="todayLeaveList">

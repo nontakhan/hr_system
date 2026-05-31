@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedProv = editEmployeeForm.getAttribute('data-province');
         const savedDist = editEmployeeForm.getAttribute('data-district');
         loadSouthernProvinces(savedProv, savedDist);
+        initializeEmployeeEditSelect2(editEmployeeForm);
     }
 
     const transferForm = document.getElementById('transferForm');
@@ -71,6 +72,7 @@ function setupFormInteractions() {
     const branchSelect = document.getElementById('branchSelect');
     if (companySelect && branchSelect) {
         companySelect.addEventListener('change', () => filterBranches(companySelect, branchSelect));
+        filterBranches(companySelect, branchSelect);
     }
 }
 
@@ -119,7 +121,7 @@ async function loadEmployeeData() {
                             <td>${renderEmployeeStatus(emp.status)}</td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="employee_view.php?id=${emp.id}" class="btn btn-info btn-sm text-white" title="ดูข้อมูล">
+                                    <a href="employee_view.php?id=${emp.id}" class="btn btn-view btn-sm text-white" title="ดูข้อมูล">
                                         <i class="fas fa-eye"></i> ดู
                                     </a>
                                     <a href="employee_edit.php?id=${emp.id}" class="btn btn-warning btn-sm" title="แก้ไข">
@@ -236,20 +238,36 @@ async function submitEmployeeForm(form, action, successTitle) {
 
 function filterBranches(compSelect, branchSelect) {
     const compId = compSelect.value;
-    let hasSelection = false;
-    Array.from(branchSelect.options).forEach(opt => {
-        if (opt.value) {
-            if (opt.dataset.companyId === compId) {
-                opt.style.display = 'block';
-                if (opt.selected) hasSelection = true;
-            } else {
-                opt.style.display = 'none';
-                if (opt.selected) opt.selected = false;
-            }
-        }
-    });
-    if (!hasSelection && compId) branchSelect.value = '';
+    const previousValue = branchSelect.value;
+    const branchOptions = getOriginalBranchOptions(branchSelect);
+
+    branchSelect.innerHTML = '';
+
+    const placeholder = branchOptions.find(opt => !opt.value);
+    if (placeholder) {
+        branchSelect.appendChild(placeholder.cloneNode(true));
+    }
+
+    branchOptions
+        .filter(opt => opt.value && opt.dataset.companyId === compId)
+        .forEach(opt => {
+            const option = opt.cloneNode(true);
+            option.style.display = '';
+            option.disabled = false;
+            branchSelect.appendChild(option);
+        });
+
     branchSelect.disabled = !compId;
+    branchSelect.value = Array.from(branchSelect.options).some(opt => opt.value === previousValue) ? previousValue : '';
+    refreshSelect2(branchSelect);
+}
+
+function getOriginalBranchOptions(branchSelect) {
+    if (!branchSelect._originalBranchOptions) {
+        branchSelect._originalBranchOptions = Array.from(branchSelect.options).map(opt => opt.cloneNode(true));
+    }
+
+    return branchSelect._originalBranchOptions;
 }
 
 const southernProvincesData = [
@@ -287,6 +305,7 @@ function loadSouthernProvinces(defaultProv = null, defaultDist = null) {
             });
             dSelect.disabled = false;
         }
+        refreshSelect2(dSelect);
     };
 
     if (defaultProv) populateDistricts(defaultProv, defaultDist);
@@ -294,6 +313,27 @@ function loadSouthernProvinces(defaultProv = null, defaultDist = null) {
     pSelect.addEventListener('change', function() {
         populateDistricts(this.value);
     });
+}
+
+function initializeEmployeeEditSelect2(form) {
+    if (!window.jQuery || !$.fn.select2) return;
+
+    $(form).find('select').select2({
+        width: '100%',
+        dropdownParent: $(form),
+        allowClear: true,
+        placeholder: function() {
+            return $(this).find('option[value=""]').first().text() || 'Select an option';
+        }
+    });
+}
+
+function refreshSelect2(selectElement) {
+    if (!window.jQuery || !$.fn.select2 || !selectElement) return;
+    const $select = $(selectElement);
+    if ($select.hasClass('select2-hidden-accessible')) {
+        $select.trigger('change.select2');
+    }
 }
 
 function setupEditProfileImageUpload(form) {
@@ -391,7 +431,7 @@ function resetTransferForm(form) {
     document.getElementById('transferLogId').value = '';
     document.getElementById('transferModalTitle').innerHTML = '<i class="fas fa-exchange-alt"></i> บันทึกการโยกย้าย/ปรับตำแหน่ง';
     document.getElementById('transferSubmitBtn').textContent = 'บันทึกการโยกย้าย';
-    document.getElementById('transferEffectiveDate').value = new Date().toISOString().slice(0, 10);
+    setThaiDateInputValue(document.getElementById('transferEffectiveDate'), new Date().toISOString().slice(0, 10));
     document.getElementById('transferType').value = 'transfer';
     document.getElementById('transferNotes').value = '';
 }
@@ -433,7 +473,7 @@ window.loadTransferHistory = async function(empId) {
 
             return `
                 <tr>
-                    <td>${escapeHtml(row.effective_date || '-')}</td>
+                    <td>${formatThaiDate(row.effective_date)}</td>
                     <td>${escapeHtml(noteInfo.type)}</td>
                     <td>${fromText}</td>
                     <td>${toText}</td>
@@ -456,7 +496,7 @@ window.openTransferHistoryEdit = function(button) {
     const noteInfo = parseTransferNote(row.notes);
 
     document.getElementById('transferLogId').value = row.id || '';
-    document.getElementById('transferEffectiveDate').value = row.effective_date || new Date().toISOString().slice(0, 10);
+    setThaiDateInputValue(document.getElementById('transferEffectiveDate'), row.effective_date || new Date().toISOString().slice(0, 10));
     document.getElementById('transferType').value = noteInfo.type;
     document.getElementById('trans_company').value = row.to_company_id || '';
     document.getElementById('trans_branch').value = row.to_branch_id || '';

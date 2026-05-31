@@ -38,8 +38,8 @@ async function loadPendingLeaves() {
             }
 
             tbody.innerHTML = res.data.map(item => {
-                const sDate = new Date(item.start_date).toLocaleDateString('th-TH');
-                const eDate = new Date(item.end_date).toLocaleDateString('th-TH');
+                const sDate = formatThaiDate(item.start_date);
+                const eDate = formatThaiDate(item.end_date);
                 const itemId = Number.parseInt(item.id, 10) || 0;
                 const firstName = escapeHtml(item.first_name_th);
                 const lastName = escapeHtml(item.last_name_th);
@@ -115,8 +115,8 @@ async function loadHistoryLeaves() {
             }
 
             tbody.innerHTML = res.data.map(item => {
-                const appDate = item.approval_date ? new Date(item.approval_date).toLocaleDateString('th-TH') : '-';
-                const sDate = new Date(item.start_date).toLocaleDateString('th-TH');
+                const appDate = item.approval_date ? formatThaiDate(item.approval_date) : '-';
+                const sDate = formatThaiDate(item.start_date);
                 item.first_name_th = escapeHtml(item.first_name_th);
                 item.last_name_th = escapeHtml(item.last_name_th);
                 item.type_name = escapeHtml(item.type_name);
