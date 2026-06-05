@@ -19,4 +19,25 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // (ถ้ามี session 'user_id' อยู่แล้ว โค้ดจะทำงานต่อไปยังเนื้อหาของเพจ)
+require_once __DIR__ . '/db_connect.php';
+
+if (!empty($_SESSION['employee_id'])) {
+    $stmt = $mysqli->prepare("SELECT e.first_name_th, e.last_name_th, e.company_id, p.position_name_th
+                              FROM employees e
+                              LEFT JOIN positions p ON e.position_id = p.id
+                              WHERE e.id = ?
+                              LIMIT 1");
+    if ($stmt) {
+        $employeeId = (int)$_SESSION['employee_id'];
+        $stmt->bind_param('i', $employeeId);
+        $stmt->execute();
+        $profile = $stmt->get_result()->fetch_assoc();
+        if ($profile) {
+            $_SESSION['full_name'] = trim($profile['first_name_th'] . ' ' . $profile['last_name_th']);
+            $_SESSION['position_name'] = $profile['position_name_th'] ?: '-';
+            $_SESSION['company_id'] = $profile['company_id'];
+        }
+        $stmt->close();
+    }
+}
 ?>

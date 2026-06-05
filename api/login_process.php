@@ -24,9 +24,11 @@ if (isset($input['username']) && isset($input['password'])) {
                 u.role,
                 e.first_name_th,
                 e.last_name_th,
-                e.company_id 
+                e.company_id,
+                p.position_name_th
             FROM users u
             JOIN employees e ON u.employee_id = e.id
+            LEFT JOIN positions p ON e.position_id = p.id
             WHERE u.username = ?";
             
     if ($stmt = $mysqli->prepare($sql)) {
@@ -44,6 +46,7 @@ if (isset($input['username']) && isset($input['password'])) {
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['full_name'] = $user['first_name_th'] . ' ' . $user['last_name_th'];
+                $_SESSION['position_name'] = $user['position_name_th'] ?: '-';
                 
                 // (สำคัญ!) เก็บ Company ID ไว้ใช้กรองข้อมูล
                 $_SESSION['company_id'] = $user['company_id'];

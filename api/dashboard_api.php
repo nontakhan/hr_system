@@ -15,6 +15,7 @@ try {
     $emp_id = $_SESSION['employee_id'];
     $company_id = $_SESSION['company_id'] ?? 0;
     $today = date('Y-m-d');
+    $current_month = date('Y-m');
 
     $data = [
         // ข้อมูลเดิมยังส่งไปเผื่อใช้ (แต่หน้าจออาจจะไม่แสดง)
@@ -25,6 +26,13 @@ try {
         // (NEW) ข้อมูลใหม่: สรุปสาขาตามบริษัท
         'branch_summary' => [] 
     ];
+
+    if ($role === 'employee') {
+        $data['personal_dashboard'] = fetchEmployeeDashboardData($mysqli, (int)$emp_id, $current_month);
+        echo json_encode(['status' => 'success', 'data' => $data]);
+        $mysqli->close();
+        exit();
+    }
 
     // 1. Total Employees (เก็บไว้คำนวณยอดรวมได้)
     $sql_total = "SELECT COUNT(*) as c FROM employees WHERE status IN ('active', 'probation')";
@@ -98,4 +106,112 @@ try {
     echo json_encode(['status' => 'error', 'message' => 'System Error']);
 }
 $mysqli->close();
+
+function fetchEmployeeDashboardData($mysqli, $employeeId, $currentMonth) {
+    $profile = [
+        'full_name' => $_SESSION['full_name'] ?? '',
+        'position_name' => $_SESSION['position_name'] ?? '-',
+        'company_name' => '-',
+        'branch_name' => '-',
+        'department_name' => '-',
+        'supervisor_name' => '-',
+    ];
+
+    $stmt = $mysqli->prepare("SELECT e.first_name_th, e.last_name_th,
+                                     p.position_name_th,
+                                     c.company_name_th,
+                                     b.branch_name_th,
+                                     d.dept_name_th,
+                                     CONCAT_WS(' ', s.first_name_th, s.last_name_th) AS supervisor_name
+                              FROM employees e
+                              LEFT JOIN positions p ON e.position_id = p.id
+                              LEFT JOIN companies c ON e.company_id = c.id
+                              LEFT JOIN branches b ON e.branch_id = b.id
+                              LEFT JOIN departments d ON e.department_id = d.id
+                              LEFT JOIN employees s ON e.supervisor_id = s.id
+                              WHERE e.id = ?
+                              LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param('i', $employeeId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        if ($row) {
+            $profile = [
+                'full_name' => trim($row['first_name_th'] . ' ' . $row['last_name_th']),
+                'position_name' => $row['position_name_th'] ?: '-',
+                'company_name' => $row['company_name_th'] ?: '-',
+                'branch_name' => $row['branch_name_th'] ?: '-',
+                'department_name' => $row['dept_name_th'] ?: '-',
+                'supervisor_name' => trim($row['supervisor_name'] ?? '') ?: '-',
+            ];
+        }
+        $stmt->close();
+    }
+
+    $attendance = [
+        'month' => $currentMonth,
+        'recorded_days' => 0,
+        'incomplete_days' => 0,
+        'latest_work_date' => null,
+    ];
+    $stmt = $mysqli->prepare("SELECT COUNT(*) AS recorded_days,
+                                     SUM(CASE WHEN check_in IS NULL OR check_in = '' OR check_out IS NULL OR check_out = '' THEN 1 ELSE 0 END) AS incomplete_days,
+                                     MAX(work_date) AS latest_work_date
+                              FROM attendance_records
+                              WHERE employee_id = ? AND import_month = ?");
+    if ($stmt) {
+        $stmt->bind_param('is', $employeeId, $currentMonth);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        if ($row) {
+            $attendance['recorded_days'] = (int)$row['recorded_days'];
+            $attendance['incomplete_days'] = (int)$row['incomplete_days'];
+            $attendance['latest_work_date'] = $row['latest_work_date'];
+        }
+        $stmt->close();
+    }
+
+    $leaveSummary = [
+        'pending' => 0,
+        'approved' => 0,
+        'rejected' => 0,
+        'cancelled' => 0,
+    ];
+    $stmt = $mysqli->prepare("SELECT status, COUNT(*) AS total
+                              FROM leave_requests
+                              WHERE employee_id = ?
+                              GROUP BY status");
+    if ($stmt) {
+        $stmt->bind_param('i', $employeeId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            if (array_key_exists($row['status'], $leaveSummary)) {
+                $leaveSummary[$row['status']] = (int)$row['total'];
+            }
+        }
+        $stmt->close();
+    }
+
+    $recentLeaves = [];
+    $stmt = $mysqli->prepare("SELECT lr.start_date, lr.end_date, lr.total_days, lr.status, lt.type_name
+                              FROM leave_requests lr
+                              JOIN leave_types lt ON lr.leave_type_id = lt.id
+                              WHERE lr.employee_id = ?
+                              ORDER BY lr.created_at DESC
+                              LIMIT 3");
+    if ($stmt) {
+        $stmt->bind_param('i', $employeeId);
+        $stmt->execute();
+        $recentLeaves = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+    }
+
+    return [
+        'profile' => $profile,
+        'attendance' => $attendance,
+        'leave_summary' => $leaveSummary,
+        'recent_leaves' => $recentLeaves,
+    ];
+}
 ?>

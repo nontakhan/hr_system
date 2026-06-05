@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/auth_check.php';
 $page_title = "Dashboard - ภาพรวมระบบ";
+$isEmployeeDashboard = ($_SESSION['role'] ?? '') === 'employee';
+$dashboardName = trim($_SESSION['full_name'] ?? '') ?: ($_SESSION['username'] ?? '');
+$dashboardPosition = trim($_SESSION['position_name'] ?? '') ?: '-';
 require_once 'includes/header.php';
 ?>
 
@@ -9,13 +12,18 @@ require_once 'includes/header.php';
     <div class="col-12">
         <div class="card shadow-sm border-0 theme-welcome text-white">
             <div class="card-body p-4">
-                <h2 class="mb-1">สวัสดี, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h2>
-                <p class="mb-0 opacity-75">ยินดีต้อนรับสู่ระบบบริหารทรัพยากรบุคคล (HR System)</p>
+                <h2 class="mb-1">สวัสดี, <?php echo htmlspecialchars($dashboardName); ?>!</h2>
+                <p class="mb-0 opacity-75"><?php echo htmlspecialchars($dashboardPosition); ?> | ยินดีต้อนรับสู่ระบบบริหารทรัพยากรบุคคล (HR System)</p>
             </div>
         </div>
     </div>
 </div>
 
+<?php if ($isEmployeeDashboard) : ?>
+<div class="row g-4 mb-4" id="employeeDashboardContainer">
+    <div class="col-12 text-center text-muted py-4">กำลังโหลดข้อมูลส่วนตัว...</div>
+</div>
+<?php else : ?>
 <!-- (NEW) ส่วนแสดงจำนวนพนักงาน แยกตามบริษัทและสาขา -->
 <?php if (in_array($_SESSION['role'], ['admin', 'hr', 'manager'])) : ?>
 <div class="row g-4 mb-4" id="companyBranchStatsContainer">
@@ -53,5 +61,6 @@ require_once 'includes/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <?php require_once 'includes/footer.php'; ?>

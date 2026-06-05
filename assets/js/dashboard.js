@@ -8,7 +8,7 @@ const CHART_COLORS = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#8
 let dbCompanyColors = {};
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('companyBranchStatsContainer')) {
+    if (document.getElementById('companyBranchStatsContainer') || document.getElementById('employeeDashboardContainer')) {
         loadDashboardData();
     }
 });
@@ -21,6 +21,11 @@ async function loadDashboardData() {
         if (res.status === 'success') {
             const data = res.data;
             dbCompanyColors = data.company_colors_map || {};
+
+            if (document.getElementById('employeeDashboardContainer')) {
+                renderEmployeeDashboard(data.personal_dashboard);
+                return;
+            }
 
             // 1. (NEW) Render Company & Branch Stats (แทนที่ Top Cards เดิม)
             renderCompanyBranchCards(data.branch_summary);
@@ -52,6 +57,144 @@ function hexToRgba(hex, alpha) {
 }
 
 // --- (NEW) ฟังก์ชันสร้างการ์ดสรุป สาขาแยกตามบริษัท ---
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function formatMonthLabel(month) {
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) return '-';
+    const [year, monthNumber] = month.split('-').map(Number);
+    return `${String(monthNumber).padStart(2, '0')}/${year + 543}`;
+}
+
+function formatDateLabel(dateText) {
+    if (!dateText) return '-';
+    const parts = dateText.split('-');
+    if (parts.length !== 3) return escapeHtml(dateText);
+    return `${parts[2]}/${parts[1]}/${parseInt(parts[0], 10) + 543}`;
+}
+
+function getLeaveStatusBadge(status) {
+    const map = {
+        pending: ['รออนุมัติ', 'warning'],
+        approved: ['อนุมัติแล้ว', 'success'],
+        rejected: ['ไม่อนุมัติ', 'danger'],
+        cancelled: ['ยกเลิก', 'secondary']
+    };
+    const [label, color] = map[status] || [status || '-', 'secondary'];
+    return `<span class="badge bg-${color}">${escapeHtml(label)}</span>`;
+}
+
+function renderEmployeeDashboard(data) {
+    const container = document.getElementById('employeeDashboardContainer');
+    if (!container) return;
+
+    if (!data) {
+        container.innerHTML = '<div class="col-12 text-center text-muted py-4">ไม่พบข้อมูลส่วนตัว</div>';
+        return;
+    }
+
+    const profile = data.profile || {};
+    const attendance = data.attendance || {};
+    const leaveSummary = data.leave_summary || {};
+    const recentLeaves = data.recent_leaves || [];
+    const recentLeavesHtml = recentLeaves.length
+        ? recentLeaves.map(item => `
+            <div class="list-group-item px-0 d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="fw-semibold">${escapeHtml(item.type_name)}</div>
+                    <small class="text-muted">${formatDateLabel(item.start_date)} - ${formatDateLabel(item.end_date)} (${escapeHtml(item.total_days)} วัน)</small>
+                </div>
+                ${getLeaveStatusBadge(item.status)}
+            </div>
+        `).join('')
+        : '<div class="text-muted py-3">ยังไม่มีประวัติการลา</div>';
+
+    container.innerHTML = `
+        <div class="col-xl-4 col-lg-6">
+            <div class="card shadow-sm border-0 h-100 dashboard-personal-card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 text-primary"><i class="fas fa-id-card me-2"></i>ข้อมูลของฉัน</h5>
+                </div>
+                <div class="card-body">
+                    <h4 class="mb-1">${escapeHtml(profile.full_name)}</h4>
+                    <div class="text-muted mb-3">${escapeHtml(profile.position_name)}</div>
+                    <div class="dashboard-profile-list">
+                        <div><span>บริษัท</span><strong>${escapeHtml(profile.company_name)}</strong></div>
+                        <div><span>สาขา</span><strong>${escapeHtml(profile.branch_name)}</strong></div>
+                        <div><span>แผนก</span><strong>${escapeHtml(profile.department_name)}</strong></div>
+                        <div><span>หัวหน้างาน</span><strong>${escapeHtml(profile.supervisor_name)}</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-6">
+            <div class="card shadow-sm border-0 h-100 dashboard-personal-card">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-primary"><i class="fas fa-clock me-2"></i>ลงเวลาเดือนนี้</h5>
+                    <small class="text-muted">${formatMonthLabel(attendance.month)}</small>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="personal-stat-box">
+                                <span>วันที่มีข้อมูล</span>
+                                <strong>${escapeHtml(attendance.recorded_days || 0)}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="personal-stat-box warning">
+                                <span>ข้อมูลไม่ครบ</span>
+                                <strong>${escapeHtml(attendance.incomplete_days || 0)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-muted small">ลงเวลาล่าสุด: ${formatDateLabel(attendance.latest_work_date)}</div>
+                    <a href="attendance.php" class="btn btn-outline-danger btn-sm mt-3"><i class="fas fa-calendar-check me-1"></i> ดูรายละเอียดลงเวลา</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-12">
+            <div class="card shadow-sm border-0 h-100 dashboard-personal-card">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 text-primary"><i class="fas fa-calendar-alt me-2"></i>สรุปการลาของฉัน</h5>
+                </div>
+                <div class="card-body">
+                    <div class="leave-summary-grid mb-3">
+                        <div><span>รออนุมัติ</span><strong>${escapeHtml(leaveSummary.pending || 0)}</strong></div>
+                        <div><span>อนุมัติแล้ว</span><strong>${escapeHtml(leaveSummary.approved || 0)}</strong></div>
+                        <div><span>ไม่อนุมัติ</span><strong>${escapeHtml(leaveSummary.rejected || 0)}</strong></div>
+                        <div><span>ยกเลิก</span><strong>${escapeHtml(leaveSummary.cancelled || 0)}</strong></div>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="leave_request.php" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> ยื่นใบลา</a>
+                        <a href="my_leaves.php" class="btn btn-outline-secondary btn-sm"><i class="fas fa-history me-1"></i> ประวัติการลา</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-list-check me-2"></i>รายการลาล่าสุด</h5>
+                </div>
+                <div class="card-body pt-2">
+                    <div class="list-group list-group-flush">${recentLeavesHtml}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function renderCompanyBranchCards(data) {
     const container = document.getElementById('companyBranchStatsContainer');
     if (!container) return;

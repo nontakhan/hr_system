@@ -12,6 +12,9 @@ require_once __DIR__ . '/date_helpers.php';
 function isActive($page) {
     return basename($_SERVER['PHP_SELF']) == $page ? 'active' : '';
 }
+
+$displayName = trim($_SESSION['full_name'] ?? '') ?: ($_SESSION['username'] ?? '');
+$displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['role'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -139,8 +142,8 @@ function isActive($page) {
                                     <i class="fas fa-user"></i>
                                 </div>
                                 <div class="d-none d-sm-block text-start">
-                                    <span class="d-block fw-bold small text-dark lh-1"><?php echo htmlspecialchars($_SESSION['username']); ?></span>
-                                    <span class="d-block text-muted" style="font-size: 0.75rem;"><?php echo ucfirst($_SESSION['role']); ?></span>
+                                    <span class="d-block fw-bold small text-white lh-1"><?php echo htmlspecialchars($displayName); ?></span>
+                                    <span class="d-block text-white-50" style="font-size: 0.75rem;"><?php echo htmlspecialchars($displayPosition); ?></span>
                                 </div>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0">
