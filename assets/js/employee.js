@@ -217,6 +217,11 @@ async function submitEmployeeForm(form, action, successTitle) {
         Swal.fire('ผิดพลาด', 'กรุณากรอก Password', 'error'); return;
     }
 
+    const overrideDays = formData.getAll('shift_override_days[]');
+    if (overrideDays.length > 0 && (!formData.get('shift_override_start_time') || !formData.get('shift_override_end_time'))) {
+        Swal.fire('Error', 'Please enter start and end time for the weekly shift override.', 'error'); return;
+    }
+
     Swal.fire({
         title: 'กำลังบันทึก...', text: 'กรุณารอสักครู่',
         allowOutsideClick: false, didOpen: () => Swal.showLoading()

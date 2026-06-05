@@ -96,6 +96,35 @@ function attendanceDayName($date) {
     return date('D', strtotime($date));
 }
 
+function attendanceResolveShiftForDate(array $baseShift, array $overrides, $workDate) {
+    $dayName = attendanceDayName($workDate);
+
+    foreach ($overrides as $override) {
+        $days = array_filter(array_map('trim', explode(',', (string)($override['day_of_week'] ?? ''))));
+        if (!in_array($dayName, $days, true)) {
+            continue;
+        }
+
+        $effectiveFrom = trim((string)($override['effective_from'] ?? ''));
+        $effectiveTo = trim((string)($override['effective_to'] ?? ''));
+        if ($effectiveFrom !== '' && $workDate < $effectiveFrom) {
+            continue;
+        }
+        if ($effectiveTo !== '' && $workDate > $effectiveTo) {
+            continue;
+        }
+
+        return [
+            'start_time' => $override['start_time'] ?? $baseShift['start_time'] ?? null,
+            'end_time' => $override['end_time'] ?? $baseShift['end_time'] ?? null,
+            'late_tolerance_mins' => $override['late_tolerance_mins'] ?? $baseShift['late_tolerance_mins'] ?? 0,
+            'work_days' => implode(',', $days),
+        ];
+    }
+
+    return $baseShift;
+}
+
 function attendanceBuildApprovedLeaveMap(array $leaveRows, $month) {
     $start = new DateTimeImmutable($month . '-01');
     $end = $start->modify('last day of this month');

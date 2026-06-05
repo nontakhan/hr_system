@@ -35,12 +35,34 @@ try {
     @$emp_types = $mysqli->query("SELECT id, type_name FROM employment_types ORDER BY type_name")->fetch_all(MYSQLI_ASSOC);
     @$supervisors = $mysqli->query("SELECT id, first_name_th, last_name_th FROM employees WHERE status = 'active' AND id != $id ORDER BY first_name_th")->fetch_all(MYSQLI_ASSOC);
     @$shifts = $mysqli->query("SELECT id, shift_name, start_time, end_time FROM work_shifts ORDER BY id ASC")->fetch_all(MYSQLI_ASSOC);
+    $shiftOverride = null;
+    $shiftOverrideStmt = $mysqli->prepare("SELECT day_of_week, start_time, end_time, late_tolerance_mins, effective_from, effective_to
+                                           FROM employee_shift_overrides
+                                           WHERE employee_id = ? AND is_active = 1
+                                           ORDER BY effective_from DESC, id DESC
+                                           LIMIT 1");
+    if ($shiftOverrideStmt) {
+        $shiftOverrideStmt->bind_param('i', $id);
+        $shiftOverrideStmt->execute();
+        $shiftOverride = $shiftOverrideStmt->get_result()->fetch_assoc();
+    }
 
 } catch (Exception $e) {
     die("Error: " . $e->getMessage());
 }
 
 $page_title = "แก้ไขข้อมูล: " . $emp['first_name_th'];
+$shiftOverrideDays = array_filter(array_map('trim', explode(',', (string)($shiftOverride['day_of_week'] ?? ''))));
+$weekDays = [
+    'Mon' => 'Mon',
+    'Tue' => 'Tue',
+    'Wed' => 'Wed',
+    'Thu' => 'Thu',
+    'Fri' => 'Fri',
+    'Sat' => 'Sat',
+    'Sun' => 'Sun',
+];
+
 $use_select2 = true;
 require_once 'includes/header.php';
 ?>
@@ -303,6 +325,46 @@ require_once 'includes/header.php';
                         <div class="col-md-6">
                             <label class="form-label">เบอร์โทรผู้ติดต่อฉุกเฉิน</label>
                             <input type="text" class="form-control" name="emergency_contact_phone" maxlength="10" value="<?php echo $emp['emergency_contact_phone']; ?>">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-light">Weekly Shift Override</div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">Use when this employee has different work time on selected weekday(s). Leave weekdays blank to remove the override.</p>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Override weekdays</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                <?php foreach ($weekDays as $dayValue => $dayLabel): ?>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="shift_override_days[]" value="<?php echo $dayValue; ?>" id="shiftOverride<?php echo $dayValue; ?>" <?php echo in_array($dayValue, $shiftOverrideDays, true) ? 'checked' : ''; ?>>
+                                        <label class="form-check-label" for="shiftOverride<?php echo $dayValue; ?>"><?php echo $dayLabel; ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Start time</label>
+                            <input type="time" class="form-control" name="shift_override_start_time" value="<?php echo htmlspecialchars(substr((string)($shiftOverride['start_time'] ?? ''), 0, 5)); ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">End time</label>
+                            <input type="time" class="form-control" name="shift_override_end_time" value="<?php echo htmlspecialchars(substr((string)($shiftOverride['end_time'] ?? ''), 0, 5)); ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Late tolerance (mins)</label>
+                            <input type="number" min="0" class="form-control" name="shift_override_late_tolerance_mins" value="<?php echo htmlspecialchars((string)($shiftOverride['late_tolerance_mins'] ?? '0')); ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Effective from</label>
+                            <input type="date" class="form-control" name="shift_override_effective_from" value="<?php echo htmlspecialchars((string)($shiftOverride['effective_from'] ?? date('Y-m-d'))); ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Effective to</label>
+                            <input type="date" class="form-control" name="shift_override_effective_to" value="<?php echo htmlspecialchars((string)($shiftOverride['effective_to'] ?? '')); ?>">
                         </div>
                     </div>
                 </div>

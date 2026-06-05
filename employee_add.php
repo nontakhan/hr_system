@@ -23,6 +23,16 @@ try {
 }
 
 $page_title = "เพิ่มพนักงานใหม่";
+$weekDays = [
+    'Mon' => 'Mon',
+    'Tue' => 'Tue',
+    'Wed' => 'Wed',
+    'Thu' => 'Thu',
+    'Fri' => 'Fri',
+    'Sat' => 'Sat',
+    'Sun' => 'Sun',
+];
+
 require_once 'includes/header.php';
 ?>
 
@@ -281,6 +291,46 @@ require_once 'includes/header.php';
                         <div class="col-md-6">
                             <label class="form-label">เบอร์โทรผู้ติดต่อฉุกเฉิน</label>
                             <input type="text" class="form-control" name="emergency_contact_phone" maxlength="10">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-light">Weekly Shift Override</div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">Use when this employee has different work time on selected weekday(s). Leave weekdays blank if the default shift always applies.</p>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Override weekdays</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                <?php foreach ($weekDays as $dayValue => $dayLabel): ?>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="shift_override_days[]" value="<?php echo $dayValue; ?>" id="shiftOverride<?php echo $dayValue; ?>">
+                                        <label class="form-check-label" for="shiftOverride<?php echo $dayValue; ?>"><?php echo $dayLabel; ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Start time</label>
+                            <input type="time" class="form-control" name="shift_override_start_time">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">End time</label>
+                            <input type="time" class="form-control" name="shift_override_end_time">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Late tolerance (mins)</label>
+                            <input type="number" min="0" class="form-control" name="shift_override_late_tolerance_mins" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Effective from</label>
+                            <input type="date" class="form-control" name="shift_override_effective_from" value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Effective to</label>
+                            <input type="date" class="form-control" name="shift_override_effective_to">
                         </div>
                     </div>
                 </div>

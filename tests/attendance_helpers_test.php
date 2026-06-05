@@ -76,6 +76,45 @@ $status = attendanceEvaluateStatus(
 assertSameValue('late', $status['status'], 'Check-in after shift start plus tolerance should be late.');
 assertSameValue(true, $status['is_late'], 'Late rows should be marked for highlighting.');
 
+$baseShift = [
+    'start_time' => '08:00:00',
+    'end_time' => '16:00:00',
+    'late_tolerance_mins' => 15,
+    'work_days' => 'Mon,Tue,Wed,Thu,Fri,Sat',
+];
+$overrideShift = attendanceResolveShiftForDate($baseShift, [
+    [
+        'day_of_week' => 'Tue,Thu',
+        'start_time' => '07:30:00',
+        'end_time' => '16:00:00',
+        'late_tolerance_mins' => 15,
+        'effective_from' => '2026-01-01',
+        'effective_to' => null,
+    ],
+], '2026-01-06');
+assertSameValue('07:30:00', $overrideShift['start_time'], 'Weekly employee shift override should apply to any selected matching day.');
+assertSameValue('Tue,Thu', $overrideShift['work_days'], 'Resolved override shift should only treat the selected override days as work days.');
+
+$normalShift = attendanceResolveShiftForDate($baseShift, [
+    [
+        'day_of_week' => 'Tue,Thu',
+        'start_time' => '07:30:00',
+        'end_time' => '16:00:00',
+        'late_tolerance_mins' => 15,
+        'effective_from' => '2026-01-01',
+        'effective_to' => null,
+    ],
+], '2026-01-07');
+assertSameValue('08:00:00', $normalShift['start_time'], 'Base shift should be used on days without an override.');
+
+$overrideLate = attendanceEvaluateStatus(
+    '2026-01-06',
+    '07:46:00',
+    '16:01:00',
+    $overrideShift
+);
+assertSameValue('late', $overrideLate['status'], 'Override start time should be used when evaluating lateness.');
+
 $absent = attendanceEvaluateStatus(
     '2026-01-05',
     null,

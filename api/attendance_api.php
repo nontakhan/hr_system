@@ -180,6 +180,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
         'late_tolerance_mins' => $employee['late_tolerance_mins'],
         'work_days' => $employee['work_days'],
     ];
+    $shiftOverrides = fetchEmployeeShiftOverridesForMonth($mysqli, (int)$employee['id'], $month);
     $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
     $leaves = fetchApprovedLeavesForMonth($mysqli, (int)$employee['id'], $month);
 
@@ -187,7 +188,8 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
         $workDate = $date->format('Y-m-d');
         $record = $records[$workDate] ?? ['check_in' => null, 'check_out' => null];
-        $status = attendanceEvaluateStatus($workDate, $record['check_in'], $record['check_out'], $shift, $holidays, $leaves);
+        $effectiveShift = attendanceResolveShiftForDate($shift, $shiftOverrides, $workDate);
+        $status = attendanceEvaluateStatus($workDate, $record['check_in'], $record['check_out'], $effectiveShift, $holidays, $leaves);
         $rows[] = [
             'work_date' => $workDate,
             'day_name' => $date->format('D'),
@@ -202,6 +204,24 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     }
 
     return $rows;
+}
+
+function fetchEmployeeShiftOverridesForMonth($mysqli, $employeeId, $month) {
+    $start = $month . '-01';
+    $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+    $stmt = $mysqli->prepare("SELECT day_of_week, start_time, end_time, late_tolerance_mins, effective_from, effective_to
+                              FROM employee_shift_overrides
+                              WHERE employee_id = ?
+                                AND is_active = 1
+                                AND effective_from <= ?
+                                AND (effective_to IS NULL OR effective_to = '0000-00-00' OR effective_to >= ?)
+                              ORDER BY effective_from DESC, id DESC");
+    if (!$stmt) {
+        return [];
+    }
+    $stmt->bind_param('iss', $employeeId, $end, $start);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
 function fetchApprovedLeavesForMonth($mysqli, $employeeId, $month) {

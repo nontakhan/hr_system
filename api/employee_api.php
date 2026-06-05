@@ -95,6 +95,71 @@ function bindParamsStrict($stmt, $types, $params) {
     call_user_func_array(array($stmt, 'bind_param'), $bind_names);
 }
 
+function normalizeShiftOverrideDays($days) {
+    $allowed = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    $input = is_array($days) ? $days : explode(',', (string)$days);
+    $normalized = [];
+
+    foreach ($input as $day) {
+        $day = trim((string)$day);
+        if (in_array($day, $allowed, true) && !in_array($day, $normalized, true)) {
+            $normalized[] = $day;
+        }
+    }
+
+    return $normalized;
+}
+
+function normalizeNullableDate($value) {
+    $value = trim((string)$value);
+    if ($value === '') return null;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+        throw new InvalidArgumentException("Invalid shift override date");
+    }
+    return $value;
+}
+
+function normalizeShiftOverrideTime($value, $fieldName) {
+    $value = trim((string)$value);
+    if (!preg_match('/^\d{2}:\d{2}$/', $value) && !preg_match('/^\d{2}:\d{2}:\d{2}$/', $value)) {
+        throw new InvalidArgumentException("Invalid shift override {$fieldName}");
+    }
+    return strlen($value) === 5 ? $value . ':00' : $value;
+}
+
+function syncEmployeeShiftOverrides($mysqli, $employeeId, $data) {
+    $delete = $mysqli->prepare("DELETE FROM employee_shift_overrides WHERE employee_id = ?");
+    if (!$delete) {
+        return;
+    }
+    $delete->bind_param('i', $employeeId);
+    if (!$delete->execute()) throw new Exception("Delete shift overrides failed: " . $delete->error);
+
+    $days = normalizeShiftOverrideDays($data['shift_override_days'] ?? []);
+    if (empty($days)) {
+        return;
+    }
+
+    $startTime = normalizeShiftOverrideTime($data['shift_override_start_time'] ?? '', 'start time');
+    $endTime = normalizeShiftOverrideTime($data['shift_override_end_time'] ?? '', 'end time');
+    $lateTolerance = (int)getVal($data, 'shift_override_late_tolerance_mins', 0);
+    if ($lateTolerance < 0) $lateTolerance = 0;
+    $effectiveFrom = normalizeNullableDate(getVal($data, 'shift_override_effective_from', date('Y-m-d')));
+    $effectiveTo = normalizeNullableDate($data['shift_override_effective_to'] ?? '');
+    if ($effectiveFrom === null) $effectiveFrom = date('Y-m-d');
+    if ($effectiveTo !== null && $effectiveTo < $effectiveFrom) {
+        throw new InvalidArgumentException("Shift override end date must be after start date");
+    }
+
+    $dayOfWeek = implode(',', $days);
+    $stmt = $mysqli->prepare("INSERT INTO employee_shift_overrides
+        (employee_id, day_of_week, start_time, end_time, late_tolerance_mins, effective_from, effective_to, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+    if (!$stmt) throw new Exception("Prepare shift override insert failed: " . $mysqli->error);
+    $stmt->bind_param('isssiss', $employeeId, $dayOfWeek, $startTime, $endTime, $lateTolerance, $effectiveFrom, $effectiveTo);
+    if (!$stmt->execute()) throw new Exception("Insert shift override failed: " . $stmt->error);
+}
+
 // ===================================================================================
 // FUNCTIONS
 // ===================================================================================
@@ -144,6 +209,8 @@ function createEmployee($mysqli, $data, $files) {
 
         if (!$stmt->execute()) throw new Exception("Insert Failed: " . $stmt->error);
         $emp_pk = $mysqli->insert_id;
+
+        syncEmployeeShiftOverrides($mysqli, $emp_pk, $data);
 
         // Create User
         $username = getVal($data, 'username');
@@ -223,6 +290,8 @@ function updateEmployee($mysqli, $data, $files) {
         bindParamsStrict($stmt, $types, $params);
 
         if (!$stmt->execute()) throw new Exception("Update Failed: " . $stmt->error);
+
+        syncEmployeeShiftOverrides($mysqli, $id, $data);
 
         // 3. Update User
         $username = getVal($data, 'username');
