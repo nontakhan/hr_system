@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+let attendanceCalendar = null;
+
 async function handleAttendanceImport(e) {
     e.preventDefault();
     const form = e.currentTarget;
@@ -287,26 +289,11 @@ async function loadAttendanceReport(employeeId, month) {
 }
 
 function renderAttendanceReport(res) {
-    const tbody = document.getElementById('attendanceTableBody');
     const summary = document.getElementById('attendanceSummary');
-    const counts = { present: 0, late: 0, absent: 0, missing_in: 0, missing_out: 0, holiday: 0, leave: 0 };
+    const counts = countAttendanceReportStatuses(res.data || []);
 
-    tbody.innerHTML = '';
-    res.data.forEach(row => {
-        counts[row.status] = (counts[row.status] || 0) + 1;
-        const trClass = row.is_late ? 'table-warning' : (row.status === 'absent' ? 'table-danger' : (row.status === 'leave' ? 'table-info' : ''));
-        const rowNote = row.holiday_name || row.leave_name || '';
-        tbody.innerHTML += `
-            <tr class="${trClass}">
-                <td>${formatThaiDate(row.work_date)}</td>
-                <td>${formatAttendanceDay(row.day_name)}</td>
-                <td>${formatAttendanceTime(row.check_in)}</td>
-                <td>${formatAttendanceTime(row.check_out)}</td>
-                <td>${attendanceStatusBadge(row.status, row.status_label)}${rowNote ? `<span class="small text-muted ms-2">${rowNote}</span>` : ''}</td>
-            </tr>`;
-    });
-
-    const workdayTotal = res.data.length - (counts.holiday || 0);
+    const holidayTotal = (counts.regular_holiday || 0) + (counts.company_holiday || 0);
+    const workdayTotal = res.data.length - holidayTotal;
     const incompleteTotal = (counts.missing_in || 0) + (counts.missing_out || 0);
     summary.innerHTML = `
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -322,8 +309,28 @@ function renderAttendanceReport(res) {
             ${attendanceSummaryCard('ขาด', counts.absent || 0, 'danger', 'fa-circle-xmark')}
             ${attendanceSummaryCard('สแกนไม่ครบ', incompleteTotal, 'secondary', 'fa-triangle-exclamation')}
             ${attendanceSummaryCard('ลา', counts.leave || 0, 'info', 'fa-file-signature')}
-            ${attendanceSummaryCard('วันหยุด', counts.holiday || 0, 'light', 'fa-calendar-day')}
+            ${attendanceSummaryCard('วันหยุดปกติ', counts.regular_holiday || 0, 'light', 'fa-calendar-day')}
+            ${attendanceSummaryCard('วันหยุดบริษัท', counts.company_holiday || 0, 'light', 'fa-building-circle-check')}
         </div>`;
+
+    renderAttendanceCalendar(res);
+}
+
+function countAttendanceReportStatuses(rows) {
+    const counts = { present: 0, late: 0, absent: 0, missing_in: 0, missing_out: 0, holiday: 0, regular_holiday: 0, company_holiday: 0, leave: 0 };
+
+    rows.forEach(row => {
+        counts[row.status] = (counts[row.status] || 0) + 1;
+        if (row.status === 'holiday') {
+            if (String(row.holiday_name || '').trim()) {
+                counts.company_holiday += 1;
+            } else {
+                counts.regular_holiday += 1;
+            }
+        }
+    });
+
+    return counts;
 }
 
 function attendanceSummaryCard(label, count, tone, icon) {
@@ -355,6 +362,92 @@ function attendanceStatusBadge(status, label) {
         leave: 'bg-info text-dark',
     };
     return `<span class="badge ${classes[status] || 'bg-secondary'}">${label}</span>`;
+}
+
+function renderAttendanceCalendar(res) {
+    const calendarEl = document.getElementById('attendanceCalendar');
+    const emptyEl = document.getElementById('attendanceCalendarEmpty');
+    if (!calendarEl || typeof FullCalendar === 'undefined') return;
+
+    if (emptyEl) emptyEl.classList.add('d-none');
+
+    const events = (res.data || []).map(buildAttendanceCalendarEvent);
+    if (!attendanceCalendar) {
+        attendanceCalendar = new FullCalendar.Calendar(calendarEl, buildAttendanceCalendarOptions());
+        attendanceCalendar.render();
+    }
+
+    attendanceCalendar.removeAllEvents();
+    events.forEach(event => attendanceCalendar.addEvent(event));
+    attendanceCalendar.gotoDate(`${res.month}-01`);
+}
+
+function buildAttendanceCalendarOptions() {
+    return {
+        initialView: 'dayGridMonth',
+        locale: 'th',
+        firstDay: 1,
+        height: 'auto',
+        fixedWeekCount: false,
+        headerToolbar: {
+            left: '',
+            center: 'title',
+            right: '',
+        },
+        dayMaxEvents: true,
+        eventClick(info) {
+            const row = info.event.extendedProps.row;
+            Swal.fire({
+                title: formatThaiDate(row.work_date),
+                html: buildAttendanceCalendarDetails(row),
+                icon: row.status === 'absent' ? 'warning' : 'info',
+                confirmButtonText: 'ปิด',
+            });
+        },
+    };
+}
+
+function buildAttendanceCalendarEvent(row) {
+    const colors = attendanceCalendarStatusColor(row.status);
+    return {
+        title: row.status_label || '-',
+        start: row.work_date,
+        allDay: true,
+        backgroundColor: colors.background,
+        borderColor: colors.border,
+        textColor: colors.text,
+        classNames: [`attendance-event-${row.status || 'unknown'}`],
+        extendedProps: { row },
+    };
+}
+
+function attendanceCalendarStatusColor(status) {
+    const colors = {
+        present: { background: '#dcfce7', border: '#86efac', text: '#166534' },
+        late: { background: '#fef3c7', border: '#facc15', text: '#854d0e' },
+        absent: { background: '#fee2e2', border: '#fca5a5', text: '#b91c1c' },
+        missing_in: { background: '#e5e7eb', border: '#cbd5e1', text: '#374151' },
+        missing_out: { background: '#e5e7eb', border: '#cbd5e1', text: '#374151' },
+        holiday: { background: '#f1f5f9', border: '#cbd5e1', text: '#475569' },
+        leave: { background: '#cffafe', border: '#67e8f9', text: '#155e75' },
+    };
+    return colors[status] || { background: '#f3f4f6', border: '#d1d5db', text: '#374151' };
+}
+
+function buildAttendanceCalendarDetails(row) {
+    const note = row.holiday_name || row.leave_name || '-';
+    return `
+        <div class="attendance-calendar-popup text-start">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                <span class="text-muted">${formatAttendanceDay(row.day_name)}</span>
+                ${attendanceStatusBadge(row.status, row.status_label || '-')}
+            </div>
+            <dl class="attendance-detail-list">
+                <div><dt>เวลาเข้า</dt><dd>${formatAttendanceTime(row.check_in)}</dd></div>
+                <div><dt>เวลาออก</dt><dd>${formatAttendanceTime(row.check_out)}</dd></div>
+                <div><dt>รายละเอียด</dt><dd>${escapeHtml(note)}</dd></div>
+            </dl>
+        </div>`;
 }
 
 function formatAttendanceDay(value) {

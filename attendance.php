@@ -3,6 +3,7 @@ require_once 'includes/auth_check.php';
 
 $page_title = "การมาทำงาน";
 $use_select2 = true;
+$use_fullcalendar = true;
 $can_manage_attendance = in_array($_SESSION['role'], ['admin', 'hr'], true);
 require_once 'includes/header.php';
 ?>
@@ -48,21 +49,19 @@ require_once 'includes/header.php';
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div id="attendanceSummary" class="mb-3 text-muted">เลือกเดือนเพื่อดูข้อมูลการมาทำงาน</div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>วันที่</th>
-                        <th>วัน</th>
-                        <th>เวลาเข้า</th>
-                        <th>เวลาออก</th>
-                        <th>สถานะ</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceTableBody">
-                    <tr><td colspan="5" class="text-center py-4 text-muted">ยังไม่มีข้อมูล</td></tr>
-                </tbody>
-            </table>
+        <div class="attendance-calendar-legend mb-3" aria-label="Attendance status colors">
+            <span><i class="attendance-legend-dot status-present"></i> ปกติ</span>
+            <span><i class="attendance-legend-dot status-late"></i> สาย</span>
+            <span><i class="attendance-legend-dot status-absent"></i> ขาด</span>
+            <span><i class="attendance-legend-dot status-leave"></i> ลา</span>
+            <span><i class="attendance-legend-dot status-holiday"></i> วันหยุด</span>
+            <span><i class="attendance-legend-dot status-incomplete"></i> สแกนไม่ครบ</span>
+        </div>
+        <div class="attendance-calendar-shell">
+            <div id="attendanceCalendar"></div>
+            <div id="attendanceCalendarEmpty" class="attendance-calendar-empty text-muted">
+                เลือกเดือนเพื่อดูปฏิทินการมาทำงาน
+            </div>
         </div>
     </div>
 </div>

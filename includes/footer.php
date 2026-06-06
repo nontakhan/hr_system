@@ -14,6 +14,9 @@
 <?php if (!empty($use_select2)) : ?>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <?php endif; ?>
+<?php if (!empty($use_fullcalendar)) : ?>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
+<?php endif; ?>
 
 <!-- Custom JS -->
 <script src="assets/js/utils.js"></script>
