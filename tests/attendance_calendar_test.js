@@ -51,14 +51,38 @@ assertSame('absent', absentEvent.extendedProps.row.status, 'Calendar event shoul
 
 const missingOutColors = attendanceCalendarStatusColor('missing_out');
 const holidayColors = attendanceCalendarStatusColor('holiday');
-assertSame('#c4b5fd', missingOutColors.background, 'Incomplete scan days should use a purple background.');
-assertSame('#bfdbfe', holidayColors.background, 'Holidays should use a blue background.');
+const companyHolidayColors = attendanceCalendarStatusColor('company_holiday');
+const lateColors = attendanceCalendarStatusColor('late');
+assertSame('#fed7aa', lateColors.background, 'Late days should use an orange background.');
+assertSame('#fef08a', missingOutColors.background, 'Incomplete scan days should use a yellow background.');
+assertSame('#e5e7eb', holidayColors.background, 'Regular holidays should use a gray background.');
+assertSame('#bfdbfe', companyHolidayColors.background, 'Company holidays should use a blue background.');
 assertNotSame(missingOutColors.background, holidayColors.background, 'Incomplete scan and holiday colors should be clearly different.');
+assertNotSame(holidayColors.background, companyHolidayColors.background, 'Regular and company holidays should use different colors.');
+
+const regularHolidayEvent = buildAttendanceCalendarEvent({
+    work_date: '2026-01-06',
+    status: 'holiday',
+    status_label: 'วันหยุด',
+    holiday_name: null,
+});
+const companyHolidayEvent = buildAttendanceCalendarEvent({
+    work_date: '2026-01-07',
+    status: 'holiday',
+    status_label: 'วันหยุด',
+    holiday_name: 'วันหยุดบริษัท',
+});
+assertSame('วันหยุดปกติ', regularHolidayEvent.title, 'Regular holiday calendar text should be explicit.');
+assertSame('วันหยุดบริษัท', companyHolidayEvent.title, 'Company holiday calendar text should be explicit.');
 
 const incompleteCard = attendanceSummaryCard('สแกนไม่ครบ', 1, 'attendance-incomplete', 'fa-triangle-exclamation');
 const holidayCard = attendanceSummaryCard('วันหยุดปกติ', 1, 'attendance-holiday', 'fa-calendar-day');
+const companyHolidayCard = attendanceSummaryCard('วันหยุดบริษัท', 1, 'attendance-company-holiday', 'fa-building-circle-check');
+const lateCard = attendanceSummaryCard('สาย', 1, 'attendance-late', 'fa-clock');
 assertIncludes(incompleteCard, 'attendance-summary-card-incomplete', 'Incomplete summary card should use the matching custom color class.');
 assertIncludes(holidayCard, 'attendance-summary-card-holiday', 'Holiday summary card should use the matching custom color class.');
+assertIncludes(companyHolidayCard, 'attendance-summary-card-company-holiday', 'Company holiday summary card should use the matching custom color class.');
+assertIncludes(lateCard, 'attendance-summary-card-late', 'Late summary card should use the matching orange color class.');
 
 const holidayDetails = buildAttendanceCalendarDetails({
     work_date: '2026-01-06',
@@ -100,8 +124,11 @@ assertSame(1, calendarOptions.firstDay, 'Attendance calendar should start weeks 
 attendanceCalendarDayClassMap = buildAttendanceCalendarDayClassMap([
     { work_date: '2026-01-05', status: 'absent' },
     { work_date: '2026-01-06', status: 'present' },
+    { work_date: '2026-01-07', status: 'holiday', holiday_name: 'วันหยุดบริษัท' },
 ]);
 const absentDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 5) });
+const companyHolidayDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 7) });
 assertIncludes(absentDayClasses.join(' '), 'attendance-day-absent', 'Calendar day cells should receive a status class for full-cell coloring.');
+assertIncludes(companyHolidayDayClasses.join(' '), 'attendance-day-company_holiday', 'Company holiday cells should receive a distinct color class.');
 
 console.log('attendance_calendar_test passed');

@@ -536,14 +536,14 @@ canvas#deptChart {
 }
 
 .attendance-legend-dot.status-present { background: #198754; }
-.attendance-legend-dot.status-late { background: #ffc107; }
+.attendance-legend-dot.status-late { background: #fed7aa; }
 .attendance-legend-dot.status-absent { background: #dc3545; }
 .attendance-legend-dot.status-leave { background: #0dcaf0; }
 .attendance-legend-dot.status-holiday {
-    background: #bfdbfe;
-    border-color: #60a5fa;
+    background: #e5e7eb;
+    border-color: #9ca3af;
 }
-.attendance-legend-dot.status-incomplete { background: #c4b5fd; }
+.attendance-legend-dot.status-incomplete { background: #fef08a; }
 
 #attendanceCalendar .fc {
     color: #111827;
@@ -584,7 +584,7 @@ canvas#deptChart {
 }
 
 #attendanceCalendar .attendance-day-late {
-    background: #fde68a;
+    background: #fed7aa;
 }
 
 #attendanceCalendar .attendance-day-absent {
@@ -593,10 +593,14 @@ canvas#deptChart {
 
 #attendanceCalendar .attendance-day-missing_in,
 #attendanceCalendar .attendance-day-missing_out {
-    background: #c4b5fd;
+    background: #fef08a;
 }
 
 #attendanceCalendar .attendance-day-holiday {
+    background: #e5e7eb;
+}
+
+#attendanceCalendar .attendance-day-company_holiday {
     background: #bfdbfe;
 }
 
@@ -610,6 +614,7 @@ canvas#deptChart {
 #attendanceCalendar .attendance-day-missing_in.fc-day-today,
 #attendanceCalendar .attendance-day-missing_out.fc-day-today,
 #attendanceCalendar .attendance-day-holiday.fc-day-today,
+#attendanceCalendar .attendance-day-company_holiday.fc-day-today,
 #attendanceCalendar .attendance-day-leave.fc-day-today {
     box-shadow: inset 0 0 0 2px rgba(17, 24, 39, 0.08);
 }
@@ -689,22 +694,28 @@ canvas#deptChart {
     overflow-wrap: anywhere;
 }
 
+.attendance-summary-card-late {
+    background: #fed7aa;
+    color: #7c2d12;
+    border: 1px solid #fb923c;
+}
+
 .attendance-summary-card-incomplete {
-    background: #c4b5fd;
-    color: #3b0764;
-    border: 1px solid #a78bfa;
+    background: #fef08a;
+    color: #713f12;
+    border: 1px solid #eab308;
 }
 
 .attendance-summary-card-holiday {
-    background: #bfdbfe;
-    color: #1e3a8a;
-    border: 1px solid #93c5fd;
+    background: #e5e7eb;
+    color: #374151;
+    border: 1px solid #9ca3af;
 }
 
 .attendance-summary-card-company-holiday {
-    background: #c7d2fe;
-    color: #312e81;
-    border: 1px solid #a5b4fc;
+    background: #bfdbfe;
+    color: #1e3a8a;
+    border: 1px solid #60a5fa;
 }
 
 @media (max-width: 575.98px) {
