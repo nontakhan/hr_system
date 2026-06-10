@@ -26,6 +26,15 @@ function assertIncludes(haystack, needle, message) {
     }
 }
 
+function assertNotSame(unexpected, actual, message) {
+    if (unexpected === actual) {
+        console.error(message);
+        console.error('Unexpected:', unexpected);
+        console.error('Actual:    ', actual);
+        process.exit(1);
+    }
+}
+
 const absentEvent = buildAttendanceCalendarEvent({
     work_date: '2026-01-05',
     day_name: 'Mon',
@@ -36,9 +45,20 @@ const absentEvent = buildAttendanceCalendarEvent({
 });
 assertSame('ขาด', absentEvent.title, 'Calendar event title should use the attendance status label.');
 assertSame('2026-01-05', absentEvent.start, 'Calendar event should be placed on the work date.');
-assertSame('#fee2e2', absentEvent.backgroundColor, 'Absent calendar days should use a clear red-tinted background.');
-assertSame('#b91c1c', absentEvent.textColor, 'Absent calendar days should keep a clear red status color.');
+assertSame('#fecaca', absentEvent.backgroundColor, 'Absent calendar days should use a clear red-tinted background.');
+assertSame('#991b1b', absentEvent.textColor, 'Absent calendar days should keep a clear red status color.');
 assertSame('absent', absentEvent.extendedProps.row.status, 'Calendar event should retain the original row for popup details.');
+
+const missingOutColors = attendanceCalendarStatusColor('missing_out');
+const holidayColors = attendanceCalendarStatusColor('holiday');
+assertSame('#c4b5fd', missingOutColors.background, 'Incomplete scan days should use a purple background.');
+assertSame('#bfdbfe', holidayColors.background, 'Holidays should use a blue background.');
+assertNotSame(missingOutColors.background, holidayColors.background, 'Incomplete scan and holiday colors should be clearly different.');
+
+const incompleteCard = attendanceSummaryCard('สแกนไม่ครบ', 1, 'attendance-incomplete', 'fa-triangle-exclamation');
+const holidayCard = attendanceSummaryCard('วันหยุดปกติ', 1, 'attendance-holiday', 'fa-calendar-day');
+assertIncludes(incompleteCard, 'attendance-summary-card-incomplete', 'Incomplete summary card should use the matching custom color class.');
+assertIncludes(holidayCard, 'attendance-summary-card-holiday', 'Holiday summary card should use the matching custom color class.');
 
 const holidayDetails = buildAttendanceCalendarDetails({
     work_date: '2026-01-06',
@@ -76,5 +96,12 @@ assertSame(1, counts.present, 'Existing status counts should still work.');
 
 const calendarOptions = buildAttendanceCalendarOptions();
 assertSame(1, calendarOptions.firstDay, 'Attendance calendar should start weeks on Monday.');
+
+attendanceCalendarDayClassMap = buildAttendanceCalendarDayClassMap([
+    { work_date: '2026-01-05', status: 'absent' },
+    { work_date: '2026-01-06', status: 'present' },
+]);
+const absentDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 5) });
+assertIncludes(absentDayClasses.join(' '), 'attendance-day-absent', 'Calendar day cells should receive a status class for full-cell coloring.');
 
 console.log('attendance_calendar_test passed');

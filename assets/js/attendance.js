@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let attendanceCalendar = null;
+let attendanceCalendarDayClassMap = {};
 
 async function handleAttendanceImport(e) {
     e.preventDefault();
@@ -307,10 +308,10 @@ function renderAttendanceReport(res) {
             ${attendanceSummaryCard('ปกติ', counts.present || 0, 'success', 'fa-check-circle')}
             ${attendanceSummaryCard('สาย', counts.late || 0, 'warning', 'fa-clock')}
             ${attendanceSummaryCard('ขาด', counts.absent || 0, 'danger', 'fa-circle-xmark')}
-            ${attendanceSummaryCard('สแกนไม่ครบ', incompleteTotal, 'secondary', 'fa-triangle-exclamation')}
+            ${attendanceSummaryCard('สแกนไม่ครบ', incompleteTotal, 'attendance-incomplete', 'fa-triangle-exclamation')}
             ${attendanceSummaryCard('ลา', counts.leave || 0, 'info', 'fa-file-signature')}
-            ${attendanceSummaryCard('วันหยุดปกติ', counts.regular_holiday || 0, 'light', 'fa-calendar-day')}
-            ${attendanceSummaryCard('วันหยุดบริษัท', counts.company_holiday || 0, 'light', 'fa-building-circle-check')}
+            ${attendanceSummaryCard('วันหยุดปกติ', counts.regular_holiday || 0, 'attendance-holiday', 'fa-calendar-day')}
+            ${attendanceSummaryCard('วันหยุดบริษัท', counts.company_holiday || 0, 'attendance-company-holiday', 'fa-building-circle-check')}
         </div>`;
 
     renderAttendanceCalendar(res);
@@ -334,6 +335,28 @@ function countAttendanceReportStatuses(rows) {
 }
 
 function attendanceSummaryCard(label, count, tone, icon) {
+    const customTones = {
+        'attendance-incomplete': ['attendance-summary-card-incomplete', ''],
+        'attendance-holiday': ['attendance-summary-card-holiday', ''],
+        'attendance-company-holiday': ['attendance-summary-card-company-holiday', ''],
+    };
+    if (customTones[tone]) {
+        const [cardClass] = customTones[tone];
+        return `
+        <div class="col-6 col-md">
+            <div class="rounded-3 p-3 ${cardClass} h-100">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="small opacity-75">${label}</div>
+                        <div class="fs-3 fw-bold lh-1 mt-1">${count}</div>
+                        <div class="small opacity-75 mt-1">วัน</div>
+                    </div>
+                    <i class="fas ${icon} fs-5 opacity-75"></i>
+                </div>
+            </div>
+        </div>`;
+    }
+
     const textClass = tone === 'warning' || tone === 'light' || tone === 'info' ? 'text-dark' : 'text-white';
     const borderClass = tone === 'light' ? 'border' : 'border-0';
     return `
@@ -371,20 +394,20 @@ function renderAttendanceCalendar(res) {
 
     if (emptyEl) emptyEl.classList.add('d-none');
 
+    attendanceCalendarDayClassMap = buildAttendanceCalendarDayClassMap(res.data || []);
     const events = (res.data || []).map(buildAttendanceCalendarEvent);
-    if (!attendanceCalendar) {
-        attendanceCalendar = new FullCalendar.Calendar(calendarEl, buildAttendanceCalendarOptions());
-        attendanceCalendar.render();
+    if (attendanceCalendar) {
+        attendanceCalendar.destroy();
     }
 
-    attendanceCalendar.removeAllEvents();
-    events.forEach(event => attendanceCalendar.addEvent(event));
-    attendanceCalendar.gotoDate(`${res.month}-01`);
+    attendanceCalendar = new FullCalendar.Calendar(calendarEl, buildAttendanceCalendarOptions(`${res.month}-01`, events));
+    attendanceCalendar.render();
 }
 
-function buildAttendanceCalendarOptions() {
+function buildAttendanceCalendarOptions(initialDate, events) {
     return {
         initialView: 'dayGridMonth',
+        initialDate,
         locale: 'th',
         firstDay: 1,
         height: 'auto',
@@ -394,7 +417,12 @@ function buildAttendanceCalendarOptions() {
             center: 'title',
             right: '',
         },
+        events: events || [],
         dayMaxEvents: true,
+        dayCellClassNames(info) {
+            const status = attendanceCalendarDayClassMap[formatAttendanceDateKey(info.date)];
+            return status ? [`attendance-day-${status}`] : [];
+        },
         eventClick(info) {
             const row = info.event.extendedProps.row;
             Swal.fire({
@@ -405,6 +433,23 @@ function buildAttendanceCalendarOptions() {
             });
         },
     };
+}
+
+function buildAttendanceCalendarDayClassMap(rows) {
+    return rows.reduce((map, row) => {
+        if (row.work_date && row.status) {
+            map[row.work_date] = row.status;
+        }
+        return map;
+    }, {});
+}
+
+function formatAttendanceDateKey(date) {
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0'),
+    ].join('-');
 }
 
 function buildAttendanceCalendarEvent(row) {
@@ -423,13 +468,13 @@ function buildAttendanceCalendarEvent(row) {
 
 function attendanceCalendarStatusColor(status) {
     const colors = {
-        present: { background: '#dcfce7', border: '#86efac', text: '#166534' },
-        late: { background: '#fef3c7', border: '#facc15', text: '#854d0e' },
-        absent: { background: '#fee2e2', border: '#fca5a5', text: '#b91c1c' },
-        missing_in: { background: '#e5e7eb', border: '#cbd5e1', text: '#374151' },
-        missing_out: { background: '#e5e7eb', border: '#cbd5e1', text: '#374151' },
-        holiday: { background: '#f1f5f9', border: '#cbd5e1', text: '#475569' },
-        leave: { background: '#cffafe', border: '#67e8f9', text: '#155e75' },
+        present: { background: '#bbf7d0', border: '#4ade80', text: '#14532d' },
+        late: { background: '#fde68a', border: '#eab308', text: '#713f12' },
+        absent: { background: '#fecaca', border: '#f87171', text: '#991b1b' },
+        missing_in: { background: '#c4b5fd', border: '#8b5cf6', text: '#3b0764' },
+        missing_out: { background: '#c4b5fd', border: '#8b5cf6', text: '#3b0764' },
+        holiday: { background: '#bfdbfe', border: '#60a5fa', text: '#1e3a8a' },
+        leave: { background: '#a5f3fc', border: '#22d3ee', text: '#164e63' },
     };
     return colors[status] || { background: '#f3f4f6', border: '#d1d5db', text: '#374151' };
 }
