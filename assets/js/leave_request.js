@@ -172,11 +172,15 @@ function renderLeaveUsageEntries(entries) {
             ${entries.map(entry => `
                 <div class="leave-usage-entry">
                     <span>${formatLeaveDateRange(entry.start_date, entry.end_date, 'full', 'full')} ${entry.type_name ? `- ${escapeHtml(entry.type_name)}` : ''}</span>
-                    <span>${escapeHtml(entry.duration_label || `${formatLeaveDayNumber(entry.days)} วัน`)} (${entry.status === 'pending' ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
+                    <span>${escapeHtml(entry.duration_label || `${formatLeaveDayNumber(entry.days)} วัน`)} (${isPendingLeaveStatus(entry.status) ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
                 </div>
             `).join('')}
         </div>
     `;
+}
+
+function isPendingLeaveStatus(status) {
+    return status === 'pending' || status === 'pending_manager' || status === 'pending_hr';
 }
 
 function selectLeaveType(selectedId) {

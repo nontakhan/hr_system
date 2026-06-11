@@ -491,7 +491,7 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
             FROM leave_requests lr
             JOIN leave_types lt ON lr.leave_type_id = lt.id
             WHERE lr.employee_id = ?
-              AND lr.status IN ('approved', 'pending')
+              AND lr.status IN ('approved', 'pending', 'pending_manager', 'pending_hr')
               AND lr.start_date <= ?
               AND lr.end_date >= ?
             ORDER BY lr.start_date ASC, lr.id ASC";
@@ -520,7 +520,7 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
             if ($row['status'] === 'approved') {
                 $summaryItem['approved_days'] += $countedDays;
                 $summaryItem['approved_requests']++;
-            } elseif ($row['status'] === 'pending') {
+            } elseif (in_array($row['status'], ['pending', 'pending_manager', 'pending_hr'], true)) {
                 $summaryItem['pending_days'] += $countedDays;
                 $summaryItem['pending_requests']++;
             }

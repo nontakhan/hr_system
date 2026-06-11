@@ -22,6 +22,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function renderLeaveStatusBadge(status) {
+    const map = {
+        pending: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
+        pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
+        pending_hr: ['รอ HR อนุมัติ', 'info text-dark'],
+        approved: ['อนุมัติแล้ว', 'success'],
+        rejected: ['ไม่อนุมัติ', 'danger'],
+        cancelled: ['ยกเลิก', 'secondary'],
+    };
+    const item = map[status] || [status || '-', 'secondary'];
+    return `<span class="badge bg-${item[1]}">${item[0]}</span>`;
+}
+
 // โหลดรายการรออนุมัติ
 async function loadPendingLeaves() {
     const tbody = document.getElementById('pendingTableBody');
@@ -76,6 +89,7 @@ async function loadPendingLeaves() {
                                 <div>
                                     <div class="fw-bold">${item.first_name_th} ${item.last_name_th}</div>
                                     <small class="text-muted">${item.employee_code}</small>
+                                    <div class="mt-1">${renderLeaveStatusBadge(item.status)}</div>
                                 </div>
                             </div>
                         </td>
@@ -127,9 +141,7 @@ async function loadHistoryLeaves() {
                 item.rejection_reason = escapeHtml(item.rejection_reason || '-');
                 item.total_days = Number.parseFloat(item.total_days) || 0;
                 
-                let statusBadge = item.status === 'approved' 
-                    ? '<span class="badge bg-success">อนุมัติแล้ว</span>' 
-                    : '<span class="badge bg-danger">ไม่อนุมัติ</span>';
+                const statusBadge = renderLeaveStatusBadge(item.status);
 
                 return `
                     <tr>

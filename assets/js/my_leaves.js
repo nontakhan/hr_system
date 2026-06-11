@@ -17,6 +17,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function renderLeaveStatusBadge(status) {
+    const map = {
+        pending: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
+        pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
+        pending_hr: ['รอ HR อนุมัติ', 'info text-dark'],
+        approved: ['อนุมัติแล้ว', 'success'],
+        rejected: ['ไม่อนุมัติ', 'danger'],
+        cancelled: ['ยกเลิกแล้ว', 'secondary'],
+    };
+    const item = map[status] || [status || '-', 'secondary'];
+    return `<span class="badge bg-${item[1]}">${item[0]}</span>`;
+}
+
+function isPendingLeaveStatus(status) {
+    return status === 'pending' || status === 'pending_manager' || status === 'pending_hr';
+}
+
 async function loadMyLeaves() {
     const tbody = document.getElementById('myLeavesTableBody');
     
@@ -43,21 +60,14 @@ async function loadMyLeaves() {
                 const reason = escapeHtml(item.reason);
                 
                 // Badge สถานะ
-                let statusBadge = '';
                 let actionBtn = '';
-                
-                if (item.status === 'pending') {
-                    statusBadge = '<span class="badge bg-warning text-dark">รออนุมัติ</span>';
-                    // ปุ่มยกเลิก แสดงเฉพาะตอนรออนุมัติ
+                const statusBadge = renderLeaveStatusBadge(item.status);
+                const canCancel = item.status === 'pending' || item.status === 'pending_manager';
+
+                if (canCancel) {
                     actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${itemId}">
                                     <i class="fas fa-times"></i> ยกเลิก
                                  </button>`;
-                } else if (item.status === 'approved') {
-                    statusBadge = '<span class="badge bg-success">อนุมัติแล้ว</span>';
-                } else if (item.status === 'rejected') {
-                    statusBadge = '<span class="badge bg-danger">ไม่อนุมัติ</span>';
-                } else if (item.status === 'cancelled') {
-                    statusBadge = '<span class="badge bg-secondary">ยกเลิกแล้ว</span>';
                 }
 
                 tbody.innerHTML += `
@@ -139,7 +149,7 @@ function renderLeaveUsageEntries(entries) {
             ${entries.map(entry => `
                 <div class="leave-usage-entry">
                     <span>${formatLeaveDateRange(entry.start_date, entry.end_date, 'full', 'full')} ${entry.type_name ? `- ${escapeHtml(entry.type_name)}` : ''}</span>
-                    <span>${escapeHtml(entry.duration_label || `${formatLeaveDayNumber(entry.days)} วัน`)} (${entry.status === 'pending' ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
+                    <span>${escapeHtml(entry.duration_label || `${formatLeaveDayNumber(entry.days)} วัน`)} (${isPendingLeaveStatus(entry.status) ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
                 </div>
             `).join('')}
         </div>
