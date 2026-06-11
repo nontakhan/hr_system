@@ -759,6 +759,19 @@ canvas#deptChart {
     background: #ffffff;
 }
 
+.day-swap-side-card {
+    height: 100%;
+    border-top: 4px solid #d1d5db;
+}
+
+.day-swap-side-requester {
+    border-top-color: #2563eb;
+}
+
+.day-swap-side-target {
+    border-top-color: #16a34a;
+}
+
 .day-swap-calendar .fc {
     color: #111827;
 }

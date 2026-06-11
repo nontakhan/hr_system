@@ -22,38 +22,43 @@ require_once 'includes/header.php';
                     <input type="hidden" id="requesterDate" name="requester_date" required>
                     <input type="hidden" id="targetDate" name="target_date" required>
 
-                    <div class="row g-3 align-items-end mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">เดือนของวันหยุดคุณ</label>
-                            <input type="month" class="form-control" id="requesterMonth" value="<?php echo date('Y-m'); ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">พนักงานที่ต้องการสลับ</label>
-                            <select class="form-select day-swap-select2" id="targetEmployee" name="target_employee_id" required>
-                                <option value="">เลือกพนักงาน</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">เดือนของวันหยุดพนักงานที่เลือก</label>
-                            <input type="month" class="form-control" id="targetMonth" value="<?php echo date('Y-m'); ?>">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
+                    <div class="row g-3 mb-3 day-swap-compare-grid">
                         <div class="col-lg-6">
-                            <div class="day-swap-calendar-card">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h5 class="mb-0">วันหยุดของคุณ</h5>
+                            <div class="day-swap-calendar-card day-swap-side-card day-swap-side-requester">
+                                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                    <div>
+                                        <div class="text-muted small fw-semibold">ฝั่งซ้าย</div>
+                                        <h5 class="mb-0">เรา</h5>
+                                    </div>
                                     <span class="badge bg-secondary" id="requesterSelectedLabel">ยังไม่เลือก</span>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">เดือนของวันหยุดเรา</label>
+                                    <input type="month" class="form-control" id="requesterMonth" value="<?php echo date('Y-m'); ?>">
                                 </div>
                                 <div id="requesterHolidayCalendar" class="day-swap-calendar"></div>
                             </div>
                         </div>
                         <div class="col-lg-6">
-                            <div class="day-swap-calendar-card">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h5 class="mb-0">วันหยุดของคู่สลับ</h5>
+                            <div class="day-swap-calendar-card day-swap-side-card day-swap-side-target">
+                                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                    <div>
+                                        <div class="text-muted small fw-semibold">ฝั่งขวา</div>
+                                        <h5 class="mb-0">เพื่อนที่จะแลก</h5>
+                                    </div>
                                     <span class="badge bg-secondary" id="targetSelectedLabel">ยังไม่เลือก</span>
+                                </div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-7">
+                                        <label class="form-label">พนักงานที่ต้องการสลับ</label>
+                                        <select class="form-select day-swap-select2" id="targetEmployee" name="target_employee_id" required>
+                                            <option value="">เลือกพนักงาน</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label">เดือนของวันหยุดเพื่อน</label>
+                                        <input type="month" class="form-control" id="targetMonth" value="<?php echo date('Y-m'); ?>">
+                                    </div>
                                 </div>
                                 <div id="targetHolidayCalendar" class="day-swap-calendar"></div>
                             </div>

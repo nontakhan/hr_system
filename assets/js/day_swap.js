@@ -26,13 +26,23 @@ function initDaySwapRequestPage() {
         clearDaySwapSelection('target');
         loadTargetHolidays();
     });
-    document.getElementById('targetEmployee').addEventListener('change', loadTargetHolidays);
+    bindDaySwapTargetEmployeeChange(document.getElementById('targetEmployee'), loadTargetHolidays);
     document.getElementById('daySwapForm').addEventListener('submit', submitDaySwapRequest);
 
     loadDaySwapEmployees();
     loadRequesterHolidays();
     loadTargetHolidays();
     loadDaySwapHistory();
+}
+
+function bindDaySwapTargetEmployeeChange(select, handler) {
+    select.addEventListener('change', handler);
+
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery(select)
+            .off('select2:select.daySwap select2:clear.daySwap')
+            .on('select2:select.daySwap select2:clear.daySwap', handler);
+    }
 }
 
 function initDaySwapCalendars() {

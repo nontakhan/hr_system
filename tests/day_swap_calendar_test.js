@@ -40,4 +40,29 @@ assertIncludes(selectedClasses.join(' '), 'day-swap-calendar-selected', 'Selecte
 const unselectedClasses = buildDaySwapCalendarDayClasses('2026-06-14')({ date: new Date(2026, 5, 15) });
 assertSame('', unselectedClasses.join(''), 'Unselected date should not receive a highlight class.');
 
+const boundEvents = [];
+const mockSelect = {
+    addEventListener(eventName) {
+        boundEvents.push(eventName);
+    },
+};
+global.window.jQuery = function () {
+    return {
+        off(eventNames) {
+            boundEvents.push(`off:${eventNames}`);
+            return this;
+        },
+        on(eventNames) {
+            boundEvents.push(eventNames);
+            return this;
+        },
+    };
+};
+global.window.jQuery.fn = { select2: true };
+global.jQuery = global.window.jQuery;
+bindDaySwapTargetEmployeeChange(mockSelect, () => {});
+assertIncludes(boundEvents.join(' '), 'change', 'Target employee select should listen for native changes.');
+assertIncludes(boundEvents.join(' '), 'select2:select.daySwap', 'Target employee select should listen for Select2 selections.');
+assertIncludes(boundEvents.join(' '), 'select2:clear.daySwap', 'Target employee select should listen for Select2 clears.');
+
 console.log('day_swap_calendar_test passed');
