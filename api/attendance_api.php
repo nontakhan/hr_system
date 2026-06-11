@@ -18,6 +18,7 @@ try {
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/leave_helpers.php';
     require_once '../includes/day_swap_helpers.php';
+    require_once '../includes/hr_scope_helpers.php';
 
     if (!isset($_SESSION['user_id'])) sendJsonError('Login Required');
 
@@ -29,15 +30,15 @@ try {
     if ($method === 'GET') {
         if ($action === 'employees') {
             if (!$canManage) sendJsonError('Access Denied');
-            $companyId = (int)($_SESSION['company_id'] ?? 0);
             $sql = "SELECT id, citizen_id, first_name_th, last_name_th
-                    FROM employees
+                    FROM employees e
                     WHERE status IN ('active', 'probation')";
             if ($role === 'hr') {
-                $sql .= " AND company_id = ?";
+                $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+                $sql .= $scopeClause['sql'];
                 $sql .= " ORDER BY first_name_th, last_name_th";
                 $stmt = $mysqli->prepare($sql);
-                $stmt->bind_param('i', $companyId);
+                hrScopeBindParams($stmt, $scopeClause['types'], $scopeClause['params']);
             } else {
                 $sql .= " ORDER BY first_name_th, last_name_th";
                 $stmt = $mysqli->prepare($sql);
@@ -47,7 +48,7 @@ try {
         }
 
         if ($action === 'months') {
-            $employeeId = resolveAttendanceEmployeeId($canManage);
+            $employeeId = resolveAttendanceEmployeeId($mysqli, $canManage);
             $stmt = $mysqli->prepare("SELECT DISTINCT import_month FROM attendance_records WHERE employee_id = ? ORDER BY import_month DESC");
             $stmt->bind_param('i', $employeeId);
             $stmt->execute();
@@ -55,7 +56,7 @@ try {
         }
 
         if ($action === 'report') {
-            $employeeId = resolveAttendanceEmployeeId($canManage);
+            $employeeId = resolveAttendanceEmployeeId($mysqli, $canManage);
             $month = $_GET['month'] ?? date('Y-m');
             if (!preg_match('/^\d{4}-\d{2}$/', $month)) sendJsonError('Invalid month');
 
@@ -67,7 +68,7 @@ try {
         }
 
         if ($action === 'report_range') {
-            $employeeId = resolveAttendanceEmployeeId($canManage);
+            $employeeId = resolveAttendanceEmployeeId($mysqli, $canManage);
             $startMonth = $_GET['start_month'] ?? date('Y-m');
             $endMonth = $_GET['end_month'] ?? $startMonth;
             if (!isValidAttendanceMonthRange($startMonth, $endMonth)) {
@@ -115,11 +116,32 @@ try {
     sendJsonError('System Error');
 }
 
-function resolveAttendanceEmployeeId($canManage) {
+function resolveAttendanceEmployeeId($mysqli, $canManage) {
     if ($canManage && isset($_GET['employee_id']) && (int)$_GET['employee_id'] > 0) {
-        return (int)$_GET['employee_id'];
+        $employeeId = (int)$_GET['employee_id'];
+        if (!attendanceCanViewEmployee($mysqli, $employeeId)) {
+            sendJsonError('Access Denied');
+        }
+        return $employeeId;
     }
     return (int)($_SESSION['employee_id'] ?? 0);
+}
+
+function attendanceCanViewEmployee($mysqli, $employeeId) {
+    $role = $_SESSION['role'] ?? 'employee';
+    if ($role === 'admin') return true;
+    if ($role !== 'hr') {
+        return $employeeId === (int)($_SESSION['employee_id'] ?? 0);
+    }
+
+    $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+    $sql = "SELECT e.id FROM employees e WHERE e.id = ?" . $scopeClause['sql'] . " LIMIT 1";
+    $types = 'i' . $scopeClause['types'];
+    $params = array_merge([$employeeId], $scopeClause['params']);
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+    return $stmt->get_result()->num_rows === 1;
 }
 
 function fetchAttendanceEmployee($mysqli, $employeeId) {

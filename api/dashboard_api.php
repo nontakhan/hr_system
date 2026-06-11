@@ -5,6 +5,7 @@ error_reporting(E_ALL);
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
     require_once '../includes/db_connect.php';
+    require_once '../includes/hr_scope_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -14,6 +15,18 @@ try {
     $role = $_SESSION['role'];
     $emp_id = $_SESSION['employee_id'];
     $company_id = $_SESSION['company_id'] ?? 0;
+    $hrEmployeeFilter = '';
+    if ($role === 'hr') {
+        $scopes = hrScopeCurrentSessionScopes();
+        $conditions = [];
+        if (!empty($scopes['company_ids'])) {
+            $conditions[] = "company_id IN (" . implode(',', array_map('intval', $scopes['company_ids'])) . ")";
+        }
+        if (!empty($scopes['branch_ids'])) {
+            $conditions[] = "branch_id IN (" . implode(',', array_map('intval', $scopes['branch_ids'])) . ")";
+        }
+        $hrEmployeeFilter = $conditions ? " AND (" . implode(' OR ', $conditions) . ")" : " AND 1=0";
+    }
     $today = date('Y-m-d');
     $current_month = date('Y-m');
 
@@ -36,7 +49,7 @@ try {
 
     // 1. Total Employees (เก็บไว้คำนวณยอดรวมได้)
     $sql_total = "SELECT COUNT(*) as c FROM employees WHERE status IN ('active', 'probation')";
-    if ($role === 'hr') $sql_total .= " AND company_id = $company_id";
+    if ($role === 'hr') $sql_total .= $hrEmployeeFilter;
     $data['total_employees'] = $mysqli->query($sql_total)->fetch_assoc()['c'];
 
     // 2. (NEW) Employees by Company & Branch
@@ -47,7 +60,7 @@ try {
                    JOIN branches b ON e.branch_id = b.id
                    WHERE e.status IN ('active', 'probation') ";
     
-    if ($role === 'hr') $sql_branch .= " AND e.company_id = $company_id ";
+    if ($role === 'hr') $sql_branch .= str_replace(['company_id', 'branch_id'], ['e.company_id', 'e.branch_id'], $hrEmployeeFilter);
     
     $sql_branch .= " GROUP BY c.id, b.id ORDER BY c.id, b.id";
     
@@ -83,7 +96,7 @@ try {
                   JOIN companies c ON e.company_id = c.id
                   JOIN employment_types et ON e.employment_type_id = et.id
                   WHERE e.status IN ('active', 'probation') ";
-    if ($role === 'hr') $sql_types .= " AND e.company_id = $company_id ";
+    if ($role === 'hr') $sql_types .= str_replace(['company_id', 'branch_id'], ['e.company_id', 'e.branch_id'], $hrEmployeeFilter);
     $sql_types .= " GROUP BY c.id, et.id ORDER BY c.id, et.id";
     
     $res_types = $mysqli->query($sql_types);
