@@ -23,6 +23,7 @@ try {
     }
     require_once '../includes/db_connect.php';
     require_once '../includes/upload_security.php';
+    require_once '../includes/hr_scope_helpers.php';
     header('Content-Type: application/json');
 
     // 2. Check Login
@@ -160,6 +161,60 @@ function syncEmployeeShiftOverrides($mysqli, $employeeId, $data) {
     if (!$stmt->execute()) throw new Exception("Insert shift override failed: " . $stmt->error);
 }
 
+function normalizePostedIds($value) {
+    $values = is_array($value) ? $value : [$value];
+    return array_values(array_unique(array_filter(array_map('intval', $values))));
+}
+
+function validateIdsExist(mysqli $mysqli, $table, array $ids) {
+    if (!$ids) return true;
+    if (!in_array($table, ['companies', 'branches'], true)) {
+        return false;
+    }
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $mysqli->prepare("SELECT COUNT(*) AS total FROM {$table} WHERE id IN ({$placeholders})");
+    if (!$stmt) throw new Exception("Prepare {$table} validation failed: " . $mysqli->error);
+    hrScopeBindParams($stmt, str_repeat('i', count($ids)), $ids);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return (int)$row['total'] === count($ids);
+}
+
+function syncUserHrScopes(mysqli $mysqli, $userId, $role, array $data) {
+    hrScopeEnsureTable($mysqli);
+    $userId = (int)$userId;
+    $delete = $mysqli->prepare("DELETE FROM user_hr_scopes WHERE user_id = ?");
+    if (!$delete) throw new Exception("Prepare HR scope delete failed: " . $mysqli->error);
+    $delete->bind_param('i', $userId);
+    if (!$delete->execute()) throw new Exception("Delete HR scopes failed: " . $delete->error);
+
+    if (!in_array($role, ['hr', 'admin'], true)) {
+        return;
+    }
+
+    $companyIds = normalizePostedIds($data['hr_company_ids'] ?? []);
+    $branchIds = normalizePostedIds($data['hr_branch_ids'] ?? []);
+    if (!validateIdsExist($mysqli, 'companies', $companyIds)) {
+        throw new InvalidArgumentException('บริษัท HR ที่เลือกไม่ถูกต้อง');
+    }
+    if (!validateIdsExist($mysqli, 'branches', $branchIds)) {
+        throw new InvalidArgumentException('สาขา HR ที่เลือกไม่ถูกต้อง');
+    }
+
+    $insert = $mysqli->prepare("INSERT INTO user_hr_scopes (user_id, scope_type, scope_id) VALUES (?, ?, ?)");
+    if (!$insert) throw new Exception("Prepare HR scope insert failed: " . $mysqli->error);
+    foreach ($companyIds as $id) {
+        $type = 'company';
+        $insert->bind_param('isi', $userId, $type, $id);
+        if (!$insert->execute()) throw new Exception("Insert HR company scope failed: " . $insert->error);
+    }
+    foreach ($branchIds as $id) {
+        $type = 'branch';
+        $insert->bind_param('isi', $userId, $type, $id);
+        if (!$insert->execute()) throw new Exception("Insert HR branch scope failed: " . $insert->error);
+    }
+}
+
 // ===================================================================================
 // FUNCTIONS
 // ===================================================================================
@@ -225,7 +280,8 @@ function createEmployee($mysqli, $data, $files) {
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $u_stmt = $mysqli->prepare("INSERT INTO users (employee_id, username, password, role) VALUES (?,?,?,?)");
             $u_stmt->bind_param('isss', $emp_pk, $username, $hash, $role);
-            $u_stmt->execute();
+            if (!$u_stmt->execute()) throw new Exception("User insert failed: " . $u_stmt->error);
+            syncUserHrScopes($mysqli, $mysqli->insert_id, $role, $data);
         }
 
         $mysqli->commit();
@@ -310,12 +366,13 @@ function updateEmployee($mysqli, $data, $files) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $u_stmt = $mysqli->prepare("UPDATE users SET password=?, role=? WHERE employee_id=?");
                 $u_stmt->bind_param('ssi', $hash, $role, $id);
-                $u_stmt->execute();
+                if (!$u_stmt->execute()) throw new Exception("User update failed: " . $u_stmt->error);
             } else {
                 $u_stmt = $mysqli->prepare("UPDATE users SET role=? WHERE employee_id=?");
                 $u_stmt->bind_param('si', $role, $id);
-                $u_stmt->execute();
+                if (!$u_stmt->execute()) throw new Exception("User role update failed: " . $u_stmt->error);
             }
+            syncUserHrScopes($mysqli, (int)$user_exists['id'], $role, $data);
         } else {
             // INSERT NEW
             if ($username && $password) {
@@ -327,7 +384,8 @@ function updateEmployee($mysqli, $data, $files) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $u_stmt = $mysqli->prepare("INSERT INTO users (employee_id, username, password, role) VALUES (?,?,?,?)");
                 $u_stmt->bind_param('isss', $id, $username, $hash, $role);
-                $u_stmt->execute();
+                if (!$u_stmt->execute()) throw new Exception("User insert failed: " . $u_stmt->error);
+                syncUserHrScopes($mysqli, $mysqli->insert_id, $role, $data);
             }
         }
 

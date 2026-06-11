@@ -52,6 +52,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (transferForm) {
         setupTransferHistoryForm(transferForm);
     }
+
+    document.querySelectorAll('select[name="role"]').forEach(roleSelect => {
+        const toggleHrScopes = () => {
+            const form = roleSelect.closest('form');
+            const section = form ? form.querySelector('.hr-scope-section') : null;
+            if (!section) return;
+            const visible = roleSelect.value === 'hr' || roleSelect.value === 'admin';
+            section.style.display = visible ? '' : 'none';
+            section.querySelectorAll('select').forEach(select => {
+                select.disabled = !visible;
+            });
+        };
+        roleSelect.addEventListener('change', toggleHrScopes);
+        toggleHrScopes();
+    });
 });
 
 function setupFormInteractions() {

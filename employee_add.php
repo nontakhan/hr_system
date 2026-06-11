@@ -4,6 +4,7 @@
  */
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php'; 
+require_once 'includes/hr_scope_helpers.php';
 
 // ----- ดึงข้อมูล Master Data -----
 try {
@@ -13,12 +14,17 @@ try {
     @$positions = $mysqli->query("SELECT id, position_name_th FROM positions ORDER BY position_name_th")->fetch_all(MYSQLI_ASSOC);
     @$emp_types = $mysqli->query("SELECT id, type_name FROM employment_types ORDER BY type_name")->fetch_all(MYSQLI_ASSOC);
     @$supervisors = $mysqli->query("SELECT id, first_name_th, last_name_th FROM employees WHERE status = 'active' ORDER BY first_name_th")->fetch_all(MYSQLI_ASSOC);
+    @$hrCompanies = $mysqli->query("SELECT id, company_name_th FROM companies ORDER BY company_name_th")->fetch_all(MYSQLI_ASSOC);
+    @$hrBranches = $mysqli->query("SELECT b.id, b.branch_name_th, b.company_id, c.company_name_th
+                                   FROM branches b
+                                   JOIN companies c ON b.company_id = c.id
+                                   ORDER BY c.company_name_th, b.branch_name_th")->fetch_all(MYSQLI_ASSOC);
     
     // (NEW) ดึงข้อมูลกะการทำงาน
     @$shifts = $mysqli->query("SELECT id, shift_name, start_time, end_time FROM work_shifts ORDER BY id ASC")->fetch_all(MYSQLI_ASSOC);
 
 } catch (Exception $e) {
-    $companies = $branches = $departments = $positions = $emp_types = $supervisors = $shifts = [];
+    $companies = $branches = $departments = $positions = $emp_types = $supervisors = $shifts = $hrCompanies = $hrBranches = [];
     $db_error = $e->getMessage();
 }
 
@@ -357,6 +363,35 @@ require_once 'includes/header.php';
                                 <option value="hr">HR</option>
                                 <option value="admin">Admin</option>
                             </select>
+                        </div>
+                        <div class="col-12 hr-scope-section" style="display: none;">
+                            <div class="border rounded p-3 bg-light">
+                                <div class="fw-semibold mb-2">ขอบเขตสิทธิ์ HR</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">HR บริษัท</label>
+                                        <select name="hr_company_ids[]" class="form-select" multiple size="6">
+                                            <?php foreach ($hrCompanies as $company): ?>
+                                                <option value="<?php echo (int)$company['id']; ?>">
+                                                    <?php echo htmlspecialchars($company['company_name_th']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <small class="text-muted">เลือกได้มากกว่า 1 บริษัท</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">HR สาขา</label>
+                                        <select name="hr_branch_ids[]" class="form-select" multiple size="6">
+                                            <?php foreach ($hrBranches as $branch): ?>
+                                                <option value="<?php echo (int)$branch['id']; ?>" data-company-id="<?php echo (int)$branch['company_id']; ?>">
+                                                    <?php echo htmlspecialchars($branch['company_name_th'] . ' - ' . $branch['branch_name_th']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <small class="text-muted">เลือกได้มากกว่า 1 สาขา</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
