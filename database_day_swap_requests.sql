@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS day_swap_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    requester_employee_id INT NOT NULL,
+    target_employee_id INT NOT NULL,
+    requester_date DATE NOT NULL,
+    target_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending',
+    approver_id INT NULL,
+    approval_date DATETIME NULL,
+    rejection_reason TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_day_swap_requester (requester_employee_id, status),
+    INDEX idx_day_swap_target (target_employee_id, status),
+    INDEX idx_day_swap_dates (requester_date, target_date),
+    CONSTRAINT fk_day_swap_requester FOREIGN KEY (requester_employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    CONSTRAINT fk_day_swap_target FOREIGN KEY (target_employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    CONSTRAINT fk_day_swap_approver FOREIGN KEY (approver_id) REFERENCES employees(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

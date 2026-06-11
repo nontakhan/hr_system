@@ -1,0 +1,102 @@
+<?php
+require_once 'includes/auth_check.php';
+
+$page_title = "ขอสลับวันหยุด";
+$use_select2 = true;
+$use_fullcalendar = true;
+require_once 'includes/header.php';
+?>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">ขอสลับวันหยุด</h1>
+        <p class="text-muted small">เลือกวันหยุดปกติจากปฏิทินทั้งสองฝั่งเพื่อส่งให้หัวหน้าอนุมัติ</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <form id="daySwapForm">
+                    <input type="hidden" id="requesterDate" name="requester_date" required>
+                    <input type="hidden" id="targetDate" name="target_date" required>
+
+                    <div class="row g-3 align-items-end mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">เดือนของวันหยุดคุณ</label>
+                            <input type="month" class="form-control" id="requesterMonth" value="<?php echo date('Y-m'); ?>">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">พนักงานที่ต้องการสลับ</label>
+                            <select class="form-select day-swap-select2" id="targetEmployee" name="target_employee_id" required>
+                                <option value="">เลือกพนักงาน</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">เดือนของวันหยุดพนักงานที่เลือก</label>
+                            <input type="month" class="form-control" id="targetMonth" value="<?php echo date('Y-m'); ?>">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-lg-6">
+                            <div class="day-swap-calendar-card">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0">วันหยุดของคุณ</h5>
+                                    <span class="badge bg-secondary" id="requesterSelectedLabel">ยังไม่เลือก</span>
+                                </div>
+                                <div id="requesterHolidayCalendar" class="day-swap-calendar"></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="day-swap-calendar-card">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0">วันหยุดของคู่สลับ</h5>
+                                    <span class="badge bg-secondary" id="targetSelectedLabel">ยังไม่เลือก</span>
+                                </div>
+                                <div id="targetHolidayCalendar" class="day-swap-calendar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="daySwapSelectionSummary" class="alert alert-light border mb-3">
+                        เลือกวันหยุดจากปฏิทินทั้งสองฝั่งเพื่อสร้างคำขอ
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">เหตุผล</label>
+                        <textarea class="form-control" id="daySwapReason" name="reason" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i> ส่งคำขอ
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title mb-3">ประวัติคำขอสลับวันหยุด</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>วันที่ส่ง</th>
+                                <th>คู่สลับ</th>
+                                <th>วันที่สลับ</th>
+                                <th>สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daySwapHistoryBody">
+                            <tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php require_once 'includes/footer.php'; ?>

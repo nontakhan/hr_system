@@ -17,6 +17,7 @@ try {
     require_once '../includes/db_connect.php';
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/leave_helpers.php';
+    require_once '../includes/day_swap_helpers.php';
 
     if (!isset($_SESSION['user_id'])) sendJsonError('Login Required');
 
@@ -185,12 +186,16 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
     $leaves = fetchApprovedLeavesForMonth($mysqli, (int)$employee['id'], $month);
     $hourlyRequests = fetchApprovedHourlyRequestsForMonth($mysqli, (int)$employee['id'], $month);
+    $daySwaps = attendanceBuildApprovedDaySwapMap(fetchApprovedDaySwapsForMonth($mysqli, (int)$employee['id'], $month), (int)$employee['id'], $month);
 
     $rows = [];
     for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
         $workDate = $date->format('Y-m-d');
         $record = $records[$workDate] ?? ['check_in' => null, 'check_out' => null];
         $effectiveShift = attendanceResolveShiftForDate($shift, $shiftOverrides, $workDate);
+        if (isset($daySwaps[$workDate])) {
+            $effectiveShift = attendanceApplyDayTypeOverride($effectiveShift, $workDate, $daySwaps[$workDate]);
+        }
         $status = attendanceEvaluateStatus($workDate, $record['check_in'], $record['check_out'], $effectiveShift, $holidays, $leaves);
         $rows[] = [
             'work_date' => $workDate,
@@ -202,11 +207,16 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
             'is_late' => $status['is_late'],
             'holiday_name' => $status['holiday_name'],
             'leave_name' => $status['leave_name'],
+            'day_swap_type' => $daySwaps[$workDate] ?? null,
             'hourly_requests' => $hourlyRequests[$workDate] ?? [],
         ];
     }
 
     return $rows;
+}
+
+function fetchApprovedDaySwapsForMonth($mysqli, $employeeId, $month) {
+    return daySwapFetchApprovedRowsForMonth($mysqli, $employeeId, $month);
 }
 
 function fetchEmployeeShiftOverridesForMonth($mysqli, $employeeId, $month) {

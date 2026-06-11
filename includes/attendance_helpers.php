@@ -125,6 +125,70 @@ function attendanceResolveShiftForDate(array $baseShift, array $overrides, $work
     return $baseShift;
 }
 
+function attendanceWeekdays() {
+    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+}
+
+function attendanceApplyDayTypeOverride(array $shift, $workDate, $dayType) {
+    $dayName = attendanceDayName($workDate);
+    $workDays = array_filter(array_map('trim', explode(',', (string)($shift['work_days'] ?? ''))));
+    if (empty($workDays)) {
+        $workDays = attendanceWeekdays();
+    }
+
+    if ($dayType === 'workday' && !in_array($dayName, $workDays, true)) {
+        $workDays[] = $dayName;
+    }
+
+    if ($dayType === 'holiday') {
+        $workDays = array_values(array_filter($workDays, function ($day) use ($dayName) {
+            return $day !== $dayName;
+        }));
+    }
+
+    $orderedDays = [];
+    foreach (attendanceWeekdays() as $day) {
+        if (in_array($day, $workDays, true)) {
+            $orderedDays[] = $day;
+        }
+    }
+
+    $shift['work_days'] = implode(',', $orderedDays);
+    return $shift;
+}
+
+function attendanceBuildApprovedDaySwapMap(array $swapRows, $employeeId, $month) {
+    $map = [];
+    $monthPrefix = $month . '-';
+
+    foreach ($swapRows as $row) {
+        $requesterId = (int)($row['requester_employee_id'] ?? 0);
+        $targetId = (int)($row['target_employee_id'] ?? 0);
+        $requesterDate = (string)($row['requester_date'] ?? '');
+        $targetDate = (string)($row['target_date'] ?? '');
+
+        if ($employeeId === $requesterId) {
+            if (strpos($requesterDate, $monthPrefix) === 0) {
+                $map[$requesterDate] = 'workday';
+            }
+            if (strpos($targetDate, $monthPrefix) === 0) {
+                $map[$targetDate] = 'holiday';
+            }
+        }
+
+        if ($employeeId === $targetId) {
+            if (strpos($requesterDate, $monthPrefix) === 0) {
+                $map[$requesterDate] = 'holiday';
+            }
+            if (strpos($targetDate, $monthPrefix) === 0) {
+                $map[$targetDate] = 'workday';
+            }
+        }
+    }
+
+    return $map;
+}
+
 function attendanceBuildApprovedLeaveMap(array $leaveRows, $month) {
     $start = new DateTimeImmutable($month . '-01');
     $end = $start->modify('last day of this month');

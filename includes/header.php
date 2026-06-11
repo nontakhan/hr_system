@@ -58,16 +58,22 @@ $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['
             <a href="#leaveSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
                 <i class="fas fa-calendar-alt me-2"></i> ระบบการลา
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('leave_request.php') || isActive('my_leaves.php') || isActive('leave_approvals.php')) ? 'show' : ''; ?>" id="leaveSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('leave_request.php') || isActive('my_leaves.php') || isActive('leave_approvals.php') || isActive('day_swap_request.php') || isActive('day_swap_approvals.php')) ? 'show' : ''; ?>" id="leaveSubmenu">
                 <a href="leave_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_request.php'); ?>">
                     <small>ยื่นใบลา</small>
                 </a>
                 <a href="my_leaves.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('my_leaves.php'); ?>">
                     <small>ประวัติการลา</small>
                 </a>
+                <a href="day_swap_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_request.php'); ?>">
+                    <small>ขอสลับวันหยุด</small>
+                </a>
                 <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
                 <a href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_approvals.php'); ?>">
                     <small>อนุมัติการลา</small>
+                </a>
+                <a href="day_swap_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_approvals.php'); ?>">
+                    <small>อนุมัติสลับวันหยุด</small>
                 </a>
                 <?php endif; ?>
             </div>

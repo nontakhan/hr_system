@@ -107,6 +107,34 @@ $normalShift = attendanceResolveShiftForDate($baseShift, [
 ], '2026-01-07');
 assertSameValue('08:00:00', $normalShift['start_time'], 'Base shift should be used on days without an override.');
 
+$swapWorkdayShift = attendanceApplyDayTypeOverride($baseShift, '2026-01-04', 'workday');
+assertSameValue('Mon,Tue,Wed,Thu,Fri,Sat,Sun', $swapWorkdayShift['work_days'], 'Approved day swaps should turn the employee holiday into a workday.');
+
+$swapHolidayShift = attendanceApplyDayTypeOverride($baseShift, '2026-01-05', 'holiday');
+assertSameValue('Tue,Wed,Thu,Fri,Sat', $swapHolidayShift['work_days'], 'Approved day swaps should turn the employee workday into a holiday.');
+
+$swapMap = attendanceBuildApprovedDaySwapMap([
+    [
+        'requester_employee_id' => 10,
+        'target_employee_id' => 20,
+        'requester_date' => '2026-01-04',
+        'target_date' => '2026-01-05',
+    ],
+], 10, '2026-01');
+assertSameValue('workday', $swapMap['2026-01-04'], 'Requester original holiday should become a workday after approval.');
+assertSameValue('holiday', $swapMap['2026-01-05'], 'Requester selected target holiday should become the requester holiday after approval.');
+
+$targetSwapMap = attendanceBuildApprovedDaySwapMap([
+    [
+        'requester_employee_id' => 10,
+        'target_employee_id' => 20,
+        'requester_date' => '2026-01-04',
+        'target_date' => '2026-01-05',
+    ],
+], 20, '2026-01');
+assertSameValue('holiday', $targetSwapMap['2026-01-04'], 'Target employee should receive the requester holiday after approval.');
+assertSameValue('workday', $targetSwapMap['2026-01-05'], 'Target employee original holiday should become a workday after approval.');
+
 $overrideLate = attendanceEvaluateStatus(
     '2026-01-06',
     '07:46:00',
