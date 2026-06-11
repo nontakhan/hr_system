@@ -5,6 +5,7 @@
  */
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php'; // (ต้องใช้ DB เพื่อดึงสาขา)
+require_once 'includes/hr_scope_helpers.php';
 
 $page_title = "จัดการข้อมูลพนักงาน";
 require_once 'includes/header.php';
@@ -18,8 +19,15 @@ try {
     
     // ถ้าเป็น HR ให้เห็นแค่สาขาของบริษัทตัวเอง
     if ($_SESSION['role'] === 'hr') {
-        $company_id = (int)($_SESSION['company_id'] ?? 0);
-        $sql_branch .= " WHERE b.company_id = $company_id";
+        $scopes = hrScopeCurrentSessionScopes();
+        $conditions = [];
+        if (!empty($scopes['company_ids'])) {
+            $conditions[] = "b.company_id IN (" . implode(',', array_map('intval', $scopes['company_ids'])) . ")";
+        }
+        if (!empty($scopes['branch_ids'])) {
+            $conditions[] = "b.id IN (" . implode(',', array_map('intval', $scopes['branch_ids'])) . ")";
+        }
+        $sql_branch .= $conditions ? " WHERE (" . implode(' OR ', $conditions) . ")" : " WHERE 1=0";
     }
     
     $sql_branch .= " ORDER BY c.company_name_th, b.branch_name_th";

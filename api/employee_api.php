@@ -434,6 +434,7 @@ function getAllEmployees($mysqli) {
     try {
         $role = $_SESSION['role'];
         $company_id = $_SESSION['company_id'] ?? 0;
+        $scopes = hrScopeCurrentSessionScopes();
         
         // รับค่า branch_id จาก URL
         $filter_branch_id = isset($_GET['branch_id']) && is_numeric($_GET['branch_id']) ? (int)$_GET['branch_id'] : 0;
@@ -446,6 +447,22 @@ function getAllEmployees($mysqli) {
                 LEFT JOIN companies c ON e.company_id = c.id
                 LEFT JOIN branches b ON e.branch_id = b.id
                 WHERE 1=1 ";
+
+        if ($role === 'hr') {
+            $scopeClause = hrScopeBuildEmployeeWhereClause($role, $scopes, 'e');
+            $sql .= $scopeClause['sql'];
+            if ($filter_branch_id > 0) {
+                $sql .= " AND e.branch_id = ? ";
+                $scopeClause['types'] .= 'i';
+                $scopeClause['params'][] = $filter_branch_id;
+            }
+            $sql .= " ORDER BY e.id DESC";
+            $stmt = $mysqli->prepare($sql);
+            hrScopeBindParams($stmt, $scopeClause['types'], $scopeClause['params']);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            return ['status'=>'success', 'data'=>$res->fetch_all(MYSQLI_ASSOC)];
+        }
 
         // --- Filter Logic ---
         
