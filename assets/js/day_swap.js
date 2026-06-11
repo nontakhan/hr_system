@@ -286,7 +286,7 @@ async function loadDaySwapPendingApprovals() {
         }
         tbody.innerHTML = res.data.map(item => `
             <tr>
-                <td>${escapeHtml(item.requester_name || '-')}<br><small class="text-muted">${escapeHtml(item.requester_code || '')}</small></td>
+                <td>${escapeHtml(item.requester_name || '-')}<br><small class="text-muted">${escapeHtml(item.requester_code || '')}</small><div class="mt-1">${renderDaySwapStatus(item.status)}</div></td>
                 <td>${escapeHtml(item.target_name || '-')}<br><small class="text-muted">${escapeHtml(item.target_code || '')}</small></td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
                 <td><small class="text-muted">${escapeHtml(item.reason || '-')}</small></td>
@@ -369,7 +369,9 @@ async function submitDaySwapApproval(event) {
 
 function renderDaySwapStatus(status) {
     const map = {
-        pending: ['รออนุมัติ', 'warning text-dark'],
+        pending: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
+        pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
+        pending_hr: ['รอ HR อนุมัติ', 'info text-dark'],
         approved: ['อนุมัติแล้ว', 'success'],
         rejected: ['ไม่อนุมัติ', 'danger'],
         cancelled: ['ยกเลิก', 'secondary'],
