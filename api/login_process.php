@@ -5,6 +5,7 @@ if (session_status() == PHP_SESSION_NONE) {
 }
 
 require_once '../includes/db_connect.php';
+require_once '../includes/hr_scope_helpers.php';
 header('Content-Type: application/json');
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -50,6 +51,7 @@ if (isset($input['username']) && isset($input['password'])) {
                 
                 // (สำคัญ!) เก็บ Company ID ไว้ใช้กรองข้อมูล
                 $_SESSION['company_id'] = $user['company_id'];
+                hrScopeRefreshSession($mysqli);
                 
                 $response['status'] = 'success';
                 $response['message'] = 'เข้าสู่ระบบสำเร็จ!';
