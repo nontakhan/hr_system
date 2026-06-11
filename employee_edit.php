@@ -54,13 +54,13 @@ try {
 $page_title = "แก้ไขข้อมูล: " . $emp['first_name_th'];
 $shiftOverrideDays = array_filter(array_map('trim', explode(',', (string)($shiftOverride['day_of_week'] ?? ''))));
 $weekDays = [
-    'Mon' => 'Mon',
-    'Tue' => 'Tue',
-    'Wed' => 'Wed',
-    'Thu' => 'Thu',
-    'Fri' => 'Fri',
-    'Sat' => 'Sat',
-    'Sun' => 'Sun',
+    'Mon' => 'จันทร์',
+    'Tue' => 'อังคาร',
+    'Wed' => 'พุธ',
+    'Thu' => 'พฤหัสบดี',
+    'Fri' => 'ศุกร์',
+    'Sat' => 'เสาร์',
+    'Sun' => 'อาทิตย์',
 ];
 
 $use_select2 = true;
@@ -331,12 +331,12 @@ require_once 'includes/header.php';
             </div>
 
             <div class="card mb-3">
-                <div class="card-header bg-light">Weekly Shift Override</div>
+                <div class="card-header bg-light">กำหนดกะพิเศษรายสัปดาห์</div>
                 <div class="card-body">
-                    <p class="text-muted small mb-3">Use when this employee has different work time on selected weekday(s). Leave weekdays blank to remove the override.</p>
+                    <p class="text-muted small mb-3">ใช้เมื่อพนักงานมีเวลาทำงานแตกต่างจากกะปกติในวันประจำสัปดาห์ที่เลือก หากต้องการลบกะพิเศษ ให้ไม่ต้องเลือกวันใด ๆ</p>
                     <div class="row g-3">
                         <div class="col-md-12">
-                            <label class="form-label">Override weekdays</label>
+                            <label class="form-label">วันที่ต้องการใช้กะพิเศษ</label>
                             <div class="d-flex flex-wrap gap-3">
                                 <?php foreach ($weekDays as $dayValue => $dayLabel): ?>
                                     <div class="form-check">
@@ -347,24 +347,24 @@ require_once 'includes/header.php';
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Start time</label>
+                            <label class="form-label">เวลาเริ่มงาน</label>
                             <input type="time" class="form-control" name="shift_override_start_time" value="<?php echo htmlspecialchars(substr((string)($shiftOverride['start_time'] ?? ''), 0, 5)); ?>">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">End time</label>
+                            <label class="form-label">เวลาเลิกงาน</label>
                             <input type="time" class="form-control" name="shift_override_end_time" value="<?php echo htmlspecialchars(substr((string)($shiftOverride['end_time'] ?? ''), 0, 5)); ?>">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Late tolerance (mins)</label>
+                            <label class="form-label">อนุโลมสาย (นาที)</label>
                             <input type="number" min="0" class="form-control" name="shift_override_late_tolerance_mins" value="<?php echo htmlspecialchars((string)($shiftOverride['late_tolerance_mins'] ?? '0')); ?>">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Effective from</label>
-                            <input type="date" class="form-control" name="shift_override_effective_from" value="<?php echo htmlspecialchars((string)($shiftOverride['effective_from'] ?? date('Y-m-d'))); ?>">
+                            <label class="form-label">วันที่เริ่มใช้</label>
+                            <input type="date" class="form-control" name="shift_override_effective_from" value="<?php echo htmlspecialchars((string)($shiftOverride['effective_from'] ?? date('Y-m-d'))); ?>" data-native-date-picker="true">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Effective to</label>
-                            <input type="date" class="form-control" name="shift_override_effective_to" value="<?php echo htmlspecialchars((string)($shiftOverride['effective_to'] ?? '')); ?>">
+                            <label class="form-label">วันที่สิ้นสุด</label>
+                            <input type="date" class="form-control" name="shift_override_effective_to" value="<?php echo htmlspecialchars((string)($shiftOverride['effective_to'] ?? '')); ?>" data-native-date-picker="true">
                         </div>
                     </div>
                 </div>

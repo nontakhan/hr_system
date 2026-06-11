@@ -219,7 +219,7 @@ async function submitEmployeeForm(form, action, successTitle) {
 
     const overrideDays = formData.getAll('shift_override_days[]');
     if (overrideDays.length > 0 && (!formData.get('shift_override_start_time') || !formData.get('shift_override_end_time'))) {
-        Swal.fire('Error', 'Please enter start and end time for the weekly shift override.', 'error'); return;
+        Swal.fire('ผิดพลาด', 'กรุณากรอกเวลาเริ่มงานและเวลาเลิกงานสำหรับกะพิเศษรายสัปดาห์', 'error'); return;
     }
 
     Swal.fire({

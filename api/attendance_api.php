@@ -66,6 +66,29 @@ try {
             sendJson(['status' => 'success', 'employee' => $employee, 'month' => $month, 'data' => $rows]);
         }
 
+        if ($action === 'report_range') {
+            $employeeId = resolveAttendanceEmployeeId($canManage);
+            $startMonth = $_GET['start_month'] ?? date('Y-m');
+            $endMonth = $_GET['end_month'] ?? $startMonth;
+            if (!isValidAttendanceMonthRange($startMonth, $endMonth)) {
+                sendJsonError('Invalid month range');
+            }
+
+            $employee = fetchAttendanceEmployee($mysqli, $employeeId);
+            if (!$employee) sendJsonError('Employee not found');
+
+            $rows = buildAttendanceReportRange($mysqli, $employee, $startMonth, $endMonth);
+            sendJson([
+                'status' => 'success',
+                'employee' => $employee,
+                'month' => $startMonth,
+                'start_month' => $startMonth,
+                'end_month' => $endMonth,
+                'months' => buildAttendanceMonthRange($startMonth, $endMonth),
+                'data' => $rows,
+            ]);
+        }
+
         if ($action === 'import_summary') {
             if (!$canManage) sendJsonError('Access Denied');
             sendJson(['status' => 'success', 'data' => fetchAttendanceImportSummary($mysqli)]);
@@ -213,6 +236,31 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     }
 
     return $rows;
+}
+
+function buildAttendanceReportRange($mysqli, array $employee, $startMonth, $endMonth) {
+    $rows = [];
+    foreach (buildAttendanceMonthRange($startMonth, $endMonth) as $month) {
+        $rows = array_merge($rows, buildMonthlyAttendanceReport($mysqli, $employee, $month));
+    }
+    return $rows;
+}
+
+function isValidAttendanceMonthRange($startMonth, $endMonth) {
+    return preg_match('/^\d{4}-\d{2}$/', $startMonth)
+        && preg_match('/^\d{4}-\d{2}$/', $endMonth)
+        && $startMonth <= $endMonth
+        && count(buildAttendanceMonthRange($startMonth, $endMonth)) <= 12;
+}
+
+function buildAttendanceMonthRange($startMonth, $endMonth) {
+    $months = [];
+    $start = new DateTimeImmutable($startMonth . '-01');
+    $end = new DateTimeImmutable($endMonth . '-01');
+    for ($date = $start; $date <= $end; $date = $date->modify('+1 month')) {
+        $months[] = $date->format('Y-m');
+    }
+    return $months;
 }
 
 function fetchApprovedDaySwapsForMonth($mysqli, $employeeId, $month) {

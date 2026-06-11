@@ -173,27 +173,28 @@ function renderAttendanceImportSummary(items) {
 
 async function initAttendanceReport(canManage) {
     const employeeSelect = document.getElementById('attendanceEmployee');
-    const monthSelect = document.getElementById('attendanceMonth');
+    const monthStartSelect = document.getElementById('attendanceMonthStart');
+    const monthEndSelect = document.getElementById('attendanceMonthEnd');
     const loadBtn = document.getElementById('attendanceLoadBtn');
 
     if (canManage) {
         await loadAttendanceEmployees(employeeSelect);
     } else {
-        await loadAttendanceMonths(monthSelect, '');
+        await loadAttendanceMonths([monthStartSelect, monthEndSelect], '');
     }
     initializeAttendanceSelect2();
     if (canManage) {
-        bindAttendanceEmployeeChange(employeeSelect, monthSelect);
+        bindAttendanceEmployeeChange(employeeSelect, [monthStartSelect, monthEndSelect]);
     }
 
     loadBtn.addEventListener('click', () => {
         const employeeId = canManage ? employeeSelect.value : '';
-        loadAttendanceReport(employeeId, monthSelect.value);
+        loadAttendanceReport(employeeId, monthStartSelect.value, monthEndSelect.value);
     });
 }
 
-function bindAttendanceEmployeeChange(employeeSelect, monthSelect) {
-    const loadSelectedEmployeeMonths = () => loadAttendanceMonths(monthSelect, employeeSelect.value);
+function bindAttendanceEmployeeChange(employeeSelect, monthSelects) {
+    const loadSelectedEmployeeMonths = () => loadAttendanceMonths(monthSelects, employeeSelect.value);
     employeeSelect.addEventListener('change', loadSelectedEmployeeMonths);
 
     if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
@@ -226,29 +227,45 @@ async function loadAttendanceEmployees(select) {
     initializeAttendanceSelect2(select);
 }
 
-async function loadAttendanceMonths(select, employeeId) {
-    select.innerHTML = '<option value="">กำลังโหลด...</option>';
-    initializeAttendanceSelect2(select);
+async function loadAttendanceMonths(selects, employeeId) {
+    const monthSelects = Array.isArray(selects) ? selects : [selects];
+    monthSelects.forEach(select => {
+        select.innerHTML = '<option value="">กำลังโหลด...</option>';
+        initializeAttendanceSelect2(select);
+    });
     const url = new URL('api/attendance_api.php', window.location.href);
     url.searchParams.set('action', 'months');
     if (employeeId) url.searchParams.set('employee_id', employeeId);
 
     const response = await fetch(url);
     const res = await response.json();
-    select.innerHTML = '<option value="">เลือกเดือน</option>';
     if (res.status !== 'success') {
-        select.innerHTML = '<option value="">โหลดเดือนไม่สำเร็จ</option>';
-        initializeAttendanceSelect2(select);
+        monthSelects.forEach(select => {
+            select.innerHTML = '<option value="">โหลดเดือนไม่สำเร็จ</option>';
+            initializeAttendanceSelect2(select);
+        });
         return;
     }
 
-    if (!res.data.length) {
+    monthSelects.forEach((select, index) => {
+        renderAttendanceMonthOptions(select, res.data || [], index === 1);
+        initializeAttendanceSelect2(select);
+    });
+}
+
+function renderAttendanceMonthOptions(select, items, allowSingleMonthBlank) {
+    select.innerHTML = allowSingleMonthBlank
+        ? '<option value="">เดือนเดียว</option>'
+        : '<option value="">เลือกเดือน</option>';
+
+    if (!items.length) {
         select.innerHTML = '<option value="">ยังไม่มีข้อมูลเดือน</option>';
+        return;
     }
-    res.data.forEach(item => {
+
+    items.forEach(item => {
         select.innerHTML += `<option value="${item.import_month}">${formatThaiMonth(item.import_month)}</option>`;
     });
-    initializeAttendanceSelect2(select);
 }
 
 function initializeAttendanceSelect2(target) {
@@ -268,30 +285,107 @@ function initializeAttendanceSelect2(target) {
     });
 }
 
-async function loadAttendanceReport(employeeId, month) {
-    if (!month) {
-        Swal.fire('แจ้งเตือน', 'กรุณาเลือกเดือน', 'warning');
+function normalizeAttendanceRangeEnd(endMonth, startMonth) {
+    return endMonth || startMonth;
+}
+
+function isAttendanceRangeValid(startMonth, endMonth) {
+    return /^\d{4}-\d{2}$/.test(startMonth || '')
+        && /^\d{4}-\d{2}$/.test(endMonth || '')
+        && startMonth <= endMonth
+        && countAttendanceRangeMonths(startMonth, endMonth) <= 12;
+}
+
+function countAttendanceRangeMonths(startMonth, endMonth) {
+    const [startYear, startIndex] = startMonth.split('-').map(Number);
+    const [endYear, endIndex] = endMonth.split('-').map(Number);
+    return ((endYear - startYear) * 12) + (endIndex - startIndex) + 1;
+}
+
+function formatAttendanceReportRangeLabel(res) {
+    const startMonth = res.start_month || res.month;
+    const endMonth = res.end_month || res.month;
+    if (!startMonth || startMonth === endMonth) {
+        return formatThaiMonth(startMonth || '');
+    }
+    return `${formatThaiMonth(startMonth)} - ${formatThaiMonth(endMonth)}`;
+}
+
+async function loadAttendanceReport(employeeId, startMonth, endMonth) {
+    if (!startMonth) {
+        Swal.fire('แจ้งเตือน', 'กรุณาเลือกเดือนเริ่มต้น', 'warning');
+        return;
+    }
+
+    const normalizedEndMonth = normalizeAttendanceRangeEnd(endMonth, startMonth);
+    if (!isAttendanceRangeValid(startMonth, normalizedEndMonth)) {
+        Swal.fire('แจ้งเตือน', 'กรุณาเลือกช่วงเดือนไม่เกิน 12 เดือน และเดือนสิ้นสุดต้องไม่ก่อนเดือนเริ่มต้น', 'warning');
         return;
     }
 
     const url = new URL('api/attendance_api.php', window.location.href);
-    url.searchParams.set('action', 'report');
-    url.searchParams.set('month', month);
+    url.searchParams.set('action', startMonth === normalizedEndMonth ? 'report' : 'report_range');
+    if (startMonth === normalizedEndMonth) {
+        url.searchParams.set('month', startMonth);
+    } else {
+        url.searchParams.set('start_month', startMonth);
+        url.searchParams.set('end_month', normalizedEndMonth);
+    }
     if (employeeId) url.searchParams.set('employee_id', employeeId);
 
-    const response = await fetch(url);
-    const res = await response.json();
-    if (res.status !== 'success') {
-        Swal.fire('Error', res.message || 'โหลดข้อมูลไม่สำเร็จ', 'error');
-        return;
-    }
+    setAttendanceReportLoading(true);
+    try {
+        const response = await fetch(url);
+        const res = await response.json();
+        if (res.status !== 'success') {
+            Swal.fire('Error', res.message || 'โหลดข้อมูลไม่สำเร็จ', 'error');
+            return;
+        }
 
-    renderAttendanceReport(res);
+        renderAttendanceReport(res);
+    } catch (err) {
+        Swal.fire('Error', err.message || 'โหลดข้อมูลไม่สำเร็จ', 'error');
+    } finally {
+        setAttendanceReportLoading(false);
+    }
+}
+
+function setAttendanceReportLoading(isLoading) {
+    const summary = document.getElementById('attendanceSummary');
+    const emptyEl = document.getElementById('attendanceCalendarEmpty');
+    const loadBtn = document.getElementById('attendanceLoadBtn');
+
+    if (loadBtn) {
+        loadBtn.disabled = isLoading;
+        loadBtn.innerHTML = isLoading
+            ? '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> กำลังโหลด'
+            : '<i class="fas fa-search me-1"></i> แสดงข้อมูล';
+    }
+    if (!isLoading) return;
+
+    if (attendanceCalendar && typeof attendanceCalendar.destroy === 'function') {
+        attendanceCalendar.destroy();
+        attendanceCalendar = null;
+    }
+    if (summary) summary.innerHTML = buildAttendanceReportLoadingHtml();
+    if (emptyEl) {
+        emptyEl.classList.remove('d-none');
+        emptyEl.innerHTML = buildAttendanceReportLoadingHtml();
+    }
+}
+
+function buildAttendanceReportLoadingHtml() {
+    return `
+        <div class="attendance-report-loading text-muted">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            กำลังโหลดข้อมูลการมาทำงาน...
+        </div>`;
 }
 
 function renderAttendanceReport(res) {
     const summary = document.getElementById('attendanceSummary');
     const counts = countAttendanceReportStatuses(res.data || []);
+    const rangeLabel = formatAttendanceReportRangeLabel(res);
 
     const holidayTotal = (counts.regular_holiday || 0) + (counts.company_holiday || 0);
     const workdayTotal = res.data.length - holidayTotal;
@@ -300,7 +394,7 @@ function renderAttendanceReport(res) {
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div>
                 <div class="fw-bold fs-5">${res.employee.first_name_th} ${res.employee.last_name_th}</div>
-                <div class="text-muted small">${formatThaiMonth(res.month)} | วันทำงาน ${workdayTotal} วัน</div>
+                <div class="text-muted small">${rangeLabel} | วันทำงาน ${workdayTotal} วัน</div>
             </div>
             <span class="badge bg-light text-dark border">รวม ${res.data.length} วัน</span>
         </div>
@@ -397,22 +491,35 @@ function renderAttendanceCalendar(res) {
 
     attendanceCalendarDayClassMap = buildAttendanceCalendarDayClassMap(res.data || []);
     const events = (res.data || []).map(buildAttendanceCalendarEvent);
+    const startMonth = res.start_month || res.month;
+    const endMonth = res.end_month || res.month;
+    const monthCount = countAttendanceRangeMonths(startMonth, endMonth);
     if (attendanceCalendar) {
         attendanceCalendar.destroy();
     }
 
-    attendanceCalendar = new FullCalendar.Calendar(calendarEl, buildAttendanceCalendarOptions(`${res.month}-01`, events));
+    attendanceCalendar = new FullCalendar.Calendar(calendarEl, buildAttendanceCalendarOptions(`${startMonth}-01`, events, monthCount));
     attendanceCalendar.render();
 }
 
-function buildAttendanceCalendarOptions(initialDate, events) {
+function buildAttendanceCalendarOptions(initialDate, events, monthCount = 1) {
+    const safeMonthCount = Math.max(1, Math.min(12, Number(monthCount) || 1));
+    const useMultiMonth = safeMonthCount > 1;
     return {
-        initialView: 'dayGridMonth',
+        initialView: useMultiMonth ? 'multiMonth' : 'dayGridMonth',
         initialDate,
+        duration: useMultiMonth ? { months: safeMonthCount } : undefined,
         locale: 'th',
         firstDay: 1,
         height: 'auto',
         fixedWeekCount: false,
+        multiMonthMaxColumns: Math.min(3, safeMonthCount),
+        visibleRange: useMultiMonth ? () => {
+            const start = new Date(`${initialDate}T00:00:00`);
+            const end = new Date(start);
+            end.setMonth(end.getMonth() + safeMonthCount);
+            return { start, end };
+        } : undefined,
         headerToolbar: {
             left: '',
             center: 'title',

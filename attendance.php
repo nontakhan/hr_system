@@ -24,17 +24,23 @@ require_once 'includes/header.php';
     <div class="card-body">
         <div class="row g-3 align-items-end">
             <?php if ($can_manage_attendance) : ?>
-            <div class="col-md-5">
+            <div class="col-md-3">
                 <label class="form-label">พนักงาน</label>
                 <select id="attendanceEmployee" class="form-select attendance-select2" data-placeholder="เลือกพนักงาน">
                     <option value="">เลือกพนักงาน</option>
                 </select>
             </div>
             <?php endif; ?>
-            <div class="col-md-4">
-                <label class="form-label">เดือน</label>
-                <select id="attendanceMonth" class="form-select attendance-select2" data-placeholder="เลือกเดือน">
+            <div class="col-md-3">
+                <label class="form-label">เดือนเริ่มต้น</label>
+                <select id="attendanceMonthStart" class="form-select attendance-select2" data-placeholder="เลือกเดือนเริ่มต้น">
                     <option value="">เลือกเดือน</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">ถึงเดือน <span class="text-muted small">(สูงสุด 12 เดือน)</span></label>
+                <select id="attendanceMonthEnd" class="form-select attendance-select2" data-placeholder="เลือกเดือนสิ้นสุด">
+                    <option value="">เดือนเดียว</option>
                 </select>
             </div>
             <div class="col-md-3">

@@ -141,6 +141,27 @@ assertSame(1, counts.present, 'Existing status counts should still work.');
 const calendarOptions = buildAttendanceCalendarOptions();
 assertSame(1, calendarOptions.firstDay, 'Attendance calendar should start weeks on Monday.');
 
+assertSame('2026-01', normalizeAttendanceRangeEnd('', '2026-01'), 'Blank range end should default to the start month.');
+assertSame('2026-03', normalizeAttendanceRangeEnd('2026-03', '2026-01'), 'Range end should keep the selected end month.');
+assertSame(3, countAttendanceRangeMonths('2026-01', '2026-03'), 'Range helper should count inclusive months.');
+assertSame(true, isAttendanceRangeValid('2026-01', '2026-03'), 'Forward month ranges should be valid.');
+assertSame(false, isAttendanceRangeValid('2026-03', '2026-01'), 'End month before start month should be invalid.');
+assertSame(false, isAttendanceRangeValid('2026-01', '2027-02'), 'Ranges longer than 12 months should be invalid.');
+
+const rangeLabel = formatAttendanceReportRangeLabel({ month: '2026-01', start_month: '2026-01', end_month: '2026-03' });
+assertIncludes(rangeLabel, formatThaiMonth('2026-01'), 'Range label should include the first month.');
+assertIncludes(rangeLabel, formatThaiMonth('2026-03'), 'Range label should include the last month.');
+
+const multiMonthOptions = buildAttendanceCalendarOptions('2026-01-01', [], 3);
+assertSame('multiMonth', multiMonthOptions.initialView, 'Multi-month ranges should use a duration-based FullCalendar view.');
+assertSame(3, multiMonthOptions.duration.months, 'Multi-month calendar should only render the requested number of months.');
+assertSame(3, multiMonthOptions.multiMonthMaxColumns, 'Multi-month calendar should keep a compact column count.');
+assertSame(3, multiMonthOptions.visibleRange().end.getMonth(), 'Visible range should end after the requested final month.');
+
+const loadingHtml = buildAttendanceReportLoadingHtml();
+assertIncludes(loadingHtml, 'spinner-border', 'Attendance loading state should show a spinner.');
+assertIncludes(loadingHtml, 'กำลังโหลด', 'Attendance loading state should explain that data is loading.');
+
 attendanceCalendarDayClassMap = buildAttendanceCalendarDayClassMap([
     { work_date: '2026-01-05', status: 'absent' },
     { work_date: '2026-01-06', status: 'present' },
