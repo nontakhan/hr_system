@@ -152,6 +152,36 @@ function attendanceBuildApprovedLeaveMap(array $leaveRows, $month) {
     return $leaves;
 }
 
+function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
+    $start = new DateTimeImmutable($month . '-01');
+    $end = $start->modify('last day of this month');
+    $requests = [];
+
+    foreach ($leaveRows as $row) {
+        if (($row['request_unit'] ?? 'day') !== 'hour') {
+            continue;
+        }
+
+        $requestDate = new DateTimeImmutable($row['start_date']);
+        if ($requestDate < $start || $requestDate > $end) {
+            continue;
+        }
+
+        $workDate = $requestDate->format('Y-m-d');
+        $type = $row['time_request_type'] ?? '';
+        $label = $type === 'early_departure'
+            ? 'ขอออกก่อนไม่เกิน 1 ชม.'
+            : 'ขอมาสายไม่เกิน 1 ชม.';
+
+        if (!isset($requests[$workDate])) {
+            $requests[$workDate] = [];
+        }
+        $requests[$workDate][] = $label;
+    }
+
+    return $requests;
+}
+
 function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, array $holidays = [], array $leaves = []) {
     if (isset($holidays[$workDate])) {
         return [

@@ -23,6 +23,7 @@ try {
 
     // --- GET: ดึงประวัติการลา ---
     if ($method === 'GET') {
+        leaveEnsureRequestPartColumns($mysqli);
         $sql = "SELECT lr.*, lt.type_name 
                 FROM leave_requests lr
                 JOIN leave_types lt ON lr.leave_type_id = lt.id

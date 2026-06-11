@@ -16,6 +16,7 @@ try {
     if (session_status() == PHP_SESSION_NONE) session_start();
     require_once '../includes/db_connect.php';
     require_once '../includes/attendance_helpers.php';
+    require_once '../includes/leave_helpers.php';
 
     if (!isset($_SESSION['user_id'])) sendJsonError('Login Required');
 
@@ -183,6 +184,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     $shiftOverrides = fetchEmployeeShiftOverridesForMonth($mysqli, (int)$employee['id'], $month);
     $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
     $leaves = fetchApprovedLeavesForMonth($mysqli, (int)$employee['id'], $month);
+    $hourlyRequests = fetchApprovedHourlyRequestsForMonth($mysqli, (int)$employee['id'], $month);
 
     $rows = [];
     for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
@@ -200,6 +202,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
             'is_late' => $status['is_late'],
             'holiday_name' => $status['holiday_name'],
             'leave_name' => $status['leave_name'],
+            'hourly_requests' => $hourlyRequests[$workDate] ?? [],
         ];
     }
 
@@ -227,11 +230,13 @@ function fetchEmployeeShiftOverridesForMonth($mysqli, $employeeId, $month) {
 function fetchApprovedLeavesForMonth($mysqli, $employeeId, $month) {
     $start = $month . '-01';
     $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+    leaveEnsureRequestPartColumns($mysqli);
     $stmt = $mysqli->prepare("SELECT lr.start_date, lr.end_date, lt.type_name
                               FROM leave_requests lr
                               JOIN leave_types lt ON lr.leave_type_id = lt.id
                               WHERE lr.employee_id = ?
                                 AND lr.status = 'approved'
+                                AND lr.request_unit = 'day'
                                 AND lr.start_date <= ?
                                 AND lr.end_date >= ?
                               ORDER BY lr.start_date");
@@ -239,6 +244,23 @@ function fetchApprovedLeavesForMonth($mysqli, $employeeId, $month) {
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     return attendanceBuildApprovedLeaveMap($rows, $month);
+}
+
+function fetchApprovedHourlyRequestsForMonth($mysqli, $employeeId, $month) {
+    leaveEnsureRequestPartColumns($mysqli);
+    $start = $month . '-01';
+    $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+    $stmt = $mysqli->prepare("SELECT lr.start_date, lr.request_unit, lr.time_request_type, lr.request_minutes
+                              FROM leave_requests lr
+                              WHERE lr.employee_id = ?
+                                AND lr.status = 'approved'
+                                AND lr.request_unit = 'hour'
+                                AND lr.start_date BETWEEN ? AND ?
+                              ORDER BY lr.start_date, lr.id");
+    $stmt->bind_param('iss', $employeeId, $start, $end);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    return attendanceBuildApprovedHourlyRequestMap($rows, $month);
 }
 
 function fetchAttendanceImportSummary($mysqli) {

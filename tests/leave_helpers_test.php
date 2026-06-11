@@ -81,4 +81,22 @@ assertLeaveSame('near', $nearByRequests, 'Leave warning status should turn near 
 $overByRequests = leaveBuildUsageWarningStatus(6, 5);
 assertLeaveSame('over', $overByRequests, 'Leave warning status should turn over when request count exceeds the fiscal year limit.');
 
+$lateHourlyType = leaveDetectHourlyRequestType('ขอมาสาย');
+assertLeaveSame('late_arrival', $lateHourlyType, 'Late arrival leave type names should be detected as hourly requests.');
+
+$shortLateHourlyType = leaveDetectHourlyRequestType('ขอสาย');
+assertLeaveSame('late_arrival', $shortLateHourlyType, 'Short late request names should be detected as hourly requests.');
+
+$earlyHourlyType = leaveDetectHourlyRequestType('ขอออกก่อน');
+assertLeaveSame('early_departure', $earlyHourlyType, 'Early departure leave type names should be detected as hourly requests.');
+
+$normalHourlyType = leaveDetectHourlyRequestType('ลาป่วย');
+assertLeaveSame(null, $normalHourlyType, 'Normal leave type names should not be detected as hourly requests.');
+
+$hourlyPayload = leaveBuildHourlyRequestPayload('late_arrival');
+assertLeaveSame('hour', $hourlyPayload['request_unit'], 'Hourly leave payload should use hour request unit.');
+assertLeaveSame(60, $hourlyPayload['request_minutes'], 'Hourly leave payload should always reserve one fixed hour.');
+assertLeaveSame(0.0, $hourlyPayload['total_days'], 'Hourly leave payload should not add leave days.');
+assertLeaveSame('ขอมาสายไม่เกิน 1 ชม.', leaveFormatRequestDuration($hourlyPayload), 'Hourly request duration should show the fixed one-hour allowance.');
+
 echo "leave_helpers_test passed" . PHP_EOL;

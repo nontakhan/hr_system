@@ -37,6 +37,7 @@ async function loadMyLeaves() {
                 const startDate = formatThaiDate(item.start_date);
                 const endDate = formatThaiDate(item.end_date);
                 const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
+                const durationText = formatLeaveDuration(item);
                 const itemId = Number.parseInt(item.id, 10) || 0;
                 const typeName = escapeHtml(item.type_name);
                 const reason = escapeHtml(item.reason);
@@ -64,7 +65,7 @@ async function loadMyLeaves() {
                         <td>${createdDate}</td>
                         <td><span class="fw-bold text-primary">${typeName}</span></td>
                         <td>${dateRange || `${startDate} - ${endDate}`}</td>
-                        <td>${parseFloat(item.total_days)} วัน</td>
+                        <td>${durationText}</td>
                         <td><small class="text-muted">${reason}</small></td>
                         <td>${statusBadge}</td>
                         <td>${actionBtn}</td>
@@ -138,7 +139,7 @@ function renderLeaveUsageEntries(entries) {
             ${entries.map(entry => `
                 <div class="leave-usage-entry">
                     <span>${formatLeaveDateRange(entry.start_date, entry.end_date, 'full', 'full')} ${entry.type_name ? `- ${escapeHtml(entry.type_name)}` : ''}</span>
-                    <span>${formatLeaveDayNumber(entry.days)} วัน (${entry.status === 'pending' ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
+                    <span>${escapeHtml(entry.duration_label || `${formatLeaveDayNumber(entry.days)} วัน`)} (${entry.status === 'pending' ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
                 </div>
             `).join('')}
         </div>
@@ -148,6 +149,15 @@ function renderLeaveUsageEntries(entries) {
 function formatLeaveDayNumber(value) {
     const number = Number.parseFloat(value) || 0;
     return Number.isInteger(number) ? String(number) : number.toFixed(1);
+}
+
+function formatLeaveDuration(item) {
+    if (item.request_unit === 'hour') {
+        return item.time_request_type === 'early_departure'
+            ? 'ขอออกก่อนไม่เกิน 1 ชม.'
+            : 'ขอมาสายไม่เกิน 1 ชม.';
+    }
+    return `${parseFloat(item.total_days)} วัน`;
 }
 
 function handleCancelLeave(id) {

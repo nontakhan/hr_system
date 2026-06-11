@@ -26,6 +26,7 @@ try {
         $action = $_GET['action'] ?? '';
         
         if ($action === 'get_types') {
+            leaveEnsureHourlyRequestTypes($mysqli);
             $sql = "SELECT * FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
             echo json_encode(['status' => 'success', 'data' => $result->fetch_all(MYSQLI_ASSOC)]);

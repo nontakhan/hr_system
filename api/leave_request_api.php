@@ -25,6 +25,7 @@ try {
         $action = $_GET['action'] ?? '';
 
         if ($action === 'get_leave_types') {
+            leaveEnsureHourlyRequestTypes($mysqli);
             $sql = "SELECT id, type_name, days_per_year, requires_file FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
             echo json_encode(['status' => 'success', 'data' => $result->fetch_all(MYSQLI_ASSOC)]);
@@ -84,6 +85,24 @@ function submitLeaveRequest($mysqli, $data, $files) {
         if ($type_id <= 0 || $start === '' || $end === '' || $reason === '') {
             throw new Exception('กรุณากรอกข้อมูลให้ครบถ้วน');
         }
+        $stmt_type = $mysqli->prepare("SELECT type_name, requires_file FROM leave_types WHERE id = ?");
+        $stmt_type->bind_param('i', $type_id);
+        $stmt_type->execute();
+        $type_info = $stmt_type->get_result()->fetch_assoc();
+        $stmt_type->close();
+        if (!$type_info) {
+            throw new Exception('Leave type not found');
+        }
+
+        $timeRequestType = leaveDetectHourlyRequestType($type_info['type_name'] ?? '');
+        $hourlyPayload = null;
+        if ($timeRequestType !== null) {
+            $hourlyPayload = leaveBuildHourlyRequestPayload($timeRequestType);
+            $end = $start;
+            $start_part = 'full';
+            $end_part = 'full';
+        }
+
         if ($end < $start) {
             throw new Exception('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
         }
@@ -100,17 +119,12 @@ function submitLeaveRequest($mysqli, $data, $files) {
             throw new Exception($summary['message']);
         }
 
-        $total_days = (float)$summary['total_days'];
-        if ($total_days <= 0) {
+        $total_days = $hourlyPayload ? (float)$hourlyPayload['total_days'] : (float)$summary['total_days'];
+        if (!$hourlyPayload && $total_days <= 0) {
             throw new Exception('ช่วงวันที่เลือกไม่มีวันทำงานที่สามารถลาได้');
         }
-
-        $stmt_type = $mysqli->prepare("SELECT requires_file FROM leave_types WHERE id = ?");
-        $stmt_type->bind_param('i', $type_id);
-        $stmt_type->execute();
-        $type_info = $stmt_type->get_result()->fetch_assoc();
-        if (!$type_info) {
-            throw new Exception('ไม่พบประเภทการลา');
+        if ($hourlyPayload && (float)$summary['total_days'] <= 0) {
+            throw new Exception('Selected date is not a work day');
         }
 
         if ((int)$type_info['requires_file'] === 1) {
@@ -120,10 +134,13 @@ function submitLeaveRequest($mysqli, $data, $files) {
         }
 
         leaveEnsureRequestPartColumns($mysqli);
-        $sql = "INSERT INTO leave_requests (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, total_days, reason, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')";
+        $requestUnit = $hourlyPayload['request_unit'] ?? 'day';
+        $timeRequestTypeValue = $hourlyPayload['time_request_type'] ?? null;
+        $requestMinutes = (int)($hourlyPayload['request_minutes'] ?? 0);
+        $sql = "INSERT INTO leave_requests (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, total_days, reason, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')";
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('iissssds', $emp_id, $type_id, $start, $end, $start_part, $end_part, $total_days, $reason);
+        $stmt->bind_param('iissssssids', $emp_id, $type_id, $start, $end, $start_part, $end_part, $requestUnit, $timeRequestTypeValue, $requestMinutes, $total_days, $reason);
 
         if (!$stmt->execute()) {
             throw new Exception('บันทึกข้อมูลไม่สำเร็จ: ' . $stmt->error);

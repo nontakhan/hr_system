@@ -477,9 +477,15 @@ function attendanceCalendarPresentationStatus(row) {
 
 function attendanceCalendarEventTitle(row) {
     const status = attendanceCalendarPresentationStatus(row);
-    if (status === 'company_holiday') return 'วันหยุดบริษัท';
-    if (status === 'holiday') return 'วันหยุดปกติ';
-    return row.status_label || '-';
+    let title = row.status_label || '-';
+    if (status === 'company_holiday') title = 'วันหยุดบริษัท';
+    if (status === 'holiday') title = 'วันหยุดปกติ';
+
+    const hourly = attendanceHourlyRequestLabels(row);
+    if (hourly.length) {
+        title += ` + ${hourly.map(label => label.replace('ไม่เกิน 1 ชม.', '').trim()).join(', ')}`;
+    }
+    return title;
 }
 
 function attendanceCalendarStatusColor(status) {
@@ -498,6 +504,13 @@ function attendanceCalendarStatusColor(status) {
 
 function buildAttendanceCalendarDetails(row) {
     const note = row.holiday_name || row.leave_name || '-';
+    const hourly = attendanceHourlyRequestLabels(row);
+    const hourlyHtml = hourly.length
+        ? `<div class="attendance-hourly-requests mt-3">
+                <div class="fw-semibold mb-1">คำขอเวลา</div>
+                <ul class="mb-0 ps-3">${hourly.map(label => `<li>${escapeHtml(label)}</li>`).join('')}</ul>
+           </div>`
+        : '';
     return `
         <div class="attendance-calendar-popup text-start">
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
@@ -509,7 +522,14 @@ function buildAttendanceCalendarDetails(row) {
                 <div><dt>เวลาออก</dt><dd>${formatAttendanceTime(row.check_out)}</dd></div>
                 <div><dt>รายละเอียด</dt><dd>${escapeHtml(note)}</dd></div>
             </dl>
+            ${hourlyHtml}
         </div>`;
+}
+
+function attendanceHourlyRequestLabels(row) {
+    return Array.isArray(row.hourly_requests)
+        ? row.hourly_requests.map(item => String(item || '').trim()).filter(Boolean)
+        : [];
 }
 
 function formatAttendanceDay(value) {

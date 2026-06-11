@@ -11,6 +11,7 @@ function sendJsonError($message) {
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
     require_once '../includes/db_connect.php';
+    require_once '../includes/leave_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -26,6 +27,7 @@ try {
 
     // --- GET: ดึงรายการรออนุมัติ / ประวัติ ---
     if ($method === 'GET') {
+        leaveEnsureRequestPartColumns($mysqli);
         $type = $_GET['type'] ?? 'pending';
         
         // (แก้ไข) ใช้ citizen_id เป็น employee_code

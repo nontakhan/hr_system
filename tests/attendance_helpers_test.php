@@ -144,6 +144,29 @@ assertSameValue('Annual leave', $leaveMap['2026-01-05'], 'Approved leave map sho
 assertSameValue('Annual leave', $leaveMap['2026-01-06'], 'Approved leave map should include the last day of a leave range.');
 assertSameValue(false, isset($leaveMap['2026-02-01']), 'Approved leave map should not include dates outside the report month.');
 
+$hourlyRequestMap = attendanceBuildApprovedHourlyRequestMap([
+    [
+        'start_date' => '2026-01-07',
+        'request_unit' => 'hour',
+        'time_request_type' => 'late_arrival',
+        'request_minutes' => 60,
+    ],
+    [
+        'start_date' => '2026-01-07',
+        'request_unit' => 'hour',
+        'time_request_type' => 'early_departure',
+        'request_minutes' => 60,
+    ],
+    [
+        'start_date' => '2026-01-08',
+        'request_unit' => 'day',
+        'time_request_type' => null,
+        'request_minutes' => 0,
+    ],
+], '2026-01');
+assertSameValue(['ขอมาสายไม่เกิน 1 ชม.', 'ขอออกก่อนไม่เกิน 1 ชม.'], $hourlyRequestMap['2026-01-07'], 'Approved hourly requests should be grouped by work date.');
+assertSameValue(false, isset($hourlyRequestMap['2026-01-08']), 'Day-based leave rows should not be included as hourly requests.');
+
 $approvedLeave = attendanceEvaluateStatus(
     '2026-01-05',
     null,

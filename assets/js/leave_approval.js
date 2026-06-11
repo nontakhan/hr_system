@@ -48,6 +48,7 @@ async function loadPendingLeaves() {
                 const typeName = escapeHtml(item.type_name);
                 const reason = escapeHtml(item.reason);
                 const totalDays = Number.parseFloat(item.total_days) || 0;
+                const durationText = formatLeaveDuration(item);
                 item.file_path = escapeAttr(safeUploadPath(item.file_path));
                 item.profile_img_url = escapeAttr(safeUploadPath(item.profile_img_url, 'assets/img/user.png'));
                 item.id = itemId;
@@ -80,7 +81,7 @@ async function loadPendingLeaves() {
                         </td>
                         <td><span class="badge bg-primary bg-opacity-10 text-primary">${item.type_name}</span></td>
                         <td>${dateRange || `${sDate} - ${eDate}`}</td>
-                        <td><strong>${parseFloat(item.total_days)}</strong> วัน</td>
+                        <td><strong>${durationText}</strong></td>
                         <td>
                             <small class="d-block text-muted text-truncate" style="max-width: 200px;">${item.reason}</small>
                             ${fileLink}
@@ -118,6 +119,8 @@ async function loadHistoryLeaves() {
             tbody.innerHTML = res.data.map(item => {
                 const appDate = item.approval_date ? formatThaiDate(item.approval_date) : '-';
                 const sDate = formatThaiDate(item.start_date);
+                const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
+                const durationText = formatLeaveDuration(item);
                 item.first_name_th = escapeHtml(item.first_name_th);
                 item.last_name_th = escapeHtml(item.last_name_th);
                 item.type_name = escapeHtml(item.type_name);
@@ -133,7 +136,7 @@ async function loadHistoryLeaves() {
                         <td>${appDate}</td>
                         <td>${item.first_name_th} ${item.last_name_th}</td>
                         <td>${item.type_name}</td>
-                        <td>${dateRange || sDate} (${parseFloat(item.total_days)} วัน)</td>
+                        <td>${dateRange || sDate} (${durationText})</td>
                         <td>${statusBadge}</td>
                         <td><small class="text-muted">${item.rejection_reason || '-'}</small></td>
                     </tr>
@@ -185,6 +188,15 @@ window.openActionModalFromButton = function(button) {
         button.dataset.action,
         button.dataset.name || ''
     );
+}
+
+function formatLeaveDuration(item) {
+    if (item.request_unit === 'hour') {
+        return item.time_request_type === 'early_departure'
+            ? 'ขอออกก่อนไม่เกิน 1 ชม.'
+            : 'ขอมาสายไม่เกิน 1 ชม.';
+    }
+    return `${parseFloat(item.total_days)} วัน`;
 }
 
 // Submit การอนุมัติ/ไม่อนุมัติ

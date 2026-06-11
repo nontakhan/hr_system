@@ -33,6 +33,85 @@ function leaveNormalizeDayPart($part) {
     return in_array($part, ['full', 'morning', 'afternoon'], true) ? $part : 'full';
 }
 
+function leaveDetectHourlyRequestType($typeName) {
+    $name = mb_strtolower((string)$typeName, 'UTF-8');
+    if (strpos($name, 'มาสาย') !== false || strpos($name, 'ขอสาย') !== false || strpos($name, 'late') !== false) {
+        return 'late_arrival';
+    }
+    if (strpos($name, 'ออกก่อน') !== false || strpos($name, 'early') !== false) {
+        return 'early_departure';
+    }
+    return null;
+}
+
+function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
+    $defaults = [
+        [
+            'type_name' => 'ขอมาสาย',
+            'description' => 'ขออนุญาตมาสายได้ไม่เกิน 1 ชม. และนับเป็น 1 ครั้งในปีงบประมาณ',
+        ],
+        [
+            'type_name' => 'ขอออกก่อน',
+            'description' => 'ขออนุญาตออกก่อนเวลาได้ไม่เกิน 1 ชม. และนับเป็น 1 ครั้งในปีงบประมาณ',
+        ],
+    ];
+
+    foreach ($defaults as $default) {
+        $stmt = $mysqli->prepare("SELECT id FROM leave_types WHERE type_name = ? LIMIT 1");
+        if (!$stmt) {
+            throw new RuntimeException('Cannot prepare hourly leave type lookup');
+        }
+        $stmt->bind_param('s', $default['type_name']);
+        $stmt->execute();
+        $exists = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($exists) {
+            continue;
+        }
+
+        $daysPerYear = 0;
+        $requiresFile = 0;
+        $insert = $mysqli->prepare("INSERT INTO leave_types (type_name, days_per_year, description, requires_file) VALUES (?, ?, ?, ?)");
+        if (!$insert) {
+            throw new RuntimeException('Cannot prepare hourly leave type insert');
+        }
+        $insert->bind_param('sisi', $default['type_name'], $daysPerYear, $default['description'], $requiresFile);
+        if (!$insert->execute()) {
+            throw new RuntimeException($insert->error ?: 'Cannot create hourly leave type');
+        }
+        $insert->close();
+    }
+}
+
+function leaveBuildHourlyRequestPayload($timeRequestType) {
+    $timeRequestType = in_array($timeRequestType, ['late_arrival', 'early_departure'], true)
+        ? $timeRequestType
+        : null;
+    if ($timeRequestType === null) {
+        throw new InvalidArgumentException('Invalid hourly request type');
+    }
+
+    return [
+        'request_unit' => 'hour',
+        'time_request_type' => $timeRequestType,
+        'request_minutes' => 60,
+        'total_days' => 0.0,
+    ];
+}
+
+function leaveFormatRequestDuration(array $row) {
+    $unit = $row['request_unit'] ?? 'day';
+    if ($unit !== 'hour') {
+        $days = (float)($row['days'] ?? $row['total_days'] ?? 0);
+        return (floor($days) == $days ? (string)(int)$days : number_format($days, 1)) . ' วัน';
+    }
+
+    $type = $row['time_request_type'] ?? '';
+    $label = $type === 'early_departure' ? 'ขอออกก่อนไม่เกิน 1 ชม.' : 'ขอมาสายไม่เกิน 1 ชม.';
+    return $label;
+}
+
 function leaveEnsureSettingsTable(mysqli $mysqli) {
     $mysqli->query("CREATE TABLE IF NOT EXISTS system_settings (
         setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
@@ -404,6 +483,9 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
                    lr.end_date,
                    lr.start_day_part,
                    lr.end_day_part,
+                   lr.request_unit,
+                   lr.time_request_type,
+                   lr.request_minutes,
                    lr.total_days,
                    lt.type_name
             FROM leave_requests lr
@@ -419,7 +501,8 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
-            $countedDays = (float)$row['total_days'];
+            $isHourlyRequest = ($row['request_unit'] ?? 'day') === 'hour';
+            $countedDays = $isHourlyRequest ? 0.0 : (float)$row['total_days'];
             if ($row['start_date'] < $fiscal['start_date'] || $row['end_date'] > $fiscal['end_date']) {
                 $clippedStart = max($row['start_date'], $fiscal['start_date']);
                 $clippedEnd = min($row['end_date'], $fiscal['end_date']);
@@ -448,6 +531,15 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
                 'end_date' => min($row['end_date'], $fiscal['end_date']),
                 'days' => $countedDays,
                 'type_name' => $row['type_name'],
+                'request_unit' => $row['request_unit'] ?? 'day',
+                'time_request_type' => $row['time_request_type'] ?? null,
+                'request_minutes' => (int)($row['request_minutes'] ?? 0),
+                'duration_label' => leaveFormatRequestDuration([
+                    'request_unit' => $row['request_unit'] ?? 'day',
+                    'time_request_type' => $row['time_request_type'] ?? null,
+                    'request_minutes' => (int)($row['request_minutes'] ?? 0),
+                    'days' => $countedDays,
+                ]),
             ];
         }
         $stmt->close();
@@ -590,5 +682,17 @@ function leaveEnsureRequestPartColumns(mysqli $mysqli) {
 
     if (!isset($columns['end_day_part'])) {
         $mysqli->query("ALTER TABLE leave_requests ADD COLUMN end_day_part ENUM('full','morning','afternoon') NOT NULL DEFAULT 'full' AFTER start_day_part");
+    }
+
+    if (!isset($columns['request_unit'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN request_unit ENUM('day','hour') NOT NULL DEFAULT 'day' AFTER end_day_part");
+    }
+
+    if (!isset($columns['time_request_type'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN time_request_type ENUM('late_arrival','early_departure') NULL AFTER request_unit");
+    }
+
+    if (!isset($columns['request_minutes'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN request_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER time_request_type");
     }
 }
