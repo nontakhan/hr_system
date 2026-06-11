@@ -11,6 +11,7 @@ function sendJsonError($message) {
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
     require_once '../includes/db_connect.php';
+    require_once '../includes/leave_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -33,7 +34,11 @@ try {
         $stmt->execute();
         $result = $stmt->get_result();
         
-        echo json_encode(['status' => 'success', 'data' => $result->fetch_all(MYSQLI_ASSOC)]);
+        echo json_encode([
+            'status' => 'success',
+            'data' => $result->fetch_all(MYSQLI_ASSOC),
+            'usage_summary' => leaveFetchUsageSummary($mysqli, (int)$emp_id),
+        ]);
     }
 
     // --- POST: ยกเลิกใบลา ---

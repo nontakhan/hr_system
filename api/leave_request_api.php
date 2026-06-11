@@ -28,6 +28,11 @@ try {
             $sql = "SELECT id, type_name, days_per_year, requires_file FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
             echo json_encode(['status' => 'success', 'data' => $result->fetch_all(MYSQLI_ASSOC)]);
+        } elseif ($action === 'get_leave_usage') {
+            echo json_encode([
+                'status' => 'success',
+                'data' => leaveFetchUsageSummary($mysqli, (int)$_SESSION['employee_id']),
+            ]);
         } elseif ($action === 'calculate_leave') {
             $emp_id = (int)$_SESSION['employee_id'];
             $start = trim((string)($_GET['start_date'] ?? ''));

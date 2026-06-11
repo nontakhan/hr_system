@@ -19,6 +19,21 @@ require_once 'includes/header.php';
     </a>
 </div>
 
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h2 class="h5 mb-1">สรุปการใช้สิทธิ์ลาในปีงบประมาณ</h2>
+                <p class="text-muted small mb-0" id="leaveUsageFiscalYearText">กำลังโหลดข้อมูล...</p>
+            </div>
+            <span class="badge bg-light text-dark border">นับจากรายการที่อนุมัติแล้ว</span>
+        </div>
+        <div id="leaveUsageSummaryGrid" class="leave-usage-summary-grid">
+            <div class="text-muted small">กำลังโหลดข้อมูล...</div>
+        </div>
+    </div>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div class="table-responsive">

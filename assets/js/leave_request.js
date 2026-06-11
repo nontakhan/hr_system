@@ -5,16 +5,37 @@
 document.addEventListener('DOMContentLoaded', () => {
     const leaveRequestForm = document.getElementById('leaveRequestForm');
 
-    if (leaveRequestForm) {
+if (leaveRequestForm) {
         loadLeaveOptions();
+        loadLeaveUsageSummary();
         setupDateCalculation();
         leaveRequestForm.addEventListener('submit', handleSubmitLeave);
     }
 });
 
 let leaveTypesData = [];
+let leaveUsageSummary = null;
 let latestLeaveSummary = null;
 let leaveCalculationTimer = null;
+
+async function loadLeaveUsageSummary() {
+    try {
+        const response = await fetch('api/leave_request_api.php?action=get_leave_usage');
+        const res = await response.json();
+        if (res.status !== 'success') {
+            throw new Error(res.message || 'โหลดสรุปสิทธิ์ลาไม่สำเร็จ');
+        }
+
+        leaveUsageSummary = res.data;
+        renderLeaveUsageSummary(leaveUsageSummary);
+        updateLeaveTypeCondition();
+    } catch (error) {
+        const grid = document.getElementById('leaveUsageSummaryGrid');
+        if (grid) {
+            grid.innerHTML = `<div class="text-danger small">${escapeHtml(error.message)}</div>`;
+        }
+    }
+}
 
 async function loadLeaveOptions() {
     const select = document.getElementById('leaveTypeSelect');
@@ -54,6 +75,78 @@ function renderLeaveTypeCards(types) {
     });
 }
 
+function getLeaveUsageItem(typeId) {
+    if (!leaveUsageSummary) return null;
+    return leaveUsageSummary.overall || null;
+}
+
+function renderLeaveUsageSummary(summary) {
+    const grid = document.getElementById('leaveUsageSummaryGrid');
+    const fiscalText = document.getElementById('leaveUsageFiscalYearText');
+    if (!grid) return;
+
+    if (fiscalText && summary && summary.fiscal_year) {
+        fiscalText.textContent = `ช่วงปีงบประมาณ ${formatThaiDate(summary.fiscal_year.start_date)} ถึง ${formatThaiDate(summary.fiscal_year.end_date)}`;
+    }
+
+    if (!summary || !summary.overall) {
+        grid.innerHTML = '<div class="text-muted small">ยังไม่มีข้อมูลสรุปการลา</div>';
+        return;
+    }
+
+    grid.innerHTML = renderOverallLeaveUsageCard(summary.overall);
+}
+
+function renderOverallLeaveUsageCard(item) {
+    const statusClass = `leave-usage-card-${item.status || 'normal'}`;
+    const percent = Number.parseFloat(item.request_usage_percent || 0);
+    const progressWidth = Math.min(Math.max(percent, 0), 100);
+    const requestLimitText = Number.parseInt(item.request_limit || 0, 10) > 0
+        ? `${item.request_limit} ครั้ง`
+        : 'ไม่จำกัด';
+    const remainingRequests = item.remaining_requests === null
+        ? 'ไม่จำกัด'
+        : `${item.remaining_requests} ครั้ง`;
+    const pendingText = Number.parseFloat(item.pending_days || 0) > 0
+        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
+        : '';
+
+    return `
+        <div class="leave-usage-card ${statusClass}">
+            <div class="d-flex justify-content-between gap-2">
+                <strong>รวมการลาทั้งปีงบประมาณ</strong>
+                <span>${item.approved_requests || 0} / ${requestLimitText}</span>
+            </div>
+            <div class="leave-usage-progress" aria-hidden="true">
+                <span style="width: ${progressWidth}%"></span>
+            </div>
+            <div class="small mt-2">
+                ใช้แล้ว ${item.approved_requests || 0} ครั้ง, คงเหลือ ${remainingRequests}
+            </div>
+            <div class="small mt-1">จำนวนวันรวมที่อนุมัติแล้ว: ${formatLeaveDayNumber(item.approved_days)} วัน</div>
+            ${pendingText}
+            ${renderLeaveUsageEntries(item.entries || [])}
+        </div>
+    `;
+}
+
+function renderLeaveUsageEntries(entries) {
+    if (!entries.length) {
+        return '<div class="leave-usage-entry-list text-muted">ยังไม่มีรายการลาในปีงบประมาณนี้</div>';
+    }
+
+    return `
+        <div class="leave-usage-entry-list">
+            ${entries.map(entry => `
+                <div class="leave-usage-entry">
+                    <span>${formatLeaveDateRange(entry.start_date, entry.end_date, 'full', 'full')} ${entry.type_name ? `- ${escapeHtml(entry.type_name)}` : ''}</span>
+                    <span>${formatLeaveDayNumber(entry.days)} วัน (${entry.status === 'pending' ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 function selectLeaveType(selectedId) {
     const input = document.getElementById('leaveTypeSelect');
     const grid = document.getElementById('leaveTypeIconGrid');
@@ -66,6 +159,7 @@ function selectLeaveType(selectedId) {
         card.setAttribute('aria-checked', isSelected ? 'true' : 'false');
     });
     updateLeaveTypeCondition();
+    updateSelectedLeaveUsageProjection();
 }
 
 function updateLeaveTypeCondition() {
@@ -76,9 +170,19 @@ function updateLeaveTypeCondition() {
     const attachmentInput = document.getElementById('attachmentInput');
     const type = leaveTypesData.find(t => t.id == selectedId);
 
+    conditionDiv.classList.remove('text-danger', 'text-warning');
+
     if (type) {
         conditionDiv.classList.remove('d-none');
         conditionText.textContent = `สิทธิ์ลาสูงสุด: ${type.days_per_year} วัน/ปี`;
+
+        const usage = getLeaveUsageItem(selectedId);
+        if (usage) {
+            conditionText.textContent += ` | ปีงบนี้ลาแล้ว ${usage.approved_requests || 0} ครั้ง`;
+            if (Number.parseInt(usage.request_limit || 0, 10) > 0) {
+                conditionText.textContent += ` จากสิทธิ์ ${usage.request_limit} ครั้ง/ปีงบ`;
+            }
+        }
 
         if (type.requires_file == 1) {
             attachmentSection.classList.remove('d-none');
@@ -93,6 +197,30 @@ function updateLeaveTypeCondition() {
         attachmentSection.classList.add('d-none');
         attachmentInput.required = false;
         attachmentInput.value = '';
+    }
+}
+
+function updateSelectedLeaveUsageProjection() {
+    const selectedId = document.getElementById('leaveTypeSelect')?.value;
+    if (!selectedId || !latestLeaveSummary) return;
+
+    const usage = getLeaveUsageItem(selectedId);
+    const conditionDiv = document.getElementById('leaveTypeCondition');
+    const conditionText = document.getElementById('conditionText');
+    if (!usage || !conditionDiv || !conditionText) return;
+
+    conditionDiv.classList.remove('text-danger', 'text-warning');
+    const projectedRequests = Number.parseInt(usage.approved_requests || 0, 10) + 1;
+    const requestLimit = Number.parseInt(usage.request_limit || 0, 10);
+    const projectedRequestPercent = requestLimit > 0 ? (projectedRequests / requestLimit) * 100 : 0;
+    const projectedPercent = projectedRequestPercent;
+
+    if (projectedPercent > 100) {
+        conditionDiv.classList.add('text-danger');
+        conditionText.textContent += ` | หลังส่งใบนี้จะเกินสิทธิ์เป็น ${projectedRequests} ครั้ง`;
+    } else if (projectedPercent >= 80) {
+        conditionDiv.classList.add('text-warning');
+        conditionText.textContent += ` | หลังส่งใบนี้จะใกล้ครบ ${projectedRequests} ครั้ง`;
     }
 }
 
@@ -237,6 +365,8 @@ async function calculateLeaveDays() {
         totalDisplay.textContent = `${formatLeaveDayNumber(totalDays)} วัน`;
         totalInput.value = totalDays;
         renderLeaveBreakdown(res.data);
+        updateLeaveTypeCondition();
+        updateSelectedLeaveUsageProjection();
     } catch (error) {
         latestLeaveSummary = null;
         totalInput.value = 0;

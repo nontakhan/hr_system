@@ -67,4 +67,18 @@ $invalid = leaveBuildDateSummary(
 );
 assertLeaveSame(false, $invalid['valid'], 'A single date cannot end before it starts when using half-day parts.');
 
+$octoberFiscal = leaveBuildFiscalYearRange(10, '2026-06-10');
+assertLeaveSame('2025-10-01', $octoberFiscal['start_date'], 'October fiscal year should start in the previous calendar year before October.');
+assertLeaveSame('2026-09-30', $octoberFiscal['end_date'], 'October fiscal year should end on September 30.');
+
+$aprilFiscal = leaveBuildFiscalYearRange(4, '2026-06-10');
+assertLeaveSame('2026-04-01', $aprilFiscal['start_date'], 'Custom April fiscal year should start in the same calendar year after April.');
+assertLeaveSame('2027-03-31', $aprilFiscal['end_date'], 'Custom April fiscal year should end on March 31.');
+
+$nearByRequests = leaveBuildUsageWarningStatus(4, 5);
+assertLeaveSame('near', $nearByRequests, 'Leave warning status should turn near when request count reaches 80 percent.');
+
+$overByRequests = leaveBuildUsageWarningStatus(6, 5);
+assertLeaveSame('over', $overByRequests, 'Leave warning status should turn over when request count exceeds the fiscal year limit.');
+
 echo "leave_helpers_test passed" . PHP_EOL;

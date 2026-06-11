@@ -8,11 +8,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const leaveTypesTable = document.getElementById('leaveTypesTable');
     if (leaveTypesTable) {
         loadLeaveTypes();
+        loadLeaveSettings();
 
         // จัดการ Modal (Create/Edit)
         const modal = document.getElementById('leaveTypeModal');
         const form = document.getElementById('leaveTypeForm');
         const modalTitle = document.getElementById('modalTitle');
+        const settingsForm = document.getElementById('leaveSettingsForm');
+        const settingsResetBtn = document.getElementById('leavePolicyResetBtn');
+        const policyTable = document.getElementById('leavePolicyTable');
+
+        if (settingsForm) {
+            settingsForm.addEventListener('submit', handleSaveLeaveSettings);
+        }
+        if (settingsResetBtn) {
+            settingsResetBtn.addEventListener('click', resetLeavePolicyForm);
+        }
+        if (policyTable) {
+            policyTable.addEventListener('click', handleLeavePolicyTableClick);
+        }
 
         // เมื่อเปิด Modal
         modal.addEventListener('show.bs.modal', (e) => {
@@ -73,6 +87,245 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function getThaiMonthName(month) {
+    return [
+        '',
+        'มกราคม',
+        'กุมภาพันธ์',
+        'มีนาคม',
+        'เมษายน',
+        'พฤษภาคม',
+        'มิถุนายน',
+        'กรกฎาคม',
+        'สิงหาคม',
+        'กันยายน',
+        'ตุลาคม',
+        'พฤศจิกายน',
+        'ธันวาคม',
+    ][Number.parseInt(month, 10)] || '-';
+}
+
+async function loadLeaveSettings() {
+    const select = document.getElementById('fiscalYearStartMonth');
+    const policyNameInput = document.getElementById('leavePolicyName');
+    const requestLimitInput = document.getElementById('leaveMaxRequestsPerYear');
+    const activeInput = document.getElementById('leavePolicyActive');
+    const preview = document.getElementById('leaveFiscalYearPreview');
+    if (!select || !preview) return;
+
+    try {
+        const response = await fetch('api/leave_api.php?action=get_settings');
+        const res = await response.json();
+        if (res.status !== 'success') {
+            throw new Error(res.message || 'โหลดการตั้งค่าไม่สำเร็จ');
+        }
+
+        const activePolicy = res.data.active_policy || {};
+        select.value = String(activePolicy.fiscal_year_start_month || res.data.fiscal_year_start_month || 10);
+        if (policyNameInput && !policyNameInput.value) {
+            policyNameInput.value = '';
+        }
+        if (requestLimitInput) {
+            requestLimitInput.value = String(activePolicy.leave_max_requests_per_year || res.data.leave_max_requests_per_year || 0);
+        }
+        if (activeInput) {
+            activeInput.checked = false;
+        }
+        renderLeaveFiscalYearPreview(activePolicy.current_fiscal_year || res.data.current_fiscal_year, activePolicy);
+        renderLeavePolicyRows(res.data.policies || []);
+    } catch (err) {
+        preview.textContent = err.message;
+        preview.classList.add('text-danger');
+    }
+}
+
+function renderLeaveFiscalYearPreview(fiscalYear, activePolicy = null) {
+    const preview = document.getElementById('leaveFiscalYearPreview');
+    if (!preview || !fiscalYear) return;
+
+    preview.classList.remove('text-danger');
+    const policyLabel = activePolicy && activePolicy.policy_name
+        ? `<div><span class="badge bg-success">ใช้งานอยู่</span> ${escapeHtml(activePolicy.policy_name)}</div>`
+        : '';
+    preview.innerHTML = `${policyLabel}<div>ปีงบประมาณปัจจุบัน: <strong>${formatThaiDate(fiscalYear.start_date)}</strong> ถึง <strong>${formatThaiDate(fiscalYear.end_date)}</strong></div>`;
+}
+
+function renderLeavePolicyRows(policies) {
+    const tbody = document.getElementById('leavePolicyTableBody');
+    if (!tbody) return;
+
+    if (!policies.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">ยังไม่มีชุดนโยบาย</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = policies.map(policy => {
+        const fiscal = policy.current_fiscal_year || {};
+        const limitText = Number.parseInt(policy.leave_max_requests_per_year, 10) > 0
+            ? `${policy.leave_max_requests_per_year} ครั้ง`
+            : 'ไม่จำกัด';
+        const isActive = Number.parseInt(policy.is_active, 10) === 1;
+        const data = escapeAttr(JSON.stringify(policy));
+        return `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(policy.policy_name || '-')}</strong>
+                    <div class="small text-muted">เริ่มเดือน${getThaiMonthName(policy.fiscal_year_start_month)}</div>
+                </td>
+                <td>${fiscal.start_date ? `${formatThaiDate(fiscal.start_date)} - ${formatThaiDate(fiscal.end_date)}` : '-'}</td>
+                <td>${limitText}</td>
+                <td>${isActive ? '<span class="badge bg-success">ใช้งานอยู่</span>' : '<span class="badge bg-secondary">สำรอง</span>'}</td>
+                <td class="text-nowrap">
+                    <button type="button" class="btn btn-sm btn-outline-primary btn-policy-edit" data-info="${data}">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-policy-activate" data-id="${policy.id}" ${isActive ? 'disabled' : ''}>
+                        ใช้งาน
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-policy-delete" data-id="${policy.id}" ${isActive ? 'disabled' : ''}>
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function resetLeavePolicyForm() {
+    const idInput = document.getElementById('leavePolicyId');
+    const nameInput = document.getElementById('leavePolicyName');
+    const select = document.getElementById('fiscalYearStartMonth');
+    const requestLimitInput = document.getElementById('leaveMaxRequestsPerYear');
+    const activeInput = document.getElementById('leavePolicyActive');
+
+    if (idInput) idInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (select) select.value = '10';
+    if (requestLimitInput) requestLimitInput.value = '0';
+    if (activeInput) activeInput.checked = false;
+}
+
+function fillLeavePolicyForm(policy) {
+    const idInput = document.getElementById('leavePolicyId');
+    const nameInput = document.getElementById('leavePolicyName');
+    const select = document.getElementById('fiscalYearStartMonth');
+    const requestLimitInput = document.getElementById('leaveMaxRequestsPerYear');
+    const activeInput = document.getElementById('leavePolicyActive');
+
+    if (idInput) idInput.value = policy.id || '';
+    if (nameInput) nameInput.value = policy.policy_name || '';
+    if (select) select.value = String(policy.fiscal_year_start_month || 10);
+    if (requestLimitInput) requestLimitInput.value = String(policy.leave_max_requests_per_year || 0);
+    if (activeInput) activeInput.checked = Number.parseInt(policy.is_active, 10) === 1;
+}
+
+async function handleLeavePolicyTableClick(e) {
+    const editBtn = e.target.closest('.btn-policy-edit');
+    const activateBtn = e.target.closest('.btn-policy-activate');
+    const deleteBtn = e.target.closest('.btn-policy-delete');
+
+    if (editBtn) {
+        fillLeavePolicyForm(JSON.parse(editBtn.getAttribute('data-info')));
+        document.getElementById('leavePolicyName')?.focus();
+        return;
+    }
+
+    if (activateBtn) {
+        try {
+            await updateLeavePolicyState({ action: 'activate_settings', id: Number.parseInt(activateBtn.dataset.id, 10) }, 'เลือกนโยบายนี้เป็นชุดที่ใช้งานแล้ว');
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+        return;
+    }
+
+    if (deleteBtn) {
+        const confirm = await Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: 'ชุดนโยบายที่ไม่ได้ใช้งานจะถูกลบออกจากรายการ',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'ลบ',
+        });
+        if (confirm.isConfirmed) {
+            await deleteLeavePolicy(Number.parseInt(deleteBtn.dataset.id, 10));
+        }
+    }
+}
+
+async function updateLeavePolicyState(payload, successMessage) {
+    const response = await fetch('api/leave_api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    const res = await response.json();
+    if (res.status !== 'success') {
+        throw new Error(res.message || 'อัปเดตนโยบายไม่สำเร็จ');
+    }
+    renderLeaveFiscalYearPreview(res.data.current_fiscal_year, res.data.active_policy);
+    renderLeavePolicyRows(res.data.policies || []);
+    resetLeavePolicyForm();
+    Swal.fire('สำเร็จ', successMessage || res.message, 'success');
+}
+
+async function deleteLeavePolicy(id) {
+    try {
+        const response = await fetch('api/leave_api.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_settings', id }),
+        });
+        const res = await response.json();
+        if (res.status !== 'success') {
+            throw new Error(res.message || 'ลบนโยบายไม่สำเร็จ');
+        }
+        renderLeavePolicyRows(res.data.policies || []);
+        renderLeaveFiscalYearPreview(res.data.active_policy.current_fiscal_year, res.data.active_policy);
+        resetLeavePolicyForm();
+        Swal.fire('สำเร็จ', res.message, 'success');
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    }
+}
+
+async function handleSaveLeaveSettings(e) {
+    e.preventDefault();
+    const idInput = document.getElementById('leavePolicyId');
+    const nameInput = document.getElementById('leavePolicyName');
+    const select = document.getElementById('fiscalYearStartMonth');
+    const requestLimitInput = document.getElementById('leaveMaxRequestsPerYear');
+    const activeInput = document.getElementById('leavePolicyActive');
+    if (!select || !nameInput) return;
+
+    try {
+        const response = await fetch('api/leave_api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_settings',
+                id: Number.parseInt(idInput?.value || '0', 10),
+                policy_name: nameInput.value.trim(),
+                fiscal_year_start_month: Number.parseInt(select.value, 10),
+                leave_max_requests_per_year: Number.parseInt(requestLimitInput?.value || '0', 10),
+                is_active: activeInput?.checked ? 1 : 0,
+            }),
+        });
+        const res = await response.json();
+        if (res.status !== 'success') {
+            throw new Error(res.message || 'บันทึกการตั้งค่าไม่สำเร็จ');
+        }
+
+        renderLeaveFiscalYearPreview(res.data.current_fiscal_year, res.data.active_policy);
+        renderLeavePolicyRows(res.data.policies || []);
+        resetLeavePolicyForm();
+        Swal.fire('สำเร็จ', `บันทึกชุดนโยบายการลาแล้ว`, 'success');
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    }
+}
 
 async function loadLeaveTypes() {
     const tbody = document.getElementById('leaveTypesTableBody');

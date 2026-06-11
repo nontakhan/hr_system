@@ -25,6 +25,7 @@ async function loadMyLeaves() {
         const res = await response.json();
 
         if (res.status === 'success') {
+            renderLeaveUsageSummary(res.usage_summary);
             tbody.innerHTML = '';
             if (res.data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">ไม่พบประวัติการลา</td></tr>`;
@@ -75,6 +76,78 @@ async function loadMyLeaves() {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
     }
+}
+
+function renderLeaveUsageSummary(summary) {
+    const grid = document.getElementById('leaveUsageSummaryGrid');
+    const fiscalText = document.getElementById('leaveUsageFiscalYearText');
+    if (!grid) return;
+
+    if (fiscalText && summary && summary.fiscal_year) {
+        fiscalText.textContent = `ช่วงปีงบประมาณ ${formatThaiDate(summary.fiscal_year.start_date)} ถึง ${formatThaiDate(summary.fiscal_year.end_date)}`;
+    }
+
+    if (!summary || !summary.overall) {
+        grid.innerHTML = '<div class="text-muted small">ยังไม่มีข้อมูลสรุปการลา</div>';
+        return;
+    }
+
+    grid.innerHTML = renderOverallLeaveUsageCard(summary.overall);
+}
+
+function renderOverallLeaveUsageCard(item) {
+    const statusClass = `leave-usage-card-${item.status || 'normal'}`;
+    const percent = Number.parseFloat(item.request_usage_percent || 0);
+    const progressWidth = Math.min(Math.max(percent, 0), 100);
+    const requestLimitText = Number.parseInt(item.request_limit || 0, 10) > 0
+        ? `${item.request_limit} ครั้ง`
+        : 'ไม่จำกัด';
+    const remainingRequests = item.remaining_requests === null
+        ? 'ไม่จำกัด'
+        : `${item.remaining_requests} ครั้ง`;
+    const pendingText = Number.parseFloat(item.pending_days || 0) > 0
+        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
+        : '';
+
+    return `
+        <div class="leave-usage-card ${statusClass}">
+            <div class="d-flex justify-content-between gap-2">
+                <strong>รวมการลาทั้งปีงบประมาณ</strong>
+                <span>${item.approved_requests || 0} / ${requestLimitText}</span>
+            </div>
+            <div class="leave-usage-progress" aria-hidden="true">
+                <span style="width: ${progressWidth}%"></span>
+            </div>
+            <div class="small mt-2">
+                ใช้แล้ว ${item.approved_requests || 0} ครั้ง, คงเหลือ ${remainingRequests}
+            </div>
+            <div class="small mt-1">จำนวนวันรวมที่อนุมัติแล้ว: ${formatLeaveDayNumber(item.approved_days)} วัน</div>
+            ${pendingText}
+            ${renderLeaveUsageEntries(item.entries || [])}
+        </div>
+    `;
+}
+
+function renderLeaveUsageEntries(entries) {
+    if (!entries.length) {
+        return '<div class="leave-usage-entry-list text-muted">ยังไม่มีรายการลาในปีงบประมาณนี้</div>';
+    }
+
+    return `
+        <div class="leave-usage-entry-list">
+            ${entries.map(entry => `
+                <div class="leave-usage-entry">
+                    <span>${formatLeaveDateRange(entry.start_date, entry.end_date, 'full', 'full')} ${entry.type_name ? `- ${escapeHtml(entry.type_name)}` : ''}</span>
+                    <span>${formatLeaveDayNumber(entry.days)} วัน (${entry.status === 'pending' ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function formatLeaveDayNumber(value) {
+    const number = Number.parseFloat(value) || 0;
+    return Number.isInteger(number) ? String(number) : number.toFixed(1);
 }
 
 function handleCancelLeave(id) {
