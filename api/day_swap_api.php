@@ -17,6 +17,7 @@ try {
     require_once '../includes/db_connect.php';
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/day_swap_helpers.php';
+    require_once '../includes/hr_scope_helpers.php';
 
     if (!isset($_SESSION['user_id'])) {
         sendDaySwapError('Login Required');
@@ -33,19 +34,26 @@ try {
     if ($method === 'GET') {
         if ($action === 'employees') {
             $sql = "SELECT id, citizen_id, first_name_th, last_name_th
-                    FROM employees
+                    FROM employees e
                     WHERE status IN ('active', 'probation')
                       AND id <> ?";
-            if ($myRole === 'employee' || $myRole === 'manager' || $myRole === 'hr') {
+            $types = 'i';
+            $params = [$myEmployeeId];
+
+            if ($myRole === 'hr') {
+                $scopeClause = hrScopeBuildEmployeeWhereClause($myRole, hrScopeCurrentSessionScopes(), 'e');
+                $sql .= $scopeClause['sql'];
+                $types .= $scopeClause['types'];
+                $params = array_merge($params, $scopeClause['params']);
+            } elseif ($myRole !== 'admin') {
                 $sql .= " AND company_id = ?";
+                $types .= 'i';
+                $params[] = $myCompanyId;
             }
+
             $sql .= " ORDER BY first_name_th, last_name_th";
             $stmt = $mysqli->prepare($sql);
-            if ($myRole === 'admin') {
-                $stmt->bind_param('i', $myEmployeeId);
-            } else {
-                $stmt->bind_param('ii', $myEmployeeId, $myCompanyId);
-            }
+            hrScopeBindParams($stmt, $types, $params);
             $stmt->execute();
             sendDaySwapJson(['status' => 'success', 'data' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)]);
         }
@@ -82,10 +90,12 @@ try {
             if (!in_array($myRole, ['manager', 'hr', 'admin'], true)) {
                 sendDaySwapError('Access Denied');
             }
-            $sql = daySwapApprovalQuery($action, $myRole);
+            $scopes = hrScopeCurrentSessionScopes();
+            $sql = daySwapApprovalQuery($action, $myRole, $scopes);
             $stmt = $mysqli->prepare($sql);
             if ($myRole === 'hr') {
-                $stmt->bind_param('i', $myCompanyId);
+                $scopeClause = hrScopeBuildEmployeeWhereClause($myRole, $scopes, 're');
+                hrScopeBindParams($stmt, $scopeClause['types'], $scopeClause['params']);
             } elseif ($myRole !== 'admin') {
                 $stmt->bind_param('i', $myEmployeeId);
             }
@@ -121,7 +131,7 @@ try {
 
             $stmt = $mysqli->prepare("INSERT INTO day_swap_requests
                 (requester_employee_id, target_employee_id, requester_date, target_date, reason, status)
-                VALUES (?, ?, ?, ?, ?, 'pending')");
+                VALUES (?, ?, ?, ?, ?, 'pending_manager')");
             $stmt->bind_param('iisss', $myEmployeeId, $targetId, $requesterDate, $targetDate, $reason);
             if ($stmt->execute()) {
                 sendDaySwapJson(['status' => 'success', 'message' => 'ส่งคำขอสลับวันหยุดเรียบร้อยแล้ว']);
@@ -135,20 +145,59 @@ try {
             $reason = trim((string)($input['reason'] ?? ''));
             if ($requestId <= 0) sendDaySwapError('Invalid request ID');
 
-            if (!daySwapCanApproveRequest($mysqli, $requestId, $myRole, $myEmployeeId, $myCompanyId)) {
+            $request = daySwapFetchApprovableRequest($mysqli, $requestId, $myRole, $myEmployeeId, hrScopeCurrentSessionScopes());
+            if (!$request) {
                 sendDaySwapError('Access Denied');
             }
 
-            $newStatus = $postAction === 'approve' ? 'approved' : 'rejected';
+            $currentStatus = $request['status'] === 'pending' ? 'pending_manager' : $request['status'];
             $now = date('Y-m-d H:i:s');
-            $stmt = $mysqli->prepare("UPDATE day_swap_requests
-                                      SET status = ?, approver_id = ?, approval_date = ?, rejection_reason = ?
-                                      WHERE id = ? AND status = 'pending'");
-            $stmt->bind_param('sissi', $newStatus, $myEmployeeId, $now, $reason, $requestId);
-            if ($stmt->execute() && $stmt->affected_rows === 1) {
+            $stmt = null;
+
+            if ($currentStatus === 'pending_manager') {
+                if (!($myRole === 'admin' || (int)$request['supervisor_id'] === $myEmployeeId)) {
+                    sendDaySwapError('Access Denied');
+                }
+
+                if ($postAction === 'approve') {
+                    $stmt = $mysqli->prepare("UPDATE day_swap_requests
+                                              SET status = 'pending_hr',
+                                                  manager_approver_id = ?,
+                                                  manager_approval_date = ?
+                                              WHERE id = ? AND status IN ('pending','pending_manager')");
+                    $stmt->bind_param('isi', $myEmployeeId, $now, $requestId);
+                } else {
+                    $stmt = $mysqli->prepare("UPDATE day_swap_requests
+                                              SET status = 'rejected',
+                                                  manager_approver_id = ?,
+                                                  manager_approval_date = ?,
+                                                  approver_id = ?,
+                                                  approval_date = ?,
+                                                  rejection_reason = ?
+                                              WHERE id = ? AND status IN ('pending','pending_manager')");
+                    $stmt->bind_param('isissi', $myEmployeeId, $now, $myEmployeeId, $now, $reason, $requestId);
+                }
+            } elseif ($currentStatus === 'pending_hr') {
+                if (!in_array($myRole, ['admin', 'hr'], true)) sendDaySwapError('Access Denied');
+                $newStatus = $postAction === 'approve' ? 'approved' : 'rejected';
+                $rejectReason = $postAction === 'approve' ? null : $reason;
+                $stmt = $mysqli->prepare("UPDATE day_swap_requests
+                                          SET status = ?,
+                                              hr_approver_id = ?,
+                                              hr_approval_date = ?,
+                                              approver_id = ?,
+                                              approval_date = ?,
+                                              rejection_reason = ?
+                                          WHERE id = ? AND status = 'pending_hr'");
+                $stmt->bind_param('sisissi', $newStatus, $myEmployeeId, $now, $myEmployeeId, $now, $rejectReason, $requestId);
+            } else {
+                sendDaySwapError('Request was already processed');
+            }
+
+            if ($stmt && $stmt->execute() && $stmt->affected_rows === 1) {
                 sendDaySwapJson(['status' => 'success', 'message' => 'บันทึกผลการพิจารณาเรียบร้อย']);
             }
-            throw new Exception($stmt->error ?: 'Request was already processed');
+            throw new Exception($stmt ? ($stmt->error ?: 'Request was already processed') : 'Invalid approval stage');
         }
 
         sendDaySwapError('Invalid Action');
@@ -162,8 +211,23 @@ try {
 
 function daySwapCanViewEmployee($mysqli, $employeeId, $role, $companyId) {
     if ($role === 'admin') return true;
-    $stmt = $mysqli->prepare("SELECT id FROM employees WHERE id = ? AND company_id = ? AND status IN ('active', 'probation')");
-    $stmt->bind_param('ii', $employeeId, $companyId);
+    $sql = "SELECT id FROM employees e WHERE id = ? AND status IN ('active', 'probation')";
+    $types = 'i';
+    $params = [(int)$employeeId];
+
+    if ($role === 'hr') {
+        $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
+    } else {
+        $sql .= " AND company_id = ?";
+        $types .= 'i';
+        $params[] = (int)$companyId;
+    }
+
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
     $stmt->execute();
     return $stmt->get_result()->num_rows === 1;
 }
@@ -186,7 +250,7 @@ function daySwapHasPendingOrApprovedConflict($mysqli, $employeeId, $targetId, $r
     ];
     $stmt = $mysqli->prepare("SELECT id
                               FROM day_swap_requests
-                              WHERE status IN ('pending','approved')
+                              WHERE status IN ('pending','pending_manager','pending_hr','approved')
                                 AND (
                                     (requester_employee_id = ? AND (requester_date = ? OR target_date = ?))
                                     OR (target_employee_id = ? AND (requester_date = ? OR target_date = ?))
@@ -205,7 +269,7 @@ function daySwapHasPendingOrApprovedConflict($mysqli, $employeeId, $targetId, $r
     return false;
 }
 
-function daySwapApprovalQuery($type, $role) {
+function daySwapApprovalQuery($type, $role, array $scopes) {
     $sql = "SELECT dsr.*,
                    CONCAT_WS(' ', re.first_name_th, re.last_name_th) AS requester_name,
                    re.citizen_id AS requester_code,
@@ -217,14 +281,22 @@ function daySwapApprovalQuery($type, $role) {
             JOIN employees te ON dsr.target_employee_id = te.id
             LEFT JOIN employees ae ON dsr.approver_id = ae.id
             WHERE 1=1";
+
     if ($role === 'hr') {
-        $sql .= " AND re.company_id = ?";
+        $scopeClause = hrScopeBuildEmployeeWhereClause($role, $scopes, 're');
+        $sql .= $scopeClause['sql'];
     } elseif ($role !== 'admin') {
         $sql .= " AND re.supervisor_id = ?";
     }
 
     if ($type === 'pending') {
-        $sql .= " AND dsr.status = 'pending'";
+        if ($role === 'hr') {
+            $sql .= " AND dsr.status = 'pending_hr'";
+        } elseif ($role === 'admin') {
+            $sql .= " AND dsr.status IN ('pending','pending_manager','pending_hr')";
+        } else {
+            $sql .= " AND dsr.status IN ('pending','pending_manager')";
+        }
     } else {
         $sql .= " AND dsr.status IN ('approved','rejected')";
     }
@@ -233,23 +305,27 @@ function daySwapApprovalQuery($type, $role) {
     return $sql;
 }
 
-function daySwapCanApproveRequest($mysqli, $requestId, $role, $myEmployeeId, $companyId) {
-    $sql = "SELECT dsr.id
+function daySwapFetchApprovableRequest($mysqli, $requestId, $role, $myEmployeeId, array $scopes) {
+    $sql = "SELECT dsr.id, dsr.status, re.supervisor_id
             FROM day_swap_requests dsr
             JOIN employees re ON dsr.requester_employee_id = re.id
-            WHERE dsr.id = ? AND dsr.status = 'pending'";
+            WHERE dsr.id = ?";
+    $types = 'i';
+    $params = [(int)$requestId];
+
     if ($role === 'hr') {
-        $sql .= " AND re.company_id = ?";
+        $scopeClause = hrScopeBuildEmployeeWhereClause($role, $scopes, 're');
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
     } elseif ($role !== 'admin') {
         $sql .= " AND re.supervisor_id = ?";
+        $types .= 'i';
+        $params[] = (int)$myEmployeeId;
     }
+
     $stmt = $mysqli->prepare($sql);
-    if ($role === 'admin') {
-        $stmt->bind_param('i', $requestId);
-    } else {
-        $scopeValue = $role === 'hr' ? $companyId : $myEmployeeId;
-        $stmt->bind_param('ii', $requestId, $scopeValue);
-    }
+    hrScopeBindParams($stmt, $types, $params);
     $stmt->execute();
-    return $stmt->get_result()->num_rows === 1;
+    return $stmt->get_result()->fetch_assoc();
 }

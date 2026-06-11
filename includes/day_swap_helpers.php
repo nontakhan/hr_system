@@ -8,7 +8,7 @@ function daySwapEnsureTable($mysqli) {
         requester_date DATE NOT NULL,
         target_date DATE NOT NULL,
         reason TEXT NOT NULL,
-        status ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending',
+        status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager',
         approver_id INT NULL,
         approval_date DATETIME NULL,
         rejection_reason TEXT NULL,
@@ -21,6 +21,29 @@ function daySwapEnsureTable($mysqli) {
         CONSTRAINT fk_day_swap_target FOREIGN KEY (target_employee_id) REFERENCES employees(id) ON DELETE CASCADE,
         CONSTRAINT fk_day_swap_approver FOREIGN KEY (approver_id) REFERENCES employees(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $columns = [];
+    $result = $mysqli->query("SHOW COLUMNS FROM day_swap_requests");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $columns[$row['Field']] = $row;
+        }
+    }
+    if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_manager') === false) {
+        $mysqli->query("ALTER TABLE day_swap_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
+    }
+    if (!isset($columns['manager_approver_id'])) {
+        $mysqli->query("ALTER TABLE day_swap_requests ADD COLUMN manager_approver_id INT NULL AFTER approver_id");
+    }
+    if (!isset($columns['manager_approval_date'])) {
+        $mysqli->query("ALTER TABLE day_swap_requests ADD COLUMN manager_approval_date DATETIME NULL AFTER manager_approver_id");
+    }
+    if (!isset($columns['hr_approver_id'])) {
+        $mysqli->query("ALTER TABLE day_swap_requests ADD COLUMN hr_approver_id INT NULL AFTER manager_approval_date");
+    }
+    if (!isset($columns['hr_approval_date'])) {
+        $mysqli->query("ALTER TABLE day_swap_requests ADD COLUMN hr_approval_date DATETIME NULL AFTER hr_approver_id");
+    }
 }
 
 function daySwapFetchEmployee($mysqli, $employeeId) {
