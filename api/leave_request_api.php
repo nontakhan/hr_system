@@ -134,11 +134,12 @@ function submitLeaveRequest($mysqli, $data, $files) {
         }
 
         leaveEnsureRequestPartColumns($mysqli);
+        leaveEnsureTwoStepApprovalColumns($mysqli);
         $requestUnit = $hourlyPayload['request_unit'] ?? 'day';
         $timeRequestTypeValue = $hourlyPayload['time_request_type'] ?? null;
         $requestMinutes = (int)($hourlyPayload['request_minutes'] ?? 0);
         $sql = "INSERT INTO leave_requests (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, total_days, reason, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_manager')";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param('iissssssids', $emp_id, $type_id, $start, $end, $start_part, $end_part, $requestUnit, $timeRequestTypeValue, $requestMinutes, $total_days, $reason);
 

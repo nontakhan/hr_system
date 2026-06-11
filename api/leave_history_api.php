@@ -23,7 +23,7 @@ try {
 
     // --- GET: ดึงประวัติการลา ---
     if ($method === 'GET') {
-        leaveEnsureRequestPartColumns($mysqli);
+        leaveEnsureTwoStepApprovalColumns($mysqli);
         $sql = "SELECT lr.*, lt.type_name 
                 FROM leave_requests lr
                 JOIN leave_types lt ON lr.leave_type_id = lt.id
@@ -51,7 +51,7 @@ try {
             $id = (int)$input['id'];
 
             // ตรวจสอบว่าเป็นใบลาของตัวเอง และสถานะยังเป็น pending
-            $check = $mysqli->prepare("SELECT id FROM leave_requests WHERE id = ? AND employee_id = ? AND status = 'pending'");
+            $check = $mysqli->prepare("SELECT id FROM leave_requests WHERE id = ? AND employee_id = ? AND status IN ('pending','pending_manager')");
             $check->bind_param('ii', $id, $emp_id);
             $check->execute();
             if ($check->get_result()->num_rows === 0) {

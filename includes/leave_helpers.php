@@ -696,3 +696,35 @@ function leaveEnsureRequestPartColumns(mysqli $mysqli) {
         $mysqli->query("ALTER TABLE leave_requests ADD COLUMN request_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER time_request_type");
     }
 }
+
+function leaveEnsureTwoStepApprovalColumns(mysqli $mysqli) {
+    leaveEnsureRequestPartColumns($mysqli);
+
+    $columns = [];
+    $result = $mysqli->query("SHOW COLUMNS FROM leave_requests");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $columns[$row['Field']] = $row;
+        }
+    }
+
+    if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_manager') === false) {
+        $mysqli->query("ALTER TABLE leave_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
+    }
+
+    if (!isset($columns['manager_approver_id'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN manager_approver_id INT NULL AFTER approver_id");
+    }
+
+    if (!isset($columns['manager_approval_date'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN manager_approval_date DATETIME NULL AFTER manager_approver_id");
+    }
+
+    if (!isset($columns['hr_approver_id'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN hr_approver_id INT NULL AFTER manager_approval_date");
+    }
+
+    if (!isset($columns['hr_approval_date'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN hr_approval_date DATETIME NULL AFTER hr_approver_id");
+    }
+}
