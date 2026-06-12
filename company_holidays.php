@@ -68,7 +68,7 @@ require_once 'includes/header.php';
                     <input type="hidden" id="holidayId">
                     <div class="mb-3">
                         <label class="form-label">วันที่ <span class="text-danger">*</span></label>
-                        <input type="date" id="holidayDate" class="form-control" required>
+                        <input type="date" id="holidayDate" class="form-control" data-native-date-picker="true" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">ชื่อวันหยุด <span class="text-danger">*</span></label>
