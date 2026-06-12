@@ -72,6 +72,16 @@ $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['
                 <?php endif; ?>
             </div>
 
+            <!-- Late / Early Time Request System -->
+            <a href="#timeRequestSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
+                <i class="fas fa-business-time me-2"></i> ขอมาสาย/ออกก่อนเวลา
+            </a>
+            <div class="collapse sidebar-submenu <?php echo isActive('late_early_request.php') ? 'show' : ''; ?>" id="timeRequestSubmenu">
+                <a href="late_early_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('late_early_request.php'); ?>">
+                    <small>ส่งคำขอเวลา</small>
+                </a>
+            </div>
+
             <!-- Day Swap System (Dropdown) -->
             <a href="#daySwapSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
                 <i class="fas fa-right-left me-2"></i> สลับวันหยุด

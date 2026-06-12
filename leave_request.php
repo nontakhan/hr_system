@@ -39,7 +39,6 @@ require_once 'includes/header.php';
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <form id="leaveRequestForm" enctype="multipart/form-data">
-                    <input type="hidden" name="request_unit" id="requestUnitInput" value="day">
                     <div class="mb-3">
                         <label class="form-label">ประเภทการลา <span class="text-danger">*</span></label>
                         <input type="hidden" name="leave_type_id" id="leaveTypeSelect" required>
@@ -47,11 +46,6 @@ require_once 'includes/header.php';
                         <div id="leaveTypeCondition" class="form-text text-info d-none">
                             <i class="fas fa-info-circle"></i> <span id="conditionText"></span>
                         </div>
-                    </div>
-
-                    <div class="alert alert-info d-none" id="hourlyRequestNotice">
-                        <i class="fas fa-clock"></i>
-                        รายการขอมาสาย / ขอออกก่อน จะถูกกำหนดเป็น 1 ชม. คงที่ และนับเป็น 1 ครั้งในปีงบประมาณ
                     </div>
 
                     <div class="row g-3 mb-3">

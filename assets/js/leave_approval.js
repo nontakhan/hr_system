@@ -204,9 +204,10 @@ window.openActionModalFromButton = function(button) {
 
 function formatLeaveDuration(item) {
     if (item.request_unit === 'hour') {
+        const minutes = Math.max(1, Math.min(60, Number.parseInt(item.request_minutes || 0, 10) || 60));
         return item.time_request_type === 'early_departure'
-            ? 'ขอออกก่อนไม่เกิน 1 ชม.'
-            : 'ขอมาสายไม่เกิน 1 ชม.';
+            ? `ขอออกก่อน ${minutes} นาที`
+            : `ขอมาสาย ${minutes} นาที`;
     }
     return `${parseFloat(item.total_days)} วัน`;
 }

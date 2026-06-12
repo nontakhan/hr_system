@@ -93,10 +93,21 @@ assertLeaveSame('early_departure', $earlyHourlyType, 'Early departure leave type
 $normalHourlyType = leaveDetectHourlyRequestType('ลาป่วย');
 assertLeaveSame(null, $normalHourlyType, 'Normal leave type names should not be detected as hourly requests.');
 
-$hourlyPayload = leaveBuildHourlyRequestPayload('late_arrival');
+$hourlyPayload = leaveBuildHourlyRequestPayload('late_arrival', 35);
 assertLeaveSame('hour', $hourlyPayload['request_unit'], 'Hourly leave payload should use hour request unit.');
-assertLeaveSame(60, $hourlyPayload['request_minutes'], 'Hourly leave payload should always reserve one fixed hour.');
+assertLeaveSame(35, $hourlyPayload['request_minutes'], 'Hourly leave payload should store the requested late/early minutes.');
 assertLeaveSame(0.0, $hourlyPayload['total_days'], 'Hourly leave payload should not add leave days.');
-assertLeaveSame('ขอมาสายไม่เกิน 1 ชม.', leaveFormatRequestDuration($hourlyPayload), 'Hourly request duration should show the fixed one-hour allowance.');
+assertLeaveSame('ขอมาสาย 35 นาที', leaveFormatRequestDuration($hourlyPayload), 'Hourly request duration should show the requested minutes.');
+
+$earlyHourlyPayload = leaveBuildHourlyRequestPayload('early_departure', 40);
+assertLeaveSame(40, $earlyHourlyPayload['request_minutes'], 'Early departure payload should store the requested minutes.');
+assertLeaveSame('ขอออกก่อน 40 นาที', leaveFormatRequestDuration($earlyHourlyPayload), 'Early departure duration should show the requested minutes.');
+
+try {
+    leaveBuildHourlyRequestPayload('late_arrival', 61);
+    assertLeaveSame(true, false, 'Hourly requests over 60 minutes should be rejected.');
+} catch (InvalidArgumentException $e) {
+    assertLeaveSame(true, strpos($e->getMessage(), 'minutes') !== false, 'Hourly request validation should mention minutes.');
+}
 
 echo "leave_helpers_test passed" . PHP_EOL;

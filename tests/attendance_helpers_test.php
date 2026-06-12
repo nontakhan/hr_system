@@ -202,13 +202,13 @@ $hourlyRequestMap = attendanceBuildApprovedHourlyRequestMap([
         'start_date' => '2026-01-07',
         'request_unit' => 'hour',
         'time_request_type' => 'late_arrival',
-        'request_minutes' => 60,
+        'request_minutes' => 35,
     ],
     [
         'start_date' => '2026-01-07',
         'request_unit' => 'hour',
         'time_request_type' => 'early_departure',
-        'request_minutes' => 60,
+        'request_minutes' => 40,
     ],
     [
         'start_date' => '2026-01-08',
@@ -217,8 +217,29 @@ $hourlyRequestMap = attendanceBuildApprovedHourlyRequestMap([
         'request_minutes' => 0,
     ],
 ], '2026-01');
-assertSameValue(['ขอมาสายไม่เกิน 1 ชม.', 'ขอออกก่อนไม่เกิน 1 ชม.'], $hourlyRequestMap['2026-01-07'], 'Approved hourly requests should be grouped by work date.');
+assertSameValue(['ขอมาสาย 35 นาที', 'ขอออกก่อน 40 นาที'], $hourlyRequestMap['2026-01-07'], 'Approved hourly requests should be grouped by work date with requested minutes.');
 assertSameValue(false, isset($hourlyRequestMap['2026-01-08']), 'Day-based leave rows should not be included as hourly requests.');
+
+$lateMinutes = attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01-07', '08:35', [
+    'start_time' => '08:00:00',
+    'end_time' => '17:00:00',
+    'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+]);
+assertSameValue(35, $lateMinutes['request_minutes'], 'Late request minutes should be measured from the shift start time.');
+
+$earlyMinutes = attendanceCalculateTimeRequestMinutes('early_departure', '2026-01-07', '16:20', [
+    'start_time' => '08:00:00',
+    'end_time' => '17:00:00',
+    'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+]);
+assertSameValue(40, $earlyMinutes['request_minutes'], 'Early departure request minutes should be measured from the shift end time.');
+
+$tooLongMinutes = attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01-07', '09:05', [
+    'start_time' => '08:00:00',
+    'end_time' => '17:00:00',
+    'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+]);
+assertSameValue(false, $tooLongMinutes['valid'], 'Late/early requests over one hour should be invalid.');
 
 $approvedLeave = attendanceEvaluateStatus(
     '2026-01-05',

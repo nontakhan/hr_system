@@ -112,9 +112,9 @@ const hourlyRequestEvent = buildAttendanceCalendarEvent({
     work_date: '2026-01-08',
     status: 'present',
     status_label: 'ปกติ',
-    hourly_requests: ['ขอมาสายไม่เกิน 1 ชม.'],
+    hourly_requests: ['ขอมาสาย 35 นาที'],
 });
-assertIncludes(hourlyRequestEvent.title, 'ขอมาสาย', 'Calendar event title should mention approved hourly requests.');
+assertIncludes(hourlyRequestEvent.title, 'ขอมาสาย 35 นาที', 'Calendar event title should mention approved hourly requests.');
 
 const hourlyRequestDetails = buildAttendanceCalendarDetails({
     work_date: '2026-01-08',
@@ -123,10 +123,10 @@ const hourlyRequestDetails = buildAttendanceCalendarDetails({
     check_out: '17:02:00',
     status: 'present',
     status_label: 'ปกติ',
-    hourly_requests: ['ขอมาสายไม่เกิน 1 ชม.', 'ขอออกก่อนไม่เกิน 1 ชม.'],
+    hourly_requests: ['ขอมาสาย 35 นาที', 'ขอออกก่อน 40 นาที'],
 });
 assertIncludes(hourlyRequestDetails, 'คำขอเวลา', 'Popup details should include an hourly request section.');
-assertIncludes(hourlyRequestDetails, 'ขอออกก่อนไม่เกิน 1 ชม.', 'Popup details should list approved early departure requests.');
+assertIncludes(hourlyRequestDetails, 'ขอออกก่อน 40 นาที', 'Popup details should list approved early departure requests.');
 
 const counts = countAttendanceReportStatuses([
     { status: 'holiday', holiday_name: null },

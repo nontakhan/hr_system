@@ -80,36 +80,9 @@ function getLeaveUsageItem(typeId) {
     return leaveUsageSummary.overall || null;
 }
 
-function isHourlyLeaveType(type) {
-    const name = String(type?.type_name || '').toLowerCase();
-    return name.includes('มาสาย') || name.includes('ออกก่อน') || name.includes('late') || name.includes('early');
-}
-
 function getSelectedLeaveType() {
     const selectedId = document.getElementById('leaveTypeSelect')?.value;
     return leaveTypesData.find(t => t.id == selectedId) || null;
-}
-
-function updateHourlyRequestMode() {
-    const type = getSelectedLeaveType();
-    const isHourly = isHourlyLeaveType(type);
-    const unitInput = document.getElementById('requestUnitInput');
-    const notice = document.getElementById('hourlyRequestNotice');
-    const endInput = document.getElementById('endDate');
-    const startInput = document.getElementById('startDate');
-    const startPart = document.getElementById('startDayPart');
-    const endPart = document.getElementById('endDayPart');
-
-    if (unitInput) unitInput.value = isHourly ? 'hour' : 'day';
-    if (notice) notice.classList.toggle('d-none', !isHourly);
-    if (isHourly && startInput?.value && endInput) {
-        endInput.value = startInput.value;
-    }
-    [startPart, endPart].forEach(select => {
-        if (!select) return;
-        select.value = 'full';
-        select.disabled = isHourly;
-    });
 }
 
 function renderLeaveUsageSummary(summary) {
@@ -194,7 +167,6 @@ function selectLeaveType(selectedId) {
         card.classList.toggle('is-selected', isSelected);
         card.setAttribute('aria-checked', isSelected ? 'true' : 'false');
     });
-    updateHourlyRequestMode();
     updateLeaveTypeCondition();
     updateSelectedLeaveUsageProjection();
 }
@@ -211,9 +183,7 @@ function updateLeaveTypeCondition() {
 
     if (type) {
         conditionDiv.classList.remove('d-none');
-        conditionText.textContent = isHourlyLeaveType(type)
-            ? 'สิทธิ์ขอเวลา: 1 ชม. คงที่/ครั้ง'
-            : `สิทธิ์ลาสูงสุด: ${type.days_per_year} วัน/ปี`;
+        conditionText.textContent = `สิทธิ์ลาสูงสุด: ${type.days_per_year} วัน/ปี`;
 
         const usage = getLeaveUsageItem(selectedId);
         if (usage) {
@@ -313,7 +283,6 @@ function scheduleLeaveCalculation() {
 }
 
 function handleLeaveDateControlsChange() {
-    updateHourlyRequestMode();
     updateLeavePartOptions();
     scheduleLeaveCalculation();
 }
@@ -384,24 +353,6 @@ async function calculateLeaveDays() {
         return;
     }
 
-    if (document.getElementById('requestUnitInput')?.value === 'hour') {
-        if (endInput) endInput.value = startInput.value;
-        latestLeaveSummary = {
-            valid: true,
-            total_days: 0,
-            request_unit: 'hour',
-            request_minutes: 60,
-            included_dates: [{ date: startInput.value, days: 0, part: 'hour', label: '1 hour' }],
-            excluded_dates: [],
-        };
-        totalDisplay.textContent = '1 ชม.';
-        totalInput.value = 0;
-        breakdown.innerHTML = '<div class="mt-2"><span class="fw-semibold text-success">นับเป็น 1 ครั้ง:</span> ขอเวลาได้ไม่เกิน 1 ชม.</div>';
-        updateLeaveTypeCondition();
-        updateSelectedLeaveUsageProjection();
-        return;
-    }
-
     totalDisplay.textContent = 'กำลังคำนวณ...';
     const params = new URLSearchParams({
         action: 'calculate_leave',
@@ -462,8 +413,7 @@ async function handleSubmitLeave(e) {
     }
 
     await calculateLeaveDays();
-    const isHourlyRequest = document.getElementById('requestUnitInput')?.value === 'hour';
-    if (!latestLeaveSummary || (!isHourlyRequest && Number.parseFloat(latestLeaveSummary.total_days || 0) <= 0)) {
+    if (!latestLeaveSummary || Number.parseFloat(latestLeaveSummary.total_days || 0) <= 0) {
         Swal.fire('ตรวจสอบช่วงวันที่', 'ช่วงวันที่เลือกไม่มีวันทำงานที่สามารถลาได้', 'warning');
         return;
     }

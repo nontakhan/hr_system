@@ -28,7 +28,10 @@ try {
             leaveEnsureHourlyRequestTypes($mysqli);
             $sql = "SELECT id, type_name, days_per_year, requires_file FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
-            echo json_encode(['status' => 'success', 'data' => $result->fetch_all(MYSQLI_ASSOC)]);
+            $types = array_values(array_filter($result->fetch_all(MYSQLI_ASSOC), function ($row) {
+                return leaveDetectHourlyRequestType($row['type_name'] ?? '') === null;
+            }));
+            echo json_encode(['status' => 'success', 'data' => $types]);
         } elseif ($action === 'get_leave_usage') {
             echo json_encode([
                 'status' => 'success',
@@ -97,10 +100,7 @@ function submitLeaveRequest($mysqli, $data, $files) {
         $timeRequestType = leaveDetectHourlyRequestType($type_info['type_name'] ?? '');
         $hourlyPayload = null;
         if ($timeRequestType !== null) {
-            $hourlyPayload = leaveBuildHourlyRequestPayload($timeRequestType);
-            $end = $start;
-            $start_part = 'full';
-            $end_part = 'full';
+            throw new Exception('กรุณาส่งคำขอมาสาย/ออกก่อนเวลาจากเมนูคำขอเวลา');
         }
 
         if ($end < $start) {

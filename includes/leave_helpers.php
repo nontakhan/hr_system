@@ -48,11 +48,11 @@ function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
     $defaults = [
         [
             'type_name' => 'ขอมาสาย',
-            'description' => 'ขออนุญาตมาสายได้ไม่เกิน 1 ชม. และนับเป็น 1 ครั้งในปีงบประมาณ',
+            'description' => 'ขออนุญาตมาสายตามนาทีจริง สูงสุดไม่เกิน 1 ชม. โดยอิงเวลาเริ่มกะของวันนั้น',
         ],
         [
             'type_name' => 'ขอออกก่อน',
-            'description' => 'ขออนุญาตออกก่อนเวลาได้ไม่เกิน 1 ชม. และนับเป็น 1 ครั้งในปีงบประมาณ',
+            'description' => 'ขออนุญาตออกก่อนเวลาตามนาทีจริง สูงสุดไม่เกิน 1 ชม. โดยอิงเวลาเลิกกะของวันนั้น',
         ],
     ];
 
@@ -84,18 +84,22 @@ function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
     }
 }
 
-function leaveBuildHourlyRequestPayload($timeRequestType) {
+function leaveBuildHourlyRequestPayload($timeRequestType, $requestMinutes = 60) {
     $timeRequestType = in_array($timeRequestType, ['late_arrival', 'early_departure'], true)
         ? $timeRequestType
         : null;
     if ($timeRequestType === null) {
         throw new InvalidArgumentException('Invalid hourly request type');
     }
+    $requestMinutes = (int)$requestMinutes;
+    if ($requestMinutes < 1 || $requestMinutes > 60) {
+        throw new InvalidArgumentException('Invalid hourly request minutes');
+    }
 
     return [
         'request_unit' => 'hour',
         'time_request_type' => $timeRequestType,
-        'request_minutes' => 60,
+        'request_minutes' => $requestMinutes,
         'total_days' => 0.0,
     ];
 }
@@ -108,8 +112,9 @@ function leaveFormatRequestDuration(array $row) {
     }
 
     $type = $row['time_request_type'] ?? '';
-    $label = $type === 'early_departure' ? 'ขอออกก่อนไม่เกิน 1 ชม.' : 'ขอมาสายไม่เกิน 1 ชม.';
-    return $label;
+    $minutes = max(1, min(60, (int)($row['request_minutes'] ?? 60)));
+    $label = $type === 'early_departure' ? 'ขอออกก่อน' : 'ขอมาสาย';
+    return $label . ' ' . $minutes . ' นาที';
 }
 
 function leaveEnsureSettingsTable(mysqli $mysqli) {
@@ -492,6 +497,7 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
             JOIN leave_types lt ON lr.leave_type_id = lt.id
             WHERE lr.employee_id = ?
               AND lr.status IN ('approved', 'pending', 'pending_manager', 'pending_hr')
+              AND lr.request_unit = 'day'
               AND lr.start_date <= ?
               AND lr.end_date >= ?
             ORDER BY lr.start_date ASC, lr.id ASC";

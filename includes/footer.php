@@ -25,6 +25,7 @@
 <script src="assets/js/employee.js"></script>
 <script src="assets/js/leave.js"></script>
 <script src="assets/js/leave_request.js"></script>
+<script src="assets/js/late_early_request.js"></script>
 <script src="assets/js/my_leaves.js"></script>
 <script src="assets/js/leave_approval.js"></script>
 <script src="assets/js/dashboard.js"></script>

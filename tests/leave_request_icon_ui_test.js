@@ -8,17 +8,28 @@ function assertIncludes(text, expected, message) {
     }
 }
 
+function assertNotIncludes(text, expected, message) {
+    if (text.includes(expected)) {
+        console.error(message);
+        console.error('Unexpected:', expected);
+        process.exit(1);
+    }
+}
+
 const page = fs.readFileSync('leave_request.php', 'utf8');
+const timeRequestPage = fs.readFileSync('late_early_request.php', 'utf8');
 const leaveTypesPage = fs.readFileSync('leave_types.php', 'utf8');
 const script = fs.readFileSync('assets/js/leave_request.js', 'utf8');
+const timeRequestScript = fs.readFileSync('assets/js/late_early_request.js', 'utf8');
 const leaveSettingsScript = fs.readFileSync('assets/js/leave.js', 'utf8');
 const styles = fs.readFileSync('assets/style.css', 'utf8');
 
 assertIncludes(page, 'type="hidden" name="leave_type_id" id="leaveTypeSelect"', 'Leave request page should submit leave_type_id through a hidden field.');
 assertIncludes(page, 'id="leaveTypeIconGrid"', 'Leave request page should include an icon grid container.');
 assertIncludes(page, 'id="leaveUsageSummaryGrid"', 'Leave request page should include the leave usage summary grid.');
-assertIncludes(page, 'name="request_unit" id="requestUnitInput"', 'Leave request page should submit the request unit.');
-assertIncludes(page, 'id="hourlyRequestNotice"', 'Leave request page should include fixed one-hour request guidance.');
+assertIncludes(timeRequestPage, 'id="lateEarlyRequestForm"', 'Late/early request page should include its own request form.');
+assertIncludes(timeRequestPage, 'name="time_request_type"', 'Late/early request page should choose a time request type.');
+assertIncludes(timeRequestPage, 'name="request_time"', 'Late/early request page should collect the requested time.');
 assertIncludes(leaveTypesPage, 'id="leavePolicyTable"', 'Leave settings should list saved policy records.');
 assertIncludes(leaveTypesPage, 'name="leave_max_requests_per_year"', 'Leave policy form should include a fiscal-year request limit input.');
 assertIncludes(script, 'function renderLeaveTypeCards', 'Leave request JS should render leave type icon cards.');
@@ -28,11 +39,12 @@ assertIncludes(script, 'function getLeaveTypePresentation', 'Leave request JS sh
 assertIncludes(script, 'function renderLeaveUsageSummary', 'Leave request JS should render leave usage warnings.');
 assertIncludes(script, 'function renderLeaveUsageEntries', 'Leave request JS should render every counted leave entry for comparison.');
 assertIncludes(script, 'function renderOverallLeaveUsageCard', 'Leave request JS should render one overall leave usage card.');
-assertIncludes(script, 'function isHourlyLeaveType', 'Leave request JS should detect fixed one-hour leave types.');
-assertIncludes(script, 'function updateHourlyRequestMode', 'Leave request JS should switch late/early requests to fixed one-hour mode.');
-assertIncludes(script, "request_unit: 'hour'", 'Leave request JS should calculate hourly requests without adding leave days.');
+assertIncludes(timeRequestScript, 'calculateTimeRequest', 'Late/early request JS should calculate minutes before submit.');
+assertIncludes(timeRequestScript, 'loadTimeRequestHistory', 'Late/early request JS should load its own history.');
+assertNotIncludes(script, "request_unit: 'hour'", 'Leave request JS should no longer calculate hourly requests.');
 const requestApi = fs.readFileSync('api/leave_request_api.php', 'utf8');
-assertIncludes(requestApi, 'leaveEnsureHourlyRequestTypes($mysqli)', 'Leave request API should seed fixed one-hour leave types before rendering options.');
+assertIncludes(requestApi, 'leaveDetectHourlyRequestType($row', 'Leave request API should filter late/early types out of leave options.');
+assertIncludes(requestApi, 'เมนูคำขอเวลา', 'Leave request API should reject old late/early submissions.');
 assertIncludes(styles, '.leave-type-grid', 'Styles should include the leave type icon grid.');
 assertIncludes(styles, '.leave-type-card.is-selected', 'Styles should include a selected card state.');
 assertIncludes(styles, '.leave-usage-card-near', 'Styles should include a near-limit leave usage state.');

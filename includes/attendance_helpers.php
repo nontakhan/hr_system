@@ -250,9 +250,10 @@ function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
 
         $workDate = $requestDate->format('Y-m-d');
         $type = $row['time_request_type'] ?? '';
+        $minutes = max(1, min(60, (int)($row['request_minutes'] ?? 60)));
         $label = $type === 'early_departure'
-            ? 'ขอออกก่อนไม่เกิน 1 ชม.'
-            : 'ขอมาสายไม่เกิน 1 ชม.';
+            ? 'ขอออกก่อน ' . $minutes . ' นาที'
+            : 'ขอมาสาย ' . $minutes . ' นาที';
 
         if (!isset($requests[$workDate])) {
             $requests[$workDate] = [];
@@ -261,6 +262,50 @@ function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
     }
 
     return $requests;
+}
+
+function attendanceCalculateTimeRequestMinutes($timeRequestType, $workDate, $requestedTime, array $shift) {
+    $timeRequestType = in_array($timeRequestType, ['late_arrival', 'early_departure'], true) ? $timeRequestType : '';
+    if ($timeRequestType === '') {
+        return ['valid' => false, 'message' => 'Invalid request type', 'request_minutes' => 0];
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
+        return ['valid' => false, 'message' => 'Invalid work date', 'request_minutes' => 0];
+    }
+
+    $requested = attendanceNormalizeTime($requestedTime);
+    if ($requested === null) {
+        return ['valid' => false, 'message' => 'Invalid request time', 'request_minutes' => 0];
+    }
+
+    $workDays = array_filter(array_map('trim', explode(',', (string)($shift['work_days'] ?? ''))));
+    $dayName = attendanceDayName($workDate);
+    if (!empty($workDays) && !in_array($dayName, $workDays, true)) {
+        return ['valid' => false, 'message' => 'Selected date is not a work day', 'request_minutes' => 0];
+    }
+
+    $anchorTime = $timeRequestType === 'early_departure'
+        ? attendanceNormalizeTime($shift['end_time'] ?? '')
+        : attendanceNormalizeTime($shift['start_time'] ?? '');
+    if ($anchorTime === null) {
+        return ['valid' => false, 'message' => 'Shift time is not configured', 'request_minutes' => 0];
+    }
+
+    $anchorTs = strtotime($workDate . ' ' . $anchorTime);
+    $requestedTs = strtotime($workDate . ' ' . $requested);
+    $seconds = $timeRequestType === 'early_departure'
+        ? $anchorTs - $requestedTs
+        : $requestedTs - $anchorTs;
+    $minutes = (int)ceil($seconds / 60);
+
+    if ($minutes < 1) {
+        return ['valid' => false, 'message' => 'Request time must be outside the shift time', 'request_minutes' => 0];
+    }
+    if ($minutes > 60) {
+        return ['valid' => false, 'message' => 'Request minutes must not exceed 60', 'request_minutes' => $minutes];
+    }
+
+    return ['valid' => true, 'message' => '', 'request_minutes' => $minutes];
 }
 
 function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, array $holidays = [], array $leaves = []) {
