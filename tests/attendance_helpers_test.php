@@ -62,6 +62,31 @@ assertSameValue(42, $summary[0]['record_count'], 'Record counts should be return
 assertSameValue('2025-12', $summary[5]['import_month'], 'Import summary should include the sixth month back.');
 assertSameValue(false, $summary[5]['has_data'], 'Months without attendance rows should be marked as empty.');
 
+$employeeRows = attendanceBuildImportEmployeeRows([
+    [
+        'employee_id' => '7',
+        'citizen_id' => '1234567890123',
+        'first_name_th' => 'สมชาย',
+        'last_name_th' => 'ใจดี',
+        'record_count' => '22',
+        'first_work_date' => '2026-05-01',
+        'latest_work_date' => '2026-05-31',
+    ],
+    [
+        'employee_id' => '8',
+        'citizen_id' => '9876543210987',
+        'first_name_th' => 'สมหญิง',
+        'last_name_th' => '',
+        'record_count' => '3',
+        'first_work_date' => '2026-05-02',
+        'latest_work_date' => '2026-05-04',
+    ],
+]);
+assertSameValue(7, $employeeRows[0]['employee_id'], 'Import employee detail should cast employee IDs to integers.');
+assertSameValue('สมชาย ใจดี', $employeeRows[0]['full_name'], 'Import employee detail should include a full display name.');
+assertSameValue(22, $employeeRows[0]['record_count'], 'Import employee detail should cast record counts to integers.');
+assertSameValue('สมหญิง', $employeeRows[1]['full_name'], 'Import employee detail should handle missing last names.');
+
 $status = attendanceEvaluateStatus(
     '2026-01-03',
     '07:46:00',

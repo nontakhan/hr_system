@@ -69,4 +69,42 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<div class="modal fade" id="attendanceImportDetailModal" tabindex="-1" aria-labelledby="attendanceImportDetailTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="attendanceImportDetailTitle">รายชื่อพนักงานที่มีข้อมูลนำเข้า</h5>
+                    <div class="text-muted small" id="attendanceImportDetailSubtitle">เลือกเดือนจากสรุปด้านบน</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="search" class="form-control" id="attendanceImportDetailSearch" placeholder="ค้นหาชื่อพนักงานหรือเลขบัตรประชาชน">
+                </div>
+                <div id="attendanceImportDetailStatus" class="text-muted small mb-3"></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>พนักงาน</th>
+                                <th>เลขบัตรประชาชน</th>
+                                <th class="text-end">รายการ</th>
+                                <th>ช่วงวันที่</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceImportDetailRows">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">เลือกเดือนเพื่อดูรายชื่อ</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php require_once 'includes/footer.php'; ?>

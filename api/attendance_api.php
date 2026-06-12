@@ -92,7 +92,14 @@ try {
 
         if ($action === 'import_summary') {
             if (!$canManage) sendJsonError('Access Denied');
-            sendJson(['status' => 'success', 'data' => fetchAttendanceImportSummary($mysqli)]);
+            sendJson(['status' => 'success', 'data' => fetchAttendanceImportSummary($mysqli, $role)]);
+        }
+
+        if ($action === 'import_summary_detail') {
+            if (!$canManage) sendJsonError('Access Denied');
+            $month = $_GET['month'] ?? '';
+            if (!preg_match('/^\d{4}-\d{2}$/', $month)) sendJsonError('Invalid month');
+            sendJson(['status' => 'success', 'month' => $month, 'data' => fetchAttendanceImportSummaryEmployees($mysqli, $month, $role)]);
         }
 
         sendJsonError('Invalid Action');
@@ -343,21 +350,66 @@ function fetchApprovedHourlyRequestsForMonth($mysqli, $employeeId, $month) {
     return attendanceBuildApprovedHourlyRequestMap($rows, $month);
 }
 
-function fetchAttendanceImportSummary($mysqli) {
+function fetchAttendanceImportSummary($mysqli, $role) {
     $currentMonth = date('Y-m');
     $oldestMonth = (new DateTimeImmutable($currentMonth . '-01'))->modify('-5 months')->format('Y-m');
-    $stmt = $mysqli->prepare("SELECT import_month,
-                                     COUNT(*) AS record_count,
-                                     COUNT(DISTINCT employee_id) AS employee_count,
-                                     MAX(work_date) AS latest_work_date
-                              FROM attendance_records
-                              WHERE import_month BETWEEN ? AND ?
-                              GROUP BY import_month
-                              ORDER BY import_month DESC");
-    $stmt->bind_param('ss', $oldestMonth, $currentMonth);
+    $sql = "SELECT ar.import_month,
+                   COUNT(*) AS record_count,
+                   COUNT(DISTINCT ar.employee_id) AS employee_count,
+                   MAX(ar.work_date) AS latest_work_date
+            FROM attendance_records ar";
+    $types = 'ss';
+    $params = [$oldestMonth, $currentMonth];
+
+    if ($role === 'hr') {
+        $sql .= " JOIN employees e ON ar.employee_id = e.id";
+    }
+
+    $sql .= " WHERE ar.import_month BETWEEN ? AND ?";
+
+    if ($role === 'hr') {
+        $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
+    }
+
+    $sql .= " GROUP BY ar.import_month
+              ORDER BY ar.import_month DESC";
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     return attendanceBuildImportSummaryMonths($rows, date('Y-m-d'), 6);
+}
+
+function fetchAttendanceImportSummaryEmployees($mysqli, $month, $role) {
+    $sql = "SELECT ar.employee_id,
+                   e.citizen_id,
+                   e.first_name_th,
+                   e.last_name_th,
+                   COUNT(*) AS record_count,
+                   MIN(ar.work_date) AS first_work_date,
+                   MAX(ar.work_date) AS latest_work_date
+            FROM attendance_records ar
+            JOIN employees e ON ar.employee_id = e.id
+            WHERE ar.import_month = ?";
+    $types = 's';
+    $params = [$month];
+
+    if ($role === 'hr') {
+        $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
+    }
+
+    $sql .= " GROUP BY ar.employee_id, e.citizen_id, e.first_name_th, e.last_name_th
+              ORDER BY e.first_name_th, e.last_name_th";
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+    return attendanceBuildImportEmployeeRows($stmt->get_result()->fetch_all(MYSQLI_ASSOC));
 }
 
 function fetchCompanyHolidaysForMonth($mysqli, $month) {

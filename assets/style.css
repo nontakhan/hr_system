@@ -870,6 +870,21 @@ canvas#deptChart {
     border: 1px solid #60a5fa;
 }
 
+.attendance-import-summary-card {
+    appearance: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button.attendance-import-summary-card {
+    cursor: pointer;
+}
+
+button.attendance-import-summary-card:hover,
+button.attendance-import-summary-card:focus-visible {
+    box-shadow: 0 0.5rem 1rem rgba(17, 24, 39, 0.12);
+    transform: translateY(-1px);
+}
+
 @media (max-width: 575.98px) {
     #attendanceCalendar .fc-toolbar-title {
         font-size: 0.98rem;

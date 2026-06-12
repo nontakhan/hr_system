@@ -92,6 +92,23 @@ function attendanceBuildImportSummaryMonths(array $monthlyRows, $baseDate = 'now
     return $months;
 }
 
+function attendanceBuildImportEmployeeRows(array $rows) {
+    return array_map(function ($row) {
+        $firstName = trim((string)($row['first_name_th'] ?? ''));
+        $lastName = trim((string)($row['last_name_th'] ?? ''));
+        return [
+            'employee_id' => (int)($row['employee_id'] ?? 0),
+            'citizen_id' => (string)($row['citizen_id'] ?? ''),
+            'first_name_th' => $firstName,
+            'last_name_th' => $lastName,
+            'full_name' => trim($firstName . ' ' . $lastName),
+            'record_count' => (int)($row['record_count'] ?? 0),
+            'first_work_date' => $row['first_work_date'] ?? null,
+            'latest_work_date' => $row['latest_work_date'] ?? null,
+        ];
+    }, $rows);
+}
+
 function attendanceDayName($date) {
     return date('D', strtotime($date));
 }

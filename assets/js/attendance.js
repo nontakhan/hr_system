@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let attendanceCalendar = null;
 let attendanceCalendarDayClassMap = {};
+let attendanceImportDetailRows = [];
 
 async function handleAttendanceImport(e) {
     e.preventDefault();
@@ -112,6 +113,18 @@ function initAttendanceImportSummary() {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', loadAttendanceImportSummary);
     }
+    const summary = document.getElementById('attendanceImportSummary');
+    if (summary) {
+        summary.addEventListener('click', (event) => {
+            const card = event.target.closest('[data-import-month]');
+            if (!card || card.disabled) return;
+            openAttendanceImportDetail(card.dataset.importMonth);
+        });
+    }
+    const search = document.getElementById('attendanceImportDetailSearch');
+    if (search) {
+        search.addEventListener('input', () => renderAttendanceImportDetailRows(search.value));
+    }
     loadAttendanceImportSummary();
 }
 
@@ -133,7 +146,7 @@ async function loadAttendanceImportSummary() {
     }
 }
 
-function renderAttendanceImportSummary(items) {
+function renderAttendanceImportSummaryLegacy(items) {
     const target = document.getElementById('attendanceImportSummary');
     if (!target) return;
 
@@ -168,6 +181,131 @@ function renderAttendanceImportSummary(items) {
                     <div class="small ${hasData ? 'opacity-75' : 'text-muted'} mt-2">ล่าสุด ${latest}</div>
                 </div>
             </div>`;
+    }).join('');
+}
+
+function renderAttendanceImportSummary(items) {
+    const target = document.getElementById('attendanceImportSummary');
+    if (!target) return;
+
+    if (!items.length) {
+        target.innerHTML = '<div class="col-12 text-muted small">ยังไม่มีข้อมูลสรุปการนำเข้า</div>';
+        return;
+    }
+
+    target.innerHTML = items.map(item => {
+        const hasData = Boolean(item.has_data);
+        const tone = hasData ? 'success' : 'light';
+        const textClass = hasData ? 'text-white' : 'text-dark';
+        const borderClass = hasData ? 'border-0' : 'border';
+        const icon = hasData ? 'fa-circle-check' : 'fa-circle-minus';
+        const status = hasData ? 'นำเข้าแล้ว' : 'ยังไม่มีข้อมูล';
+        const latest = item.latest_work_date ? formatThaiDate(item.latest_work_date) : '-';
+        const tagName = hasData ? 'button' : 'div';
+        const detailAttrs = hasData ? ` type="button" data-import-month="${escapeAttr(item.import_month)}"` : '';
+        const detailHint = hasData ? '<div class="small opacity-75 mt-2"><i class="fas fa-list me-1"></i>คลิกเพื่อดูรายชื่อ</div>' : '';
+
+        return `
+            <div class="col-12 col-md-6 col-xl-4">
+                <${tagName}${detailAttrs} class="attendance-import-summary-card rounded-3 p-3 bg-${tone} ${textClass} ${borderClass} h-100 w-100 text-start">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold">${formatThaiMonth(item.import_month)}</div>
+                            <div class="small ${hasData ? 'opacity-75' : 'text-muted'}">${status}</div>
+                        </div>
+                        <i class="fas ${icon} fs-5 ${hasData ? 'opacity-75' : 'text-muted'}"></i>
+                    </div>
+                    <div class="d-flex justify-content-between gap-3 mt-3 small">
+                        <span>รายการ <strong>${Number(item.record_count || 0).toLocaleString('th-TH')}</strong></span>
+                        <span>พนักงาน <strong>${Number(item.employee_count || 0).toLocaleString('th-TH')}</strong></span>
+                    </div>
+                    <div class="small ${hasData ? 'opacity-75' : 'text-muted'} mt-2">ล่าสุด ${latest}</div>
+                    ${detailHint}
+                </${tagName}>
+            </div>`;
+    }).join('');
+}
+
+async function openAttendanceImportDetail(month) {
+    const modalEl = document.getElementById('attendanceImportDetailModal');
+    const title = document.getElementById('attendanceImportDetailTitle');
+    const subtitle = document.getElementById('attendanceImportDetailSubtitle');
+    const status = document.getElementById('attendanceImportDetailStatus');
+    const rows = document.getElementById('attendanceImportDetailRows');
+    const search = document.getElementById('attendanceImportDetailSearch');
+    if (!modalEl || !month) return;
+
+    attendanceImportDetailRows = [];
+    if (title) title.textContent = 'รายชื่อพนักงานที่มีข้อมูลนำเข้า';
+    if (subtitle) subtitle.textContent = formatThaiMonth(month);
+    if (search) search.value = '';
+    if (status) status.textContent = 'กำลังโหลดรายชื่อ...';
+    if (rows) {
+        rows.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลดรายชื่อ...</td></tr>';
+    }
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    try {
+        const response = await fetch(`api/attendance_api.php?action=import_summary_detail&month=${encodeURIComponent(month)}`);
+        const res = await response.json();
+        if (res.status !== 'success') {
+            throw new Error(res.message || 'โหลดรายชื่อไม่สำเร็จ');
+        }
+        attendanceImportDetailRows = res.data || [];
+        renderAttendanceImportDetailRows('');
+    } catch (err) {
+        if (status) status.textContent = '';
+        if (rows) {
+            rows.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+        }
+    }
+}
+
+function renderAttendanceImportDetailRows(query) {
+    const status = document.getElementById('attendanceImportDetailStatus');
+    const rows = document.getElementById('attendanceImportDetailRows');
+    if (!rows) return;
+
+    const keyword = String(query || '').trim().toLowerCase();
+    const filtered = attendanceImportDetailRows.filter(item => {
+        const text = [
+            item.full_name,
+            item.first_name_th,
+            item.last_name_th,
+            item.citizen_id,
+            item.record_count,
+            item.first_work_date,
+            item.latest_work_date,
+        ].join(' ').toLowerCase();
+        return !keyword || text.includes(keyword);
+    });
+
+    if (status) {
+        const total = attendanceImportDetailRows.length.toLocaleString('th-TH');
+        const shown = filtered.length.toLocaleString('th-TH');
+        status.textContent = keyword ? `พบ ${shown} จาก ${total} คน` : `ทั้งหมด ${total} คน`;
+    }
+
+    if (!filtered.length) {
+        rows.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">ไม่พบรายชื่อที่ตรงกับคำค้นหา</td></tr>';
+        return;
+    }
+
+    rows.innerHTML = filtered.map(item => {
+        const firstDate = item.first_work_date ? formatThaiDate(item.first_work_date) : '-';
+        const latestDate = item.latest_work_date ? formatThaiDate(item.latest_work_date) : '-';
+        const dateRange = firstDate === latestDate ? latestDate : `${firstDate} - ${latestDate}`;
+        return `
+            <tr>
+                <td>
+                    <div class="fw-semibold">${escapeHtml(item.full_name || '-')}</div>
+                    <div class="text-muted small">รหัสพนักงาน ${Number(item.employee_id || 0).toLocaleString('th-TH')}</div>
+                </td>
+                <td>${escapeHtml(item.citizen_id || '-')}</td>
+                <td class="text-end">${Number(item.record_count || 0).toLocaleString('th-TH')}</td>
+                <td>${escapeHtml(dateRange)}</td>
+            </tr>`;
     }).join('');
 }
 
