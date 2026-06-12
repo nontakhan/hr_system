@@ -2,14 +2,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('lateEarlyRequestForm');
     if (!form) return;
 
-    const typeInput = document.getElementById('timeRequestType');
+    const typeInputs = Array.from(document.querySelectorAll('input[name="time_request_type"]'));
     const dateInput = document.getElementById('timeRequestDate');
     const timeInput = document.getElementById('timeRequestTime');
     const refreshBtn = document.getElementById('refreshTimeRequestsBtn');
     let calculateTimer = null;
     let latestCalculation = null;
 
-    [typeInput, dateInput, timeInput].forEach(input => {
+    [...typeInputs, dateInput, timeInput].forEach(input => {
         if (!input) return;
         input.addEventListener('change', scheduleTimeRequestCalculation);
         input.addEventListener('input', scheduleTimeRequestCalculation);
@@ -29,14 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = document.getElementById('timeRequestCalculationText');
         latestCalculation = null;
 
-        if (!typeInput.value || !dateInput.value || !timeInput.value) {
+        const requestType = getSelectedTimeRequestType();
+        if (!requestType || !dateInput.value || !timeInput.value) {
             box?.classList.add('d-none');
             return;
         }
 
         const params = new URLSearchParams({
             action: 'calculate',
-            time_request_type: typeInput.value,
+            time_request_type: requestType,
             work_date: dateInput.value,
             request_time: timeInput.value,
         });
@@ -59,6 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
             box?.classList.add('alert-danger');
             text.textContent = 'ไม่สามารถคำนวณเวลาได้';
         }
+    }
+
+    function getSelectedTimeRequestType() {
+        return form.querySelector('input[name="time_request_type"]:checked')?.value || '';
     }
 
     async function submitLateEarlyRequest(event) {

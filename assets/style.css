@@ -324,6 +324,26 @@ body {
     gap: 0.75rem;
 }
 
+.time-request-type-option + .btn-outline-primary {
+    border-color: #f1aeb5;
+    color: #7f1d1d;
+    background: #fff;
+    font-weight: 600;
+}
+
+.time-request-type-option + .btn-outline-primary:hover,
+.time-request-type-option + .btn-outline-primary:focus-visible {
+    border-color: #dc2626;
+    background: #fff7f7;
+    color: #991b1b;
+}
+
+.time-request-type-option:checked + .btn-outline-primary {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    color: #fff;
+}
+
 /* --- Login Page Styling --- */
 .login-container {
     min-height: 100vh;

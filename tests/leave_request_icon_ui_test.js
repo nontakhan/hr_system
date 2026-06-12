@@ -29,6 +29,9 @@ assertIncludes(page, 'id="leaveTypeIconGrid"', 'Leave request page should includ
 assertIncludes(page, 'id="leaveUsageSummaryGrid"', 'Leave request page should include the leave usage summary grid.');
 assertIncludes(timeRequestPage, 'id="lateEarlyRequestForm"', 'Late/early request page should include its own request form.');
 assertIncludes(timeRequestPage, 'name="time_request_type"', 'Late/early request page should choose a time request type.');
+assertIncludes(timeRequestPage, 'type="radio" name="time_request_type"', 'Late/early request page should use easy-tap radio buttons for request type.');
+assertIncludes(timeRequestPage, 'class="btn-check time-request-type-option"', 'Late/early request type radios should use Bootstrap button styling.');
+assertNotIncludes(timeRequestPage, '<select name="time_request_type"', 'Late/early request page should not use a dropdown for request type.');
 assertIncludes(timeRequestPage, 'name="request_time"', 'Late/early request page should collect the requested time.');
 assertIncludes(leaveTypesPage, 'id="leavePolicyTable"', 'Leave settings should list saved policy records.');
 assertIncludes(leaveTypesPage, 'name="leave_max_requests_per_year"', 'Leave policy form should include a fiscal-year request limit input.');

@@ -23,10 +23,17 @@ require_once 'includes/header.php';
 
                     <div class="mb-3">
                         <label class="form-label">ประเภทคำขอ <span class="text-danger">*</span></label>
-                        <select name="time_request_type" id="timeRequestType" class="form-select" required>
-                            <option value="late_arrival">ขอมาสาย</option>
-                            <option value="early_departure">ขอออกก่อนเวลา</option>
-                        </select>
+                        <div class="btn-group w-100" role="group" aria-label="ประเภทคำขอ">
+                            <input type="radio" name="time_request_type" id="timeRequestLate" value="late_arrival" class="btn-check time-request-type-option" autocomplete="off" checked required>
+                            <label class="btn btn-outline-primary py-3" for="timeRequestLate">
+                                <i class="fas fa-clock me-1"></i> ขอมาสาย
+                            </label>
+
+                            <input type="radio" name="time_request_type" id="timeRequestEarly" value="early_departure" class="btn-check time-request-type-option" autocomplete="off" required>
+                            <label class="btn btn-outline-primary py-3" for="timeRequestEarly">
+                                <i class="fas fa-person-walking-arrow-right me-1"></i> ขอออกก่อนเวลา
+                            </label>
+                        </div>
                     </div>
 
                     <div class="mb-3">
