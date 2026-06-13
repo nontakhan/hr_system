@@ -41,6 +41,30 @@ assertSameValue('18:01:00', $record['check_out'], 'CSV column S should map to ch
 assertSameValue('2026-01', attendanceImportMonthFromWorkDate($record['work_date']), 'Import month should come from each CSV row date.');
 assertSameValue('2026-02', attendanceImportMonthFromWorkDate('2026-02-01'), 'CSV rows from another month should keep their own import month.');
 
+$recordWithFallbackCheckout = attendanceMapCsvRow([
+    '5941000029584',
+    '',
+    '',
+    '04/01/2569',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '07:45',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '18:05',
+]);
+assertSameValue('18:05:00', $recordWithFallbackCheckout['check_out'], 'CSV column T should be used as check-out time when column S is empty.');
+
 $summary = attendanceBuildImportSummaryMonths([
     [
         'import_month' => '2026-05',

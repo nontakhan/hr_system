@@ -45,11 +45,16 @@ function attendanceParseThaiDate($value) {
 }
 
 function attendanceMapCsvRow(array $row) {
+    $checkOut = attendanceNormalizeTime($row[18] ?? '');
+    if ($checkOut === null) {
+        $checkOut = attendanceNormalizeTime($row[19] ?? '');
+    }
+
     return [
         'citizen_id' => trim((string)($row[0] ?? '')),
         'work_date' => attendanceParseThaiDate($row[3] ?? ''),
         'check_in' => attendanceNormalizeTime($row[10] ?? ''),
-        'check_out' => attendanceNormalizeTime($row[18] ?? ''),
+        'check_out' => $checkOut,
     ];
 }
 
