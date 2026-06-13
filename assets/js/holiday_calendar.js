@@ -1,0 +1,163 @@
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('holidayCalendar')) {
+        initHolidayCalendarPage();
+    }
+});
+
+let holidayCalendar = null;
+let holidayCalendarDayClassMap = {};
+
+function initHolidayCalendarPage() {
+    const monthInput = document.getElementById('holidayCalendarMonth');
+    const loadBtn = document.getElementById('holidayCalendarLoadBtn');
+
+    if (window.FullCalendar) {
+        holidayCalendar = new FullCalendar.Calendar(document.getElementById('holidayCalendar'), buildHolidayCalendarOptions());
+        holidayCalendar.render();
+    }
+
+    loadBtn.addEventListener('click', loadHolidayCalendar);
+    monthInput.addEventListener('change', loadHolidayCalendar);
+    loadHolidayCalendar();
+}
+
+function buildHolidayCalendarOptions() {
+    const month = document.getElementById?.('holidayCalendarMonth')?.value || new Date().toISOString().slice(0, 7);
+    return {
+        initialView: 'dayGridMonth',
+        locale: 'th',
+        firstDay: 1,
+        height: 'auto',
+        headerToolbar: false,
+        initialDate: `${month}-01`,
+        events: [],
+        dayCellClassNames(info) {
+            const dateKey = formatHolidayCalendarDateKey(info.date);
+            return holidayCalendarDayClassMap[dateKey] ? [holidayCalendarDayClassMap[dateKey]] : [];
+        },
+    };
+}
+
+function holidayCalendarColors(type) {
+    if (type === 'company_holiday') {
+        return {
+            background: '#bfdbfe',
+            border: '#60a5fa',
+            text: '#1e3a8a',
+            className: 'holiday-calendar-company',
+        };
+    }
+
+    return {
+        background: '#bbf7d0',
+        border: '#22c55e',
+        text: '#14532d',
+        className: 'holiday-calendar-regular',
+    };
+}
+
+function formatHolidayCalendarDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function buildHolidayCalendarDayClassMap(rows) {
+    return rows.reduce((map, item) => {
+        if (item.type === 'company_holiday') {
+            map[item.date] = 'holiday-calendar-day-company';
+        } else if (item.type === 'regular_holiday') {
+            map[item.date] = 'holiday-calendar-day-regular';
+        }
+        return map;
+    }, {});
+}
+
+function buildHolidayCalendarEvent(item) {
+    const colors = holidayCalendarColors(item.type);
+    return {
+        title: item.title || 'วันหยุด',
+        start: item.date,
+        allDay: true,
+        backgroundColor: colors.background,
+        borderColor: colors.border,
+        textColor: colors.text,
+        classNames: [colors.className],
+        extendedProps: { item },
+    };
+}
+
+function buildHolidayCalendarSummaryHtml(summary) {
+    const company = Number(summary?.company_holiday || 0);
+    const regular = Number(summary?.regular_holiday || 0);
+    const total = Number(summary?.total || 0);
+    return `
+        <div class="row g-3 holiday-calendar-summary">
+            ${holidayCalendarSummaryCard('วันหยุดบริษัท', company, 'fa-building-circle-check', 'company')}
+            ${holidayCalendarSummaryCard('วันหยุดประจำสัปดาห์', regular, 'fa-calendar-day', 'regular')}
+            ${holidayCalendarSummaryCard('รวมวันหยุด', total, 'fa-calendar-check', 'total')}
+        </div>
+    `;
+}
+
+function holidayCalendarSummaryCard(label, value, icon, tone) {
+    return `
+        <div class="col-md-4">
+            <div class="holiday-calendar-summary-card holiday-calendar-summary-${tone}">
+                <div>
+                    <div class="text-muted small">${label}</div>
+                    <div class="h4 mb-0">${value}</div>
+                </div>
+                <i class="fas ${icon}"></i>
+            </div>
+        </div>
+    `;
+}
+
+function buildHolidayCalendarLoadingHtml() {
+    return `
+        <div class="d-flex align-items-center gap-2 text-muted">
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span>กำลังโหลดปฏิทินวันหยุด...</span>
+        </div>
+    `;
+}
+
+async function loadHolidayCalendar() {
+    const month = document.getElementById('holidayCalendarMonth').value || new Date().toISOString().slice(0, 7);
+    const summary = document.getElementById('holidayCalendarSummary');
+    const empty = document.getElementById('holidayCalendarEmpty');
+
+    summary.innerHTML = buildHolidayCalendarLoadingHtml();
+    empty.style.display = 'flex';
+    empty.textContent = 'กำลังโหลดปฏิทินวันหยุด...';
+
+    try {
+        const url = new URL('api/holiday_calendar_api.php', window.location.href);
+        url.searchParams.set('month', month);
+        const response = await fetch(url.toString());
+        const res = await response.json();
+        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
+
+        renderHolidayCalendar(month, res.data || []);
+        summary.innerHTML = buildHolidayCalendarSummaryHtml(res.summary || {});
+        empty.style.display = (res.data || []).length ? 'none' : 'flex';
+        empty.textContent = (res.data || []).length ? '' : 'เดือนนี้ยังไม่มีวันหยุดที่แสดงในปฏิทิน';
+    } catch (err) {
+        summary.innerHTML = `<div class="alert alert-danger mb-0">โหลดปฏิทินวันหยุดไม่สำเร็จ: ${escapeHtml(err.message)}</div>`;
+        empty.style.display = 'flex';
+        empty.textContent = 'โหลดข้อมูลไม่สำเร็จ';
+    }
+}
+
+function renderHolidayCalendar(month, rows) {
+    if (!holidayCalendar) return;
+
+    holidayCalendarDayClassMap = buildHolidayCalendarDayClassMap(rows);
+    holidayCalendar.gotoDate(`${month}-01`);
+    holidayCalendar.removeAllEvents();
+    rows.map(buildHolidayCalendarEvent).forEach(event => holidayCalendar.addEvent(event));
+    holidayCalendar.setOption('dayCellClassNames', buildHolidayCalendarOptions().dayCellClassNames);
+    holidayCalendar.render();
+}

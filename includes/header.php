@@ -79,6 +79,10 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <i class="fas fa-home me-2"></i> หน้าหลัก
             </a>
 
+            <a href="holiday_calendar.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('holiday_calendar.php'); ?>">
+                <i class="fas fa-calendar-days me-2"></i> ปฏิทินวันหยุด
+            </a>
+
             <!-- Leave System (Dropdown) -->
             <a href="#leaveSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>

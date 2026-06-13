@@ -695,6 +695,105 @@ canvas#deptChart {
     background: #bfdbfe;
 }
 
+.holiday-calendar-shell {
+    position: relative;
+    min-height: 480px;
+}
+
+.holiday-calendar-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.78);
+    border-radius: 8px;
+    z-index: 2;
+}
+
+.holiday-calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+}
+
+.holiday-calendar-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.holiday-calendar-dot {
+    width: 0.8rem;
+    height: 0.8rem;
+    display: inline-block;
+    border-radius: 999px;
+}
+
+.holiday-calendar-dot-company {
+    background: #bfdbfe;
+    border: 1px solid #60a5fa;
+}
+
+.holiday-calendar-dot-regular {
+    background: #bbf7d0;
+    border: 1px solid #22c55e;
+}
+
+.holiday-calendar-summary-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.holiday-calendar-summary-card i {
+    font-size: 1.6rem;
+    opacity: 0.85;
+}
+
+.holiday-calendar-summary-company i {
+    color: #2563eb;
+}
+
+.holiday-calendar-summary-regular i {
+    color: #6b7280;
+}
+
+.holiday-calendar-summary-total i {
+    color: #16a34a;
+}
+
+#holidayCalendar .holiday-calendar-day-company {
+    background: #dbeafe;
+}
+
+#holidayCalendar .holiday-calendar-day-regular {
+    background: #dcfce7;
+}
+
+#holidayCalendar .holiday-calendar-day-company .fc-daygrid-day-frame,
+#holidayCalendar .holiday-calendar-day-regular .fc-daygrid-day-frame {
+    min-height: 96px;
+}
+
+#holidayCalendar .fc-event.holiday-calendar-company,
+#holidayCalendar .fc-event.holiday-calendar-regular {
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+#holidayCalendar .holiday-calendar-day-company.fc-day-today,
+#holidayCalendar .holiday-calendar-day-regular.fc-day-today {
+    box-shadow: inset 0 0 0 2px rgba(17, 24, 39, 0.1);
+}
+
 #attendanceCalendar .attendance-day-leave {
     background: #a5f3fc;
 }
