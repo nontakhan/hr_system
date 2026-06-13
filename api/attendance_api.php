@@ -480,11 +480,17 @@ function fetchAttendanceImportSummaryEmployees($mysqli, $month, $role) {
                    e.citizen_id,
                    e.first_name_th,
                    e.last_name_th,
+                   p.position_name_th,
+                   b.branch_name_th,
+                   c.company_name_th,
                    COUNT(*) AS record_count,
                    MIN(ar.work_date) AS first_work_date,
                    MAX(ar.work_date) AS latest_work_date
             FROM attendance_records ar
             JOIN employees e ON ar.employee_id = e.id
+            LEFT JOIN positions p ON e.position_id = p.id
+            LEFT JOIN branches b ON e.branch_id = b.id
+            LEFT JOIN companies c ON e.company_id = c.id
             WHERE ar.import_month = ?";
     $types = 's';
     $params = [$month];
@@ -496,7 +502,7 @@ function fetchAttendanceImportSummaryEmployees($mysqli, $month, $role) {
         $params = array_merge($params, $scopeClause['params']);
     }
 
-    $sql .= " GROUP BY ar.employee_id, e.citizen_id, e.first_name_th, e.last_name_th
+    $sql .= " GROUP BY ar.employee_id, e.citizen_id, e.first_name_th, e.last_name_th, p.position_name_th, b.branch_name_th, c.company_name_th
               ORDER BY e.first_name_th, e.last_name_th";
     $stmt = $mysqli->prepare($sql);
     hrScopeBindParams($stmt, $types, $params);

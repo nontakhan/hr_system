@@ -115,6 +115,9 @@ $employeeRows = attendanceBuildImportEmployeeRows([
     [
         'employee_id' => '7',
         'citizen_id' => '1234567890123',
+        'position_name_th' => 'Developer',
+        'branch_name_th' => 'Bangkok',
+        'company_name_th' => 'ACME',
         'first_name_th' => 'สมชาย',
         'last_name_th' => 'ใจดี',
         'record_count' => '22',
@@ -133,6 +136,9 @@ $employeeRows = attendanceBuildImportEmployeeRows([
 ]);
 assertSameValue(7, $employeeRows[0]['employee_id'], 'Import employee detail should cast employee IDs to integers.');
 assertSameValue('สมชาย ใจดี', $employeeRows[0]['full_name'], 'Import employee detail should include a full display name.');
+assertSameValue('Developer', $employeeRows[0]['position_name_th'], 'Import employee detail should include employee position.');
+assertSameValue('Bangkok', $employeeRows[0]['branch_name_th'], 'Import employee detail should include employee branch.');
+assertSameValue('ACME', $employeeRows[0]['company_name_th'], 'Import employee detail should include employee company.');
 assertSameValue(22, $employeeRows[0]['record_count'], 'Import employee detail should cast record counts to integers.');
 assertSameValue('สมหญิง', $employeeRows[1]['full_name'], 'Import employee detail should handle missing last names.');
 

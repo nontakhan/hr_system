@@ -70,7 +70,7 @@ require_once 'includes/header.php';
 </div>
 
 <div class="modal fade" id="attendanceImportDetailModal" tabindex="-1" aria-labelledby="attendanceImportDetailTitle" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
             <div class="modal-header">
                 <div>
@@ -86,10 +86,13 @@ require_once 'includes/header.php';
                 </div>
                 <div id="attendanceImportDetailStatus" class="text-muted small mb-3"></div>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0" id="attendanceImportDetailTable">
                         <thead class="table-light">
                             <tr>
                                 <th>พนักงาน</th>
+                                <th>ตำแหน่ง</th>
+                                <th>สาขา</th>
+                                <th>บริษัท</th>
                                 <th>เลขบัตรประชาชน</th>
                                 <th class="text-end">รายการ</th>
                                 <th>ช่วงวันที่</th>
@@ -97,7 +100,7 @@ require_once 'includes/header.php';
                         </thead>
                         <tbody id="attendanceImportDetailRows">
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">เลือกเดือนเพื่อดูรายชื่อ</td>
+                                <td colspan="7" class="text-center text-muted py-4">เลือกเดือนเพื่อดูรายชื่อ</td>
                             </tr>
                         </tbody>
                     </table>
