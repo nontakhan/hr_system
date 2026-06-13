@@ -63,6 +63,69 @@ function attendanceImportMonthFromWorkDate($workDate) {
     return preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate) ? substr($workDate, 0, 7) : null;
 }
 
+function attendanceBuildImportUpsertSql() {
+    return "INSERT INTO attendance_records
+        (employee_id, citizen_id, work_date, check_in, check_out, import_month, source_file)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            check_in = COALESCE(check_in, VALUES(check_in)),
+            check_out = COALESCE(check_out, VALUES(check_out))";
+}
+
+function attendanceBuildImportBatchUpsertSql($rowCount) {
+    $rowCount = max(1, (int)$rowCount);
+    $placeholders = implode(',', array_fill(0, $rowCount, '(?, ?, ?, ?, ?, ?, ?)'));
+    return "INSERT INTO attendance_records
+        (employee_id, citizen_id, work_date, check_in, check_out, import_month, source_file)
+        VALUES {$placeholders}
+        ON DUPLICATE KEY UPDATE
+            check_in = COALESCE(check_in, VALUES(check_in)),
+            check_out = COALESCE(check_out, VALUES(check_out))";
+}
+
+function attendanceClassifyImportAffectedRows($affectedRows) {
+    if ((int)$affectedRows === 1) {
+        return 'inserted';
+    }
+    if ((int)$affectedRows === 2) {
+        return 'updated';
+    }
+    return 'skipped';
+}
+
+function attendanceBuildExistingRecordMap(array $rows) {
+    $map = [];
+    foreach ($rows as $row) {
+        $employeeId = (int)($row['employee_id'] ?? 0);
+        $workDate = (string)($row['work_date'] ?? '');
+        if ($employeeId <= 0 || $workDate === '') {
+            continue;
+        }
+        $map[$employeeId . '|' . $workDate] = [
+            'check_in' => attendanceNormalizeTime($row['check_in'] ?? ''),
+            'check_out' => attendanceNormalizeTime($row['check_out'] ?? ''),
+        ];
+    }
+    return $map;
+}
+
+function attendanceExistingRecordNeedsFill(array $existing, array $row) {
+    return (($existing['check_in'] ?? null) === null && ($row['check_in'] ?? null) !== null)
+        || (($existing['check_out'] ?? null) === null && ($row['check_out'] ?? null) !== null);
+}
+
+function attendanceBuildEmployeeIdMap(array $rows) {
+    $map = [];
+    foreach ($rows as $row) {
+        $citizenId = trim((string)($row['citizen_id'] ?? ''));
+        if ($citizenId === '') {
+            continue;
+        }
+        $map[$citizenId] = (int)($row['id'] ?? 0);
+    }
+    return $map;
+}
+
 function attendanceBuildImportSummaryMonths(array $monthlyRows, $baseDate = 'now', $limit = 6) {
     $indexed = [];
     foreach ($monthlyRows as $row) {

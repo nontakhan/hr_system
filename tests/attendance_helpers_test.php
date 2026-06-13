@@ -65,6 +65,31 @@ $recordWithFallbackCheckout = attendanceMapCsvRow([
 ]);
 assertSameValue('18:05:00', $recordWithFallbackCheckout['check_out'], 'CSV column T should be used as check-out time when column S is empty.');
 
+$importSql = attendanceBuildImportUpsertSql();
+assertSameValue(false, strpos($importSql, 'INSERT IGNORE') !== false, 'Attendance import should not ignore existing incomplete rows.');
+assertSameValue(true, strpos($importSql, 'ON DUPLICATE KEY UPDATE') !== false, 'Attendance import should update existing rows on duplicate employee/date.');
+assertSameValue(true, strpos($importSql, 'check_out = COALESCE(check_out, VALUES(check_out))') !== false, 'Attendance import should fill missing check-out without overwriting existing values.');
+$batchImportSql = attendanceBuildImportBatchUpsertSql(3);
+assertSameValue(3, substr_count($batchImportSql, '(?, ?, ?, ?, ?, ?, ?)'), 'Batch attendance import should include one placeholder group per row.');
+assertSameValue('inserted', attendanceClassifyImportAffectedRows(1), 'A newly inserted attendance row should be counted as inserted.');
+assertSameValue('updated', attendanceClassifyImportAffectedRows(2), 'An existing incomplete attendance row that gets filled should be counted as updated.');
+assertSameValue('skipped', attendanceClassifyImportAffectedRows(0), 'An existing complete attendance row should be counted as skipped.');
+
+$existingRecordMap = attendanceBuildExistingRecordMap([
+    ['employee_id' => '15', 'work_date' => '2026-01-04', 'check_in' => '07:41:00', 'check_out' => null],
+]);
+assertSameValue(false, attendanceExistingRecordNeedsFill($existingRecordMap['15|2026-01-04'], ['check_in' => '07:41:00', 'check_out' => null]), 'Existing rows should be skipped when incoming data cannot fill missing values.');
+assertSameValue(true, attendanceExistingRecordNeedsFill($existingRecordMap['15|2026-01-04'], ['check_in' => '07:41:00', 'check_out' => '17:03:00']), 'Existing rows should be updated when incoming data fills a missing check-out.');
+
+$employeeMap = attendanceBuildEmployeeIdMap([
+    ['id' => '15', 'citizen_id' => '1234567890123'],
+    ['id' => '16', 'citizen_id' => ''],
+    ['id' => '17', 'citizen_id' => '9876543210987'],
+]);
+assertSameValue(15, $employeeMap['1234567890123'], 'Employee map should index valid citizen IDs.');
+assertSameValue(17, $employeeMap['9876543210987'], 'Employee map should include every valid employee row.');
+assertSameValue(false, isset($employeeMap['']), 'Employee map should ignore empty citizen IDs.');
+
 $summary = attendanceBuildImportSummaryMonths([
     [
         'import_month' => '2026-05',

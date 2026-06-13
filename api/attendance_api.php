@@ -165,13 +165,16 @@ function fetchAttendanceEmployee($mysqli, $employeeId) {
 function importAttendanceCsv($mysqli, $filePath, $sourceFile) {
     $rows = attendanceReadCsvRows($filePath);
     $inserted = 0;
+    $updated = 0;
     $skipped = 0;
     $unmatched = 0;
+    $candidates = [];
+    $employeeIds = [];
+    $minWorkDate = null;
+    $maxWorkDate = null;
 
-    $employeeStmt = $mysqli->prepare("SELECT id FROM employees WHERE citizen_id = ? LIMIT 1");
-    $insertStmt = $mysqli->prepare("INSERT IGNORE INTO attendance_records
-        (employee_id, citizen_id, work_date, check_in, check_out, import_month, source_file)
-        VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $employeeRes = $mysqli->query("SELECT id, citizen_id FROM employees WHERE citizen_id IS NOT NULL AND citizen_id <> ''");
+    $employeeMap = $employeeRes ? attendanceBuildEmployeeIdMap($employeeRes->fetch_all(MYSQLI_ASSOC)) : [];
 
     foreach ($rows as $row) {
         $importMonth = attendanceImportMonthFromWorkDate($row['work_date']);
@@ -180,39 +183,128 @@ function importAttendanceCsv($mysqli, $filePath, $sourceFile) {
             continue;
         }
 
-        $employeeStmt->bind_param('s', $row['citizen_id']);
-        $employeeStmt->execute();
-        $employee = $employeeStmt->get_result()->fetch_assoc();
-        if (!$employee) {
+        $employeeId = $employeeMap[$row['citizen_id']] ?? 0;
+        if ($employeeId <= 0) {
             $unmatched++;
             continue;
         }
 
-        $employeeId = (int)$employee['id'];
-        $insertStmt->bind_param(
-            'issssss',
-            $employeeId,
-            $row['citizen_id'],
-            $row['work_date'],
-            $row['check_in'],
-            $row['check_out'],
-            $importMonth,
-            $sourceFile
-        );
-        $insertStmt->execute();
-        if ($insertStmt->affected_rows > 0) {
+        $employeeIds[$employeeId] = true;
+        $minWorkDate = $minWorkDate === null || $row['work_date'] < $minWorkDate ? $row['work_date'] : $minWorkDate;
+        $maxWorkDate = $maxWorkDate === null || $row['work_date'] > $maxWorkDate ? $row['work_date'] : $maxWorkDate;
+        $candidates[] = [
+            'employee_id' => $employeeId,
+            'citizen_id' => $row['citizen_id'],
+            'work_date' => $row['work_date'],
+            'check_in' => $row['check_in'],
+            'check_out' => $row['check_out'],
+            'import_month' => $importMonth,
+            'source_file' => $sourceFile,
+        ];
+    }
+
+    $existingMap = fetchAttendanceExistingRecordMap($mysqli, array_keys($employeeIds), $minWorkDate, $maxWorkDate);
+    $pendingMap = $existingMap;
+    $writeRows = [];
+    foreach ($candidates as $row) {
+        $key = $row['employee_id'] . '|' . $row['work_date'];
+        if (!isset($pendingMap[$key])) {
             $inserted++;
+            $writeRows[] = $row;
+            $pendingMap[$key] = [
+                'check_in' => $row['check_in'],
+                'check_out' => $row['check_out'],
+            ];
+            continue;
+        }
+
+        if (attendanceExistingRecordNeedsFill($pendingMap[$key], $row)) {
+            $updated++;
+            $writeRows[] = $row;
+            $pendingMap[$key]['check_in'] = $pendingMap[$key]['check_in'] ?? $row['check_in'];
+            $pendingMap[$key]['check_out'] = $pendingMap[$key]['check_out'] ?? $row['check_out'];
         } else {
             $skipped++;
+        }
+    }
+
+    if (!empty($writeRows)) {
+        $mysqli->begin_transaction();
+        try {
+            foreach (array_chunk($writeRows, 250) as $batchRows) {
+                executeAttendanceImportBatch($mysqli, $batchRows);
+            }
+            $mysqli->commit();
+        } catch (Throwable $e) {
+            $mysqli->rollback();
+            throw $e;
         }
     }
 
     return [
         'message' => 'นำเข้าไฟล์สำเร็จ',
         'inserted' => $inserted,
+        'updated' => $updated,
         'skipped' => $skipped,
         'unmatched' => $unmatched,
     ];
+}
+
+function fetchAttendanceExistingRecordMap($mysqli, array $employeeIds, $minWorkDate, $maxWorkDate) {
+    $employeeIds = array_values(array_filter(array_map('intval', $employeeIds)));
+    if (empty($employeeIds) || $minWorkDate === null || $maxWorkDate === null) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($employeeIds), '?'));
+    $sql = "SELECT employee_id, work_date, check_in, check_out
+            FROM attendance_records
+            WHERE employee_id IN ({$placeholders})
+              AND work_date BETWEEN ? AND ?";
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException($mysqli->error);
+    }
+
+    $types = str_repeat('i', count($employeeIds)) . 'ss';
+    $params = array_merge($employeeIds, [$minWorkDate, $maxWorkDate]);
+    bindMysqliParams($stmt, $types, $params);
+    $stmt->execute();
+    return attendanceBuildExistingRecordMap($stmt->get_result()->fetch_all(MYSQLI_ASSOC));
+}
+
+function executeAttendanceImportBatch($mysqli, array $rows) {
+    $stmt = $mysqli->prepare(attendanceBuildImportBatchUpsertSql(count($rows)));
+    if (!$stmt) {
+        throw new RuntimeException($mysqli->error);
+    }
+
+    $types = str_repeat('issssss', count($rows));
+    $params = [];
+    foreach ($rows as $row) {
+        $params[] = (int)$row['employee_id'];
+        $params[] = $row['citizen_id'];
+        $params[] = $row['work_date'];
+        $params[] = $row['check_in'];
+        $params[] = $row['check_out'];
+        $params[] = $row['import_month'];
+        $params[] = $row['source_file'];
+    }
+
+    bindMysqliParams($stmt, $types, $params);
+    $stmt->execute();
+    if ($stmt->errno) {
+        throw new RuntimeException($stmt->error);
+    }
+}
+
+function bindMysqliParams($stmt, $types, array $params) {
+    $values = array_merge([$types], $params);
+    $refs = [];
+    foreach ($values as $key => $value) {
+        $refs[$key] = &$values[$key];
+    }
+    call_user_func_array([$stmt, 'bind_param'], $refs);
 }
 
 function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {

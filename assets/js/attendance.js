@@ -33,7 +33,7 @@ async function handleAttendanceImport(e) {
         setAttendanceImportProgress(progress, 100, 'นำเข้าไฟล์เสร็จสิ้น', false);
         Swal.fire(
             'นำเข้าสำเร็จ',
-            `เพิ่มใหม่ ${res.inserted} รายการ, ข้าม ${res.skipped} รายการ, ไม่พบพนักงาน ${res.unmatched} รายการ`,
+            `เพิ่มใหม่ ${res.inserted} รายการ, อัปเดตข้อมูลที่ขาด ${res.updated || 0} รายการ, ข้าม ${res.skipped} รายการ, ไม่พบพนักงาน ${res.unmatched} รายการ`,
             'success'
         );
         form.reset();
