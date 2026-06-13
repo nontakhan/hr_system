@@ -13,8 +13,33 @@ function isActive($page) {
     return basename($_SERVER['PHP_SELF']) == $page ? 'active' : '';
 }
 
+function renderSidebarApprovalBadge($count) {
+    $count = (int)$count;
+    if ($count <= 0) {
+        return '';
+    }
+    $label = $count > 99 ? '99+' : (string)$count;
+    return '<span class="badge rounded-pill bg-danger ms-auto order-2">' . htmlspecialchars($label) . '</span>';
+}
+
 $displayName = trim($_SESSION['full_name'] ?? '') ?: ($_SESSION['username'] ?? '');
 $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['role'] ?? '');
+$approvalBadgeCounts = ['leave' => 0, 'time_request' => 0, 'day_swap' => 0, 'total' => 0];
+
+if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager', 'hr', 'admin'], true)) {
+    require_once __DIR__ . '/db_connect.php';
+    require_once __DIR__ . '/leave_helpers.php';
+    require_once __DIR__ . '/day_swap_helpers.php';
+    require_once __DIR__ . '/hr_scope_helpers.php';
+    require_once __DIR__ . '/approval_badge_helpers.php';
+
+    $approvalBadgeCounts = approvalBadgeFetchCounts(
+        $mysqli,
+        $_SESSION['role'] ?? 'employee',
+        (int)($_SESSION['employee_id'] ?? 0),
+        hrScopeCurrentSessionScopes()
+    );
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -55,7 +80,8 @@ $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['
             </a>
 
             <!-- Leave System (Dropdown) -->
-            <a href="#leaveSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
+            <a href="#leaveSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
                 <i class="fas fa-calendar-alt me-2"></i> ระบบการลา
             </a>
             <div class="collapse sidebar-submenu <?php echo (isActive('leave_request.php') || isActive('my_leaves.php') || isActive('leave_approvals.php')) ? 'show' : ''; ?>" id="leaveSubmenu">
@@ -66,24 +92,33 @@ $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['
                     <small>ประวัติการลา</small>
                 </a>
                 <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_approvals.php'); ?>">
+                <a href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('leave_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
                     <small>อนุมัติการลา</small>
                 </a>
                 <?php endif; ?>
             </div>
 
             <!-- Late / Early Time Request System -->
-            <a href="#timeRequestSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
+            <a href="#timeRequestSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
                 <i class="fas fa-business-time me-2"></i> ขอมาสาย/ออกก่อนเวลา
             </a>
-            <div class="collapse sidebar-submenu <?php echo isActive('late_early_request.php') ? 'show' : ''; ?>" id="timeRequestSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('late_early_request.php') || isActive('leave_approvals.php')) ? 'show' : ''; ?>" id="timeRequestSubmenu">
                 <a href="late_early_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('late_early_request.php'); ?>">
                     <small>ส่งคำขอเวลา</small>
                 </a>
+                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
+                <a href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('leave_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
+                    <small>อนุมัติคำขอเวลา</small>
+                </a>
+                <?php endif; ?>
             </div>
 
             <!-- Day Swap System (Dropdown) -->
-            <a href="#daySwapSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
+            <a href="#daySwapSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
                 <i class="fas fa-right-left me-2"></i> สลับวันหยุด
             </a>
             <div class="collapse sidebar-submenu <?php echo (isActive('day_swap_request.php') || isActive('day_swap_approvals.php')) ? 'show' : ''; ?>" id="daySwapSubmenu">
@@ -91,7 +126,8 @@ $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['
                     <small>ขอสลับวันหยุด</small>
                 </a>
                 <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="day_swap_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_approvals.php'); ?>">
+                <a href="day_swap_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('day_swap_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
                     <small>อนุมัติสลับวันหยุด</small>
                 </a>
                 <?php endif; ?>
