@@ -41,9 +41,10 @@
         var el = document.getElementById("wrapper");
         var toggleButton = document.getElementById("sidebarToggle");
 
-        if (toggleButton) {
+        if (el && toggleButton) {
             toggleButton.onclick = function () {
                 el.classList.toggle("sb-sidenav-toggled");
+                document.body.classList.toggle("sb-sidenav-toggled");
             };
         }
     });

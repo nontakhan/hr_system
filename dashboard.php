@@ -33,7 +33,7 @@ require_once 'includes/header.php';
 
 <div class="row">
     <!-- Left Column: Employee Types Chart -->
-    <div class="col-md-8 mb-4">
+    <div class="col-lg-8 mb-4">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0 text-primary"><i class="fas fa-chart-bar me-2"></i> สรุปจำนวนพนักงานตามประเภท</h5>
@@ -47,7 +47,7 @@ require_once 'includes/header.php';
     </div>
 
     <!-- Right Column: Company Summary List -->
-    <div class="col-md-4 mb-4">
+    <div class="col-lg-4 mb-4">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-building me-2"></i> สรุปภาพรวม</h5>

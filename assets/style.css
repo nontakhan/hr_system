@@ -20,6 +20,7 @@ body {
     color: var(--dark-text);
     overflow-x: hidden; /* ป้องกัน Scrollbar แนวนอน */
     padding-top: 0;     /* ไม่ต้องมี padding-top เพราะไม่ได้ใช้ Fixed Navbar แล้ว */
+    min-width: 320px;
 }
 
 /* --- Layout Wrapper --- */
@@ -38,7 +39,7 @@ body {
     height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
-    margin-left: -15rem; /* ค่าเริ่มต้นซ่อนใน Mobile (-width) */
+    margin-left: calc(-1 * var(--sidebar-width)); /* ค่าเริ่มต้นซ่อนใน Mobile (-width) */
     transition: margin 0.25s ease-out;
     background: linear-gradient(180deg, #fffefe 0%, #f8f4f4 100%);
     border-right: 1px solid #e8dddd;
@@ -133,6 +134,17 @@ body {
 }
 .navbar-top .nav-link { color: #ffffff !important; }
 .navbar-top .nav-link:hover { color: #ffffff !important; }
+.navbar-top .navbar-toggler {
+    min-width: 44px;
+    min-height: 44px;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+.navbar-top .navbar-toggler:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.22);
+}
+.navbar-top .navbar-toggler-icon {
+    filter: invert(1) grayscale(1) brightness(2);
+}
 .navbar-top .dropdown-menu {
     margin-top: 10px; /* ขยับ Dropdown ลงมานิดนึง */
     border: 1px solid #f0dede;
@@ -140,7 +152,7 @@ body {
 }
 
 /* --- Responsive Behavior (การแสดงผลบนมือถือ vs จอใหญ่) --- */
-@media (min-width: 768px) {
+@media (min-width: 992px) {
     #sidebar-wrapper {
         margin-left: 0; /* จอใหญ่: แสดง Sidebar ปกติ */
     }
@@ -154,23 +166,209 @@ body {
     }
 
     /* สถานะเมื่อกดปุ่มย่อเมนู (Toggled) บนจอใหญ่ */
-    body.sb-sidenav-toggled #sidebar-wrapper {
+    body.sb-sidenav-toggled #sidebar-wrapper,
+    #wrapper.sb-sidenav-toggled #sidebar-wrapper {
         margin-left: calc(-1 * var(--sidebar-width)); /* ซ่อนไปทางซ้าย */
     }
 
-    body.sb-sidenav-toggled #page-content-wrapper {
+    body.sb-sidenav-toggled #page-content-wrapper,
+    #wrapper.sb-sidenav-toggled #page-content-wrapper {
         margin-left: 0;
     }
 
-    body.sb-sidenav-toggled .navbar-top {
+    body.sb-sidenav-toggled .navbar-top,
+    #wrapper.sb-sidenav-toggled .navbar-top {
         left: 0;
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     /* สถานะเมื่อกดปุ่มเมนู (Toggled) บนมือถือ */
-    body.sb-sidenav-toggled #sidebar-wrapper {
+    body.sb-sidenav-toggled #sidebar-wrapper,
+    #wrapper.sb-sidenav-toggled #sidebar-wrapper {
         margin-left: 0; /* เลื่อนออกมาแสดง */
+    }
+}
+
+@media (max-width: 991.98px) {
+    .navbar-top {
+        z-index: 1050;
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+    }
+
+    .navbar-top .container-fluid {
+        min-width: 0;
+        gap: 0.5rem;
+    }
+
+    .navbar-top .navbar-toggler {
+        display: none;
+    }
+
+    #navbarSupportedContent {
+        display: flex !important;
+        flex-basis: auto;
+        flex-grow: 0;
+        width: auto;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    #navbarSupportedContent .navbar-nav {
+        flex-direction: row;
+        margin-top: 0 !important;
+    }
+
+    #navbarSupportedContent .dropdown-menu {
+        position: static;
+        margin-top: 0.4rem;
+        box-shadow: none !important;
+    }
+}
+
+@media (max-width: 991.98px) {
+    #sidebar-wrapper,
+    #sidebar-wrapper .list-group {
+        width: min(var(--sidebar-width), 84vw);
+    }
+
+    #sidebar-wrapper .list-group-item {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 11px 16px;
+        margin-left: 8px;
+        margin-right: 8px;
+        width: calc(100% - 16px);
+    }
+
+    .sidebar-submenu .list-group-item {
+        padding-left: 2.35rem !important;
+    }
+
+    #page-content-wrapper > .container-fluid {
+        padding-left: max(0.85rem, env(safe-area-inset-left)) !important;
+        padding-right: max(0.85rem, env(safe-area-inset-right)) !important;
+        padding-top: 1rem !important;
+    }
+
+    #page-content-wrapper > .container-fluid > .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.75rem;
+    }
+
+    #page-content-wrapper > .container-fluid > .d-flex.justify-content-between > .btn,
+    #page-content-wrapper > .container-fluid > .d-flex.justify-content-between > a.btn {
+        width: 100%;
+    }
+
+    .card {
+        margin-bottom: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .card-header {
+        padding: 0.85rem 1rem;
+    }
+
+    .card-header .row {
+        gap: 0.75rem;
+    }
+
+    .card-header .d-flex {
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+
+    .table-responsive {
+        margin-left: -0.25rem;
+        margin-right: -0.25rem;
+        padding-bottom: 0.35rem;
+    }
+
+    .table {
+        min-width: 640px;
+    }
+
+    .btn,
+    .form-control,
+    .form-select,
+    .select2-container--default .select2-selection--single {
+        min-height: 44px;
+    }
+
+    .btn-sm {
+        min-height: 38px;
+    }
+
+    .btn-group {
+        flex-wrap: nowrap;
+    }
+
+    .dataTables_wrapper .row {
+        gap: 0.65rem;
+    }
+
+    .dataTables_wrapper .row > [class*="col-"] {
+        width: 100%;
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        text-align: start !important;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        width: 100%;
+        margin: 0.35rem 0 0;
+    }
+
+    .pagination {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 991.98px) {
+    #page-content-wrapper > .container-fluid {
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+    }
+
+    #companyBranchStatsContainer > [class*="col-"] {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    #companyBranchStatsContainer .card-body .d-flex {
+        min-width: 0;
+    }
+
+    #companyBranchStatsContainer h6 {
+        min-width: 0;
+        padding-right: 0.5rem;
+    }
+
+    #companyBranchStatsContainer .badge.rounded-pill.fs-5 {
+        flex: 0 0 auto;
+        font-size: 0.95rem !important;
+        line-height: 1.2;
+        max-width: 4.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
 
@@ -1012,5 +1210,76 @@ button.attendance-import-summary-card:focus-visible {
     #attendanceCalendar .fc-event {
         font-size: 0.7rem;
         padding: 1px 5px;
+    }
+
+    .login-container {
+        align-items: stretch;
+        padding: max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    }
+
+    .login-shell {
+        border-radius: 10px;
+    }
+
+    .login-info-panel {
+        padding: 28px 20px;
+    }
+
+    .login-system-title {
+        font-size: 1.55rem;
+    }
+
+    .login-card {
+        padding: 24px 18px;
+    }
+
+    .leave-type-grid,
+    .leave-usage-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .leave-usage-entry {
+        flex-direction: column;
+        gap: 0.1rem;
+    }
+
+    .attendance-calendar-shell,
+    .holiday-calendar-shell {
+        min-height: 360px;
+    }
+
+    #attendanceCalendar .fc-header-toolbar,
+    #holidayCalendar .fc-header-toolbar,
+    .day-swap-calendar .fc-header-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    #attendanceCalendar .fc-toolbar-chunk,
+    #holidayCalendar .fc-toolbar-chunk,
+    .day-swap-calendar .fc-toolbar-chunk {
+        display: flex;
+        justify-content: center;
+    }
+
+    #attendanceCalendar .fc-button,
+    #holidayCalendar .fc-button,
+    .day-swap-calendar .fc-button {
+        min-height: 38px;
+        padding: 0.35rem 0.55rem;
+    }
+
+    .day-swap-calendar-card {
+        padding: 0.85rem;
+    }
+
+    .day-swap-calendar .fc-daygrid-day-frame {
+        min-height: 58px;
+    }
+
+    .attendance-detail-list div {
+        grid-template-columns: 1fr;
+        gap: 0.15rem;
     }
 }
