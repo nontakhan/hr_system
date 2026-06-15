@@ -2,6 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('daySwapForm')) {
         initDaySwapRequestPage();
     }
+    if (document.getElementById('daySwapHistoryBody')) {
+        initDaySwapHistoryPage();
+    }
     if (document.getElementById('daySwapPendingBody')) {
         initDaySwapApprovalPage();
     }
@@ -32,6 +35,14 @@ function initDaySwapRequestPage() {
     loadDaySwapEmployees();
     loadRequesterHolidays();
     loadTargetHolidays();
+    loadDaySwapHistory();
+}
+
+function initDaySwapHistoryPage() {
+    const refreshButton = document.getElementById('refreshDaySwapHistoryBtn');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', loadDaySwapHistory);
+    }
     loadDaySwapHistory();
 }
 
@@ -244,6 +255,8 @@ async function submitDaySwapRequest(event) {
 
 async function loadDaySwapHistory() {
     const tbody = document.getElementById('daySwapHistoryBody');
+    if (!tbody) return;
+
     tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
     try {
         const response = await fetch('api/day_swap_api.php?action=my_requests');

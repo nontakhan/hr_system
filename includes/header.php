@@ -108,12 +108,15 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
                 <i class="fas fa-business-time me-2"></i> ขอมาสาย/ออกก่อนเวลา
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('late_early_request.php') || isActive('leave_approvals.php')) ? 'show' : ''; ?>" id="timeRequestSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('late_early_request.php') || isActive('late_early_history.php') || isActive('late_early_approvals.php')) ? 'show' : ''; ?>" id="timeRequestSubmenu">
                 <a href="late_early_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('late_early_request.php'); ?>">
                     <small>ส่งคำขอเวลา</small>
                 </a>
+                <a href="late_early_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('late_early_history.php'); ?>">
+                    <small>ประวัติคำขอเวลา</small>
+                </a>
                 <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('leave_approvals.php'); ?>">
+                <a href="late_early_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('late_early_approvals.php'); ?>">
                     <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
                     <small>อนุมัติคำขอเวลา</small>
                 </a>
@@ -125,9 +128,12 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
                 <i class="fas fa-right-left me-2"></i> สลับวันหยุด
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('day_swap_request.php') || isActive('day_swap_approvals.php')) ? 'show' : ''; ?>" id="daySwapSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('day_swap_request.php') || isActive('day_swap_history.php') || isActive('day_swap_approvals.php')) ? 'show' : ''; ?>" id="daySwapSubmenu">
                 <a href="day_swap_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_request.php'); ?>">
                     <small>ขอสลับวันหยุด</small>
+                </a>
+                <a href="day_swap_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_history.php'); ?>">
+                    <small>ประวัติคำขอ</small>
                 </a>
                 <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
                 <a href="day_swap_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('day_swap_approvals.php'); ?>">

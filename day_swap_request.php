@@ -12,6 +12,9 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">ขอสลับวันหยุด</h1>
         <p class="text-muted small">เลือกวันหยุดปกติจากปฏิทินทั้งสองฝั่งเพื่อส่งให้หัวหน้าอนุมัติ</p>
     </div>
+    <a href="day_swap_history.php" class="btn btn-outline-primary">
+        <i class="fas fa-clock-rotate-left me-1"></i> ดูประวัติคำขอ
+    </a>
 </div>
 
 <div class="row g-4">
@@ -77,28 +80,6 @@ require_once 'includes/header.php';
                         <i class="fas fa-paper-plane me-1"></i> ส่งคำขอ
                     </button>
                 </form>
-            </div>
-        </div>
-    </div>
-    <div class="col-12">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="card-title mb-3">ประวัติคำขอสลับวันหยุด</h5>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>วันที่ส่ง</th>
-                                <th>คู่สลับ</th>
-                                <th>วันที่สลับ</th>
-                                <th>สถานะ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="daySwapHistoryBody">
-                            <tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
         </div>
     </div>

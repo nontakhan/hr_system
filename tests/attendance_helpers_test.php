@@ -295,6 +295,19 @@ $tooLongMinutes = attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01
     'work_days' => 'Mon,Tue,Wed,Thu,Fri',
 ]);
 assertSameValue(false, $tooLongMinutes['valid'], 'Late/early requests over one hour should be invalid.');
+assertSameValue('คำขอเวลาต้องไม่เกิน 60 นาที', $tooLongMinutes['message'], 'Late/early requests over one hour should show a Thai validation message.');
+
+$invalidTimeRequestCases = [
+    attendanceCalculateTimeRequestMinutes('', '2026-01-07', '08:35', ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'work_days' => 'Mon,Tue,Wed,Thu,Fri']),
+    attendanceCalculateTimeRequestMinutes('late_arrival', 'bad-date', '08:35', ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'work_days' => 'Mon,Tue,Wed,Thu,Fri']),
+    attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01-07', 'bad-time', ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'work_days' => 'Mon,Tue,Wed,Thu,Fri']),
+    attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01-10', '08:35', ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'work_days' => 'Mon,Tue,Wed,Thu,Fri']),
+    attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01-07', '08:35', ['start_time' => '', 'end_time' => '17:00:00', 'work_days' => 'Mon,Tue,Wed,Thu,Fri']),
+    attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01-07', '07:55', ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'work_days' => 'Mon,Tue,Wed,Thu,Fri']),
+];
+foreach ($invalidTimeRequestCases as $case) {
+    assertSameValue(false, preg_match('/[A-Za-z]/', $case['message']) === 1, 'Late/early validation messages should be Thai for employees.');
+}
 
 $approvedLeave = attendanceEvaluateStatus(
     '2026-01-05',

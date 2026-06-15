@@ -27,6 +27,7 @@ try {
 
     if ($method === 'GET') {
         $type = $_GET['type'] ?? 'pending';
+        $requestUnitFilter = $_GET['request_unit'] ?? 'day';
         $scopeClause = hrScopeBuildEmployeeWhereClause($my_role, hrScopeCurrentSessionScopes(), 'e');
 
         $sql = "SELECT lr.*,
@@ -45,6 +46,12 @@ try {
 
         $types = '';
         $params = [];
+
+        if ($requestUnitFilter === 'hour') {
+            $sql .= " AND lr.request_unit = 'hour' ";
+        } else {
+            $sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour') ";
+        }
 
         if ($my_role === 'admin') {
             // Admin sees all rows in the requested stage.
@@ -83,6 +90,7 @@ try {
     } elseif ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
         $action = $input['action'] ?? '';
+        $requestUnitFilter = $input['request_unit'] ?? 'day';
         $req_id = (int)($input['request_id'] ?? 0);
         $reason = trim((string)($input['reason'] ?? ''));
 
@@ -100,6 +108,12 @@ try {
                      WHERE lr.id = ?";
         $types = 'i';
         $params = [$req_id];
+
+        if ($requestUnitFilter === 'hour') {
+            $auth_sql .= " AND lr.request_unit = 'hour'";
+        } else {
+            $auth_sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour')";
+        }
 
         if ($my_role === 'admin') {
             // Admin may act on the current stage.

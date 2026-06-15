@@ -1,23 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('lateEarlyRequestForm');
-    if (!form) return;
-
-    const typeInputs = Array.from(document.querySelectorAll('input[name="time_request_type"]'));
-    const dateInput = document.getElementById('timeRequestDate');
-    const timeInput = document.getElementById('timeRequestTime');
+    const historyBody = document.getElementById('lateEarlyHistoryBody');
     const refreshBtn = document.getElementById('refreshTimeRequestsBtn');
     let calculateTimer = null;
     let latestCalculation = null;
 
-    [...typeInputs, dateInput, timeInput].forEach(input => {
-        if (!input) return;
-        input.addEventListener('change', scheduleTimeRequestCalculation);
-        input.addEventListener('input', scheduleTimeRequestCalculation);
-    });
-
     refreshBtn?.addEventListener('click', loadTimeRequestHistory);
-    form.addEventListener('submit', submitLateEarlyRequest);
-    loadTimeRequestHistory();
+    if (historyBody) loadTimeRequestHistory();
+
+    if (form) {
+        const typeInputs = Array.from(document.querySelectorAll('input[name="time_request_type"]'));
+        const dateInput = document.getElementById('timeRequestDate');
+        const timeInput = document.getElementById('timeRequestTime');
+
+        [...typeInputs, dateInput, timeInput].forEach(input => {
+            if (!input) return;
+            input.addEventListener('change', scheduleTimeRequestCalculation);
+            input.addEventListener('input', scheduleTimeRequestCalculation);
+        });
+
+        form.addEventListener('submit', submitLateEarlyRequest);
+    }
 
     function scheduleTimeRequestCalculation() {
         window.clearTimeout(calculateTimer);
@@ -27,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function calculateTimeRequest() {
         const box = document.getElementById('timeRequestCalculation');
         const text = document.getElementById('timeRequestCalculationText');
+        const dateInput = document.getElementById('timeRequestDate');
+        const timeInput = document.getElementById('timeRequestTime');
         latestCalculation = null;
 
         const requestType = getSelectedTimeRequestType();
@@ -63,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getSelectedTimeRequestType() {
-        return form.querySelector('input[name="time_request_type"]:checked')?.value || '';
+        return form?.querySelector('input[name="time_request_type"]:checked')?.value || '';
     }
 
     async function submitLateEarlyRequest(event) {

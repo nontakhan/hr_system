@@ -1,34 +1,31 @@
 <?php
 /*
- * หน้าอนุมัติการลา (สำหรับ Manager/Admin/HR)
+ * หน้าอนุมัติคำขอเวลา (มาสาย/ออกก่อนเวลา)
  */
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php';
 
-// เช็คสิทธิ์: ต้องไม่ใช่ Employee ธรรมดา (ต้องเป็น Manager, HR, Admin)
 if (!in_array($_SESSION['role'], ['manager', 'hr', 'admin'])) {
     header("Location: dashboard.php");
     exit();
 }
 
-$page_title = "อนุมัติการลา";
+$page_title = "อนุมัติคำขอเวลา";
 require_once 'includes/header.php';
 ?>
 <script>
-window.leaveApprovalRequestUnit = 'day';
+window.leaveApprovalRequestUnit = 'hour';
 </script>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800">รายการรออนุมัติ</h1>
-        <p class="text-muted small">รายการขอลาจากพนักงานในสังกัดของคุณ</p>
+        <h1 class="h3 mb-0 text-gray-800">อนุมัติคำขอเวลา</h1>
+        <p class="text-muted small">รายการขอมาสาย/ออกก่อนเวลาจากพนักงานในสังกัดของคุณ</p>
     </div>
 </div>
 
 <div class="card shadow-sm border-0">
     <div class="card-body">
-        
-        <!-- Tab แยกสถานะ (รออนุมัติ / ประวัติการอนุมัติ) -->
         <ul class="nav nav-tabs mb-3" id="approvalTabs" role="tablist">
             <li class="nav-item">
                 <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button">
@@ -43,17 +40,15 @@ window.leaveApprovalRequestUnit = 'day';
         </ul>
 
         <div class="tab-content" id="approvalTabsContent">
-            
-            <!-- Tab 1: Pending List -->
             <div class="tab-pane fade show active" id="pending">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle" id="pendingTable">
                         <thead class="table-light">
                             <tr>
                                 <th>พนักงาน</th>
-                                <th>ประเภทการลา</th>
-                                <th>วันที่ลา</th>
-                                <th>จำนวน</th>
+                                <th>ประเภทคำขอ</th>
+                                <th>วันที่ขอ</th>
+                                <th>จำนวนเวลา</th>
                                 <th>เหตุผล/เอกสาร</th>
                                 <th style="width: 180px;">จัดการ</th>
                             </tr>
@@ -65,7 +60,6 @@ window.leaveApprovalRequestUnit = 'day';
                 </div>
             </div>
 
-            <!-- Tab 2: History List -->
             <div class="tab-pane fade" id="history">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle" id="historyTable">
@@ -74,7 +68,7 @@ window.leaveApprovalRequestUnit = 'day';
                                 <th>วันที่ทำรายการ</th>
                                 <th>พนักงาน</th>
                                 <th>ประเภท</th>
-                                <th>วันที่ลา</th>
+                                <th>วันที่ขอ</th>
                                 <th>สถานะ</th>
                                 <th>หมายเหตุ</th>
                             </tr>
@@ -85,12 +79,10 @@ window.leaveApprovalRequestUnit = 'day';
                     </table>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 
-<!-- Modal อนุมัติ/ไม่อนุมัติ -->
 <div class="modal fade" id="actionModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -101,10 +93,8 @@ window.leaveApprovalRequestUnit = 'day';
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="request_id" id="requestId">
-                    <input type="hidden" name="action_type" id="actionType"> <!-- approve หรือ reject -->
-                    
+                    <input type="hidden" name="action_type" id="actionType">
                     <p id="actionMessage"></p>
-                    
                     <div class="mb-3" id="rejectReasonDiv" style="display: none;">
                         <label class="form-label">ระบุเหตุผลที่ไม่อนุมัติ <span class="text-danger">*</span></label>
                         <textarea name="reason" id="rejectReason" class="form-control" rows="3"></textarea>

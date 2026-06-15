@@ -22,6 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function getLeaveApprovalRequestUnit() {
+    return window.leaveApprovalRequestUnit === 'hour' ? 'hour' : 'day';
+}
+
+function getLeaveApprovalRequestLabel() {
+    return getLeaveApprovalRequestUnit() === 'hour' ? 'คำขอเวลา' : 'การลา';
+}
+
 function renderLeaveStatusBadge(status) {
     const map = {
         pending: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
@@ -41,7 +49,11 @@ async function loadPendingLeaves() {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">กำลังโหลด...</td></tr>';
 
     try {
-        const response = await fetch('api/leave_approval_api.php?type=pending');
+        const params = new URLSearchParams({
+            type: 'pending',
+            request_unit: getLeaveApprovalRequestUnit(),
+        });
+        const response = await fetch(`api/leave_approval_api.php?${params.toString()}`);
         const res = await response.json();
 
         if (res.status === 'success') {
@@ -121,7 +133,11 @@ async function loadHistoryLeaves() {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">กำลังโหลด...</td></tr>';
 
     try {
-        const response = await fetch('api/leave_approval_api.php?type=history');
+        const params = new URLSearchParams({
+            type: 'history',
+            request_unit: getLeaveApprovalRequestUnit(),
+        });
+        const response = await fetch(`api/leave_approval_api.php?${params.toString()}`);
         const res = await response.json();
 
         if (res.status === 'success') {
@@ -172,11 +188,12 @@ window.openActionModal = function(id, type, name) {
     reasonInput.value = ''; // Clear
 
     name = escapeHtml(name);
+    const requestLabel = getLeaveApprovalRequestLabel();
 
     if (type === 'approve') {
         title.innerText = 'ยืนยันการอนุมัติ';
         title.className = 'modal-title text-success';
-        msg.innerHTML = `คุณต้องการอนุมัติการลาของ <strong>${name}</strong> ใช่หรือไม่?`;
+        msg.innerHTML = `คุณต้องการอนุมัติ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`;
         confirmBtn.className = 'btn btn-success';
         confirmBtn.innerText = 'ยืนยันอนุมัติ';
         reasonDiv.style.display = 'none';
@@ -184,7 +201,7 @@ window.openActionModal = function(id, type, name) {
     } else {
         title.innerText = 'ยืนยันการปฏิเสธ';
         title.className = 'modal-title text-danger';
-        msg.innerHTML = `คุณต้องการ <strong>ไม่อนุมัติ</strong> การลาของ <strong>${name}</strong> ใช่หรือไม่?`;
+        msg.innerHTML = `คุณต้องการ <strong>ไม่อนุมัติ</strong> ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`;
         confirmBtn.className = 'btn btn-danger';
         confirmBtn.innerText = 'ยืนยันไม่อนุมัติ';
         reasonDiv.style.display = 'block';
@@ -241,6 +258,7 @@ async function handleSubmitApproval(e) {
     const formData = new FormData(e.target);
     const action = formData.get('action_type'); // approve / reject
     const data = Object.fromEntries(formData.entries());
+    data.request_unit = getLeaveApprovalRequestUnit();
     
     // เปลี่ยน key ให้ตรงกับ API ที่คาดหวัง
     data.action = action; 
