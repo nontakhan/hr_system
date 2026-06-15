@@ -122,7 +122,7 @@ require_once 'includes/header.php';
                         <div class="col-md-2">
                             <label class="form-label">คำนำหน้า (ไทย) <span class="text-danger">*</span></label>
                             <select name="title_th" class="form-select" required>
-                                <?php foreach(['นาย','นาง','นางสาว'] as $v) echo "<option value='$v' ".($emp['title_th']==$v?'selected':'').">$v</option>"; ?>
+                                <?php foreach(['นาย','นาง','นางสาว'] as $v) echo "<option value='$v' ".($emp['prefix_th']==$v?'selected':'').">$v</option>"; ?>
                             </select>
                         </div>
                         <div class="col-md-5">
@@ -137,7 +137,7 @@ require_once 'includes/header.php';
                         <div class="col-md-2">
                             <label class="form-label">คำนำหน้า (Eng)</label>
                             <select name="title_en" class="form-select">
-                                <?php foreach(['Mr.','Mrs.','Miss'] as $v) echo "<option value='$v' ".($emp['title_en']==$v?'selected':'').">$v</option>"; ?>
+                                <?php foreach(['Mr.','Mrs.','Miss'] as $v) echo "<option value='$v' ".($emp['prefix_en']==$v?'selected':'').">$v</option>"; ?>
                             </select>
                         </div>
                         <div class="col-md-5">

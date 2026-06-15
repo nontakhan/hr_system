@@ -9,6 +9,10 @@ function getVal($arr, $key, $default = null) {
     return isset($arr[$key]) && $arr[$key] !== '' ? $arr[$key] : $default;
 }
 
+function getEmployeePrefixVal($arr, $titleKey, $prefixKey, $default = null) {
+    return getVal($arr, $titleKey, getVal($arr, $prefixKey, $default));
+}
+
 function sendJsonError($message) {
     header('Content-Type: application/json');
     echo json_encode(['status' => 'error', 'message' => $message]);
@@ -231,8 +235,8 @@ function createEmployee($mysqli, $data, $files) {
         // 2. Prepare Variables (29 items)
         $params = [
             // Strings (20)
-            getVal($data, 'title_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
-            getVal($data, 'title_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
+            getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
+            getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
             getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
             getVal($data, 'phone_number'), getVal($data, 'current_address'), getVal($data, 'district'), getVal($data, 'province'),
@@ -311,8 +315,8 @@ function updateEmployee($mysqli, $data, $files) {
         // 2. Prepare Variables (30 items: 29 updates + 1 ID)
         $params = [
             // Strings (20)
-            getVal($data, 'title_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
-            getVal($data, 'title_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
+            getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
+            getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
             getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
             getVal($data, 'phone_number'), getVal($data, 'current_address'), getVal($data, 'district'), getVal($data, 'province'),
