@@ -441,13 +441,13 @@ function leaveBuildFiscalYearRange($startMonth, $referenceDate = null) {
     ];
 }
 
-function leaveBuildUsageWarningStatus($usedRequests, $requestLimit) {
+function leaveBuildUsageWarningStatus($usedDays, $requestLimit) {
     $requestLimit = (int)$requestLimit;
     if ($requestLimit <= 0) {
         return 'normal';
     }
 
-    $requestPercent = (((int)$usedRequests / $requestLimit) * 100);
+    $requestPercent = (((float)$usedDays / $requestLimit) * 100);
     if ($requestPercent > 100) {
         return 'over';
     }
@@ -552,10 +552,10 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
     }
 
     if ($requestLimit > 0) {
-        $summaryItem['request_usage_percent'] = round(($summaryItem['approved_requests'] / $requestLimit) * 100, 1);
-        $summaryItem['remaining_requests'] = $requestLimit - $summaryItem['approved_requests'];
+        $summaryItem['request_usage_percent'] = round(($summaryItem['approved_days'] / $requestLimit) * 100, 1);
+        $summaryItem['remaining_requests'] = $requestLimit - $summaryItem['approved_days'];
     }
-    $summaryItem['status'] = leaveBuildUsageWarningStatus($summaryItem['approved_requests'], $requestLimit);
+    $summaryItem['status'] = leaveBuildUsageWarningStatus($summaryItem['approved_days'], $requestLimit);
 
     return [
         'fiscal_year' => $fiscal,

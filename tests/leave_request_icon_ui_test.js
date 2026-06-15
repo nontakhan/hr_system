@@ -35,6 +35,8 @@ assertNotIncludes(timeRequestPage, '<select name="time_request_type"', 'Late/ear
 assertIncludes(timeRequestPage, 'name="request_time"', 'Late/early request page should collect the requested time.');
 assertIncludes(leaveTypesPage, 'id="leavePolicyTable"', 'Leave settings should list saved policy records.');
 assertIncludes(leaveTypesPage, 'name="leave_max_requests_per_year"', 'Leave policy form should include a fiscal-year request limit input.');
+assertIncludes(leaveTypesPage, 'จำนวนวันลาที่ลาได้ต่อปีงบประมาณ', 'Leave policy form should describe the annual quota as leave days.');
+assertIncludes(leaveTypesPage, 'จำนวนวันลา/ปีงบ', 'Leave policy table should describe the annual quota as leave days.');
 assertIncludes(script, 'function renderLeaveTypeCards', 'Leave request JS should render leave type icon cards.');
 assertIncludes(leaveSettingsScript, 'function renderLeavePolicyRows', 'Leave settings JS should render saved policy rows.');
 assertIncludes(script, 'function selectLeaveType', 'Leave request JS should select a leave type card and sync the hidden field.');
@@ -42,6 +44,11 @@ assertIncludes(script, 'function getLeaveTypePresentation', 'Leave request JS sh
 assertIncludes(script, 'function renderLeaveUsageSummary', 'Leave request JS should render leave usage warnings.');
 assertIncludes(script, 'function renderLeaveUsageEntries', 'Leave request JS should render every counted leave entry for comparison.');
 assertIncludes(script, 'function renderOverallLeaveUsageCard', 'Leave request JS should render one overall leave usage card.');
+assertIncludes(script, 'วัน', 'Leave request usage summary should display annual quota in days.');
+assertNotIncludes(script, '${item.request_limit} ครั้ง', 'Leave request usage summary should not display annual quota as request counts.');
+assertNotIncludes(script, 'จากสิทธิ์ ${usage.request_limit} ครั้ง/ปีงบ', 'Leave request condition text should not describe quota as request counts.');
+assertNotIncludes(script, 'projectedRequests', 'Leave request projection should calculate with projected leave days.');
+assertNotIncludes(leaveSettingsScript, '${policy.leave_max_requests_per_year} ครั้ง', 'Leave settings rows should not display annual quota as request counts.');
 assertIncludes(timeRequestScript, 'calculateTimeRequest', 'Late/early request JS should calculate minutes before submit.');
 assertIncludes(timeRequestScript, 'loadTimeRequestHistory', 'Late/early request JS should load its own history.');
 assertNotIncludes(script, "request_unit: 'hour'", 'Leave request JS should no longer calculate hourly requests.');

@@ -59,8 +59,8 @@ require_once 'includes/header.php';
                 </select>
             </div>
             <div class="col-12 col-md-6 col-xl-3">
-                <label class="form-label small mb-1" for="leaveMaxRequestsPerYear">จำนวนครั้งที่ลาได้ต่อปีงบประมาณ</label>
-                <input type="number" class="form-control" id="leaveMaxRequestsPerYear" name="leave_max_requests_per_year" value="0" min="0" title="ใส่ 0 หากไม่จำกัดจำนวนครั้ง">
+                <label class="form-label small mb-1" for="leaveMaxRequestsPerYear">จำนวนวันลาที่ลาได้ต่อปีงบประมาณ</label>
+                <input type="number" class="form-control" id="leaveMaxRequestsPerYear" name="leave_max_requests_per_year" value="0" min="0" title="ใส่ 0 หากไม่จำกัดจำนวนวันลา">
             </div>
             <div class="col-12 col-md-6 col-xl-3">
                 <label class="form-label small mb-1 d-none d-md-block">&nbsp;</label>
@@ -85,7 +85,7 @@ require_once 'includes/header.php';
                     <tr>
                         <th>ชุดนโยบาย</th>
                         <th>ปีงบประมาณ</th>
-                        <th>จำนวนครั้ง/ปีงบ</th>
+                        <th>จำนวนวันลา/ปีงบ</th>
                         <th>สถานะ</th>
                         <th class="text-nowrap" style="width: 230px;">จัดการ</th>
                     </tr>

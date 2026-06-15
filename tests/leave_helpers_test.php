@@ -75,11 +75,11 @@ $aprilFiscal = leaveBuildFiscalYearRange(4, '2026-06-10');
 assertLeaveSame('2026-04-01', $aprilFiscal['start_date'], 'Custom April fiscal year should start in the same calendar year after April.');
 assertLeaveSame('2027-03-31', $aprilFiscal['end_date'], 'Custom April fiscal year should end on March 31.');
 
-$nearByRequests = leaveBuildUsageWarningStatus(4, 5);
-assertLeaveSame('near', $nearByRequests, 'Leave warning status should turn near when request count reaches 80 percent.');
+$nearByRequests = leaveBuildUsageWarningStatus(4.0, 5);
+assertLeaveSame('near', $nearByRequests, 'Leave warning status should turn near when approved leave days reach 80 percent.');
 
-$overByRequests = leaveBuildUsageWarningStatus(6, 5);
-assertLeaveSame('over', $overByRequests, 'Leave warning status should turn over when request count exceeds the fiscal year limit.');
+$overByRequests = leaveBuildUsageWarningStatus(5.5, 5);
+assertLeaveSame('over', $overByRequests, 'Leave warning status should turn over when approved leave days exceed the fiscal year limit.');
 
 $lateHourlyType = leaveDetectHourlyRequestType('ขอมาสาย');
 assertLeaveSame('late_arrival', $lateHourlyType, 'Late arrival leave type names should be detected as hourly requests.');

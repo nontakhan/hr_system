@@ -163,7 +163,7 @@ function renderLeavePolicyRows(policies) {
     tbody.innerHTML = policies.map(policy => {
         const fiscal = policy.current_fiscal_year || {};
         const limitText = Number.parseInt(policy.leave_max_requests_per_year, 10) > 0
-            ? `${policy.leave_max_requests_per_year} ครั้ง`
+            ? `${policy.leave_max_requests_per_year} วัน`
             : 'ไม่จำกัด';
         const isActive = Number.parseInt(policy.is_active, 10) === 1;
         const data = escapeAttr(JSON.stringify(policy));

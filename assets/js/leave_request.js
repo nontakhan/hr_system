@@ -107,11 +107,11 @@ function renderOverallLeaveUsageCard(item) {
     const percent = Number.parseFloat(item.request_usage_percent || 0);
     const progressWidth = Math.min(Math.max(percent, 0), 100);
     const requestLimitText = Number.parseInt(item.request_limit || 0, 10) > 0
-        ? `${item.request_limit} ครั้ง`
+        ? `${formatLeaveDayNumber(item.request_limit)} วัน`
         : 'ไม่จำกัด';
-    const remainingRequests = item.remaining_requests === null
+    const remainingDays = item.remaining_requests === null
         ? 'ไม่จำกัด'
-        : `${item.remaining_requests} ครั้ง`;
+        : `${formatLeaveDayNumber(item.remaining_requests)} วัน`;
     const pendingText = Number.parseFloat(item.pending_days || 0) > 0
         ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
         : '';
@@ -120,15 +120,15 @@ function renderOverallLeaveUsageCard(item) {
         <div class="leave-usage-card ${statusClass}">
             <div class="d-flex justify-content-between gap-2">
                 <strong>รวมการลาทั้งปีงบประมาณ</strong>
-                <span>${item.approved_requests || 0} / ${requestLimitText}</span>
+                <span>${formatLeaveDayNumber(item.approved_days)} / ${requestLimitText}</span>
             </div>
             <div class="leave-usage-progress" aria-hidden="true">
                 <span style="width: ${progressWidth}%"></span>
             </div>
             <div class="small mt-2">
-                ใช้แล้ว ${item.approved_requests || 0} ครั้ง, คงเหลือ ${remainingRequests}
+                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, คงเหลือ ${remainingDays}
             </div>
-            <div class="small mt-1">จำนวนวันรวมที่อนุมัติแล้ว: ${formatLeaveDayNumber(item.approved_days)} วัน</div>
+            <div class="small mt-1">จำนวนใบลาที่อนุมัติแล้ว: ${item.approved_requests || 0} ครั้ง</div>
             ${pendingText}
             ${renderLeaveUsageEntries(item.entries || [])}
         </div>
@@ -187,9 +187,9 @@ function updateLeaveTypeCondition() {
 
         const usage = getLeaveUsageItem(selectedId);
         if (usage) {
-            conditionText.textContent += ` | ปีงบนี้ลาแล้ว ${usage.approved_requests || 0} ครั้ง`;
+            conditionText.textContent += ` | ปีงบนี้ลาแล้ว ${formatLeaveDayNumber(usage.approved_days)} วัน`;
             if (Number.parseInt(usage.request_limit || 0, 10) > 0) {
-                conditionText.textContent += ` จากสิทธิ์ ${usage.request_limit} ครั้ง/ปีงบ`;
+                conditionText.textContent += ` จากสิทธิ์ ${formatLeaveDayNumber(usage.request_limit)} วัน/ปีงบ`;
             }
         }
 
@@ -219,17 +219,17 @@ function updateSelectedLeaveUsageProjection() {
     if (!usage || !conditionDiv || !conditionText) return;
 
     conditionDiv.classList.remove('text-danger', 'text-warning');
-    const projectedRequests = Number.parseInt(usage.approved_requests || 0, 10) + 1;
+    const projectedDays = (Number.parseFloat(usage.approved_days || 0) || 0) + (Number.parseFloat(latestLeaveSummary.total_days || 0) || 0);
     const requestLimit = Number.parseInt(usage.request_limit || 0, 10);
-    const projectedRequestPercent = requestLimit > 0 ? (projectedRequests / requestLimit) * 100 : 0;
+    const projectedRequestPercent = requestLimit > 0 ? (projectedDays / requestLimit) * 100 : 0;
     const projectedPercent = projectedRequestPercent;
 
     if (projectedPercent > 100) {
         conditionDiv.classList.add('text-danger');
-        conditionText.textContent += ` | หลังส่งใบนี้จะเกินสิทธิ์เป็น ${projectedRequests} ครั้ง`;
+        conditionText.textContent += ` | หลังส่งใบนี้จะเกินสิทธิ์เป็น ${formatLeaveDayNumber(projectedDays)} วัน`;
     } else if (projectedPercent >= 80) {
         conditionDiv.classList.add('text-warning');
-        conditionText.textContent += ` | หลังส่งใบนี้จะใกล้ครบ ${projectedRequests} ครั้ง`;
+        conditionText.textContent += ` | หลังส่งใบนี้จะใกล้ครบ ${formatLeaveDayNumber(projectedDays)} วัน`;
     }
 }
 
