@@ -17,7 +17,7 @@ $hrStages = approvalBadgePendingStagesForRole('hr');
 assertApprovalBadgeSame(['pending_hr'], $hrStages, 'HR badges should count HR-stage requests only.');
 
 $adminStages = approvalBadgePendingStagesForRole('admin');
-assertApprovalBadgeSame(['pending', 'pending_manager', 'pending_hr'], $adminStages, 'Admin badges should count all pending stages.');
+assertApprovalBadgeSame(['pending_hr'], $adminStages, 'Admin badges should only count requests ready for HR/admin approval.');
 
 $employeeStages = approvalBadgePendingStagesForRole('employee');
 assertApprovalBadgeSame([], $employeeStages, 'Employees should not receive approval badge stages.');
