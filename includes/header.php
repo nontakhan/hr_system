@@ -72,7 +72,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             <i class="fas fa-hospital-user me-2"></i> HR System
         </div>
         
-        <div class="list-group list-group-flush my-3">
+        <div class="list-group list-group-flush my-3" id="sidebarMenu">
             
             <!-- Dashboard -->
             <a href="dashboard.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('dashboard.php'); ?>">
@@ -88,7 +88,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
                 <i class="fas fa-calendar-alt me-2"></i> ระบบการลา
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('leave_request.php') || isActive('my_leaves.php') || isActive('leave_approvals.php')) ? 'show' : ''; ?>" id="leaveSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('leave_request.php') || isActive('my_leaves.php') || isActive('leave_approvals.php')) ? 'show' : ''; ?>" id="leaveSubmenu" data-bs-parent="#sidebarMenu">
                 <a href="leave_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_request.php'); ?>">
                     <small>ยื่นใบลา</small>
                 </a>
@@ -108,7 +108,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
                 <i class="fas fa-business-time me-2"></i> ขอมาสาย/ออกก่อนเวลา
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('late_early_request.php') || isActive('late_early_history.php') || isActive('late_early_approvals.php')) ? 'show' : ''; ?>" id="timeRequestSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('late_early_request.php') || isActive('late_early_history.php') || isActive('late_early_approvals.php')) ? 'show' : ''; ?>" id="timeRequestSubmenu" data-bs-parent="#sidebarMenu">
                 <a href="late_early_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('late_early_request.php'); ?>">
                     <small>ส่งคำขอเวลา</small>
                 </a>
@@ -128,7 +128,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
                 <i class="fas fa-right-left me-2"></i> สลับวันหยุด
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('day_swap_request.php') || isActive('day_swap_history.php') || isActive('day_swap_approvals.php')) ? 'show' : ''; ?>" id="daySwapSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('day_swap_request.php') || isActive('day_swap_history.php') || isActive('day_swap_approvals.php')) ? 'show' : ''; ?>" id="daySwapSubmenu" data-bs-parent="#sidebarMenu">
                 <a href="day_swap_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_request.php'); ?>">
                     <small>ขอสลับวันหยุด</small>
                 </a>
@@ -165,7 +165,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             <a href="#settingsSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
                 <i class="fas fa-cogs me-2"></i> ตั้งค่าระบบ
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('leave_types.php') || isActive('shifts.php') || isActive('company_holidays.php') || isActive('manage_master_data.php')) ? 'show' : ''; ?>" id="settingsSubmenu">
+            <div class="collapse sidebar-submenu <?php echo (isActive('leave_types.php') || isActive('shifts.php') || isActive('company_holidays.php') || isActive('manage_master_data.php')) ? 'show' : ''; ?>" id="settingsSubmenu" data-bs-parent="#sidebarMenu">
                 <a href="leave_types.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_types.php'); ?>">
                     <small>ประเภทการลา</small>
                 </a>
