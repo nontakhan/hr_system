@@ -45,26 +45,40 @@ try {
 
     // --- POST: ยกเลิกใบลา ---
     elseif ($method === 'POST') {
+        leaveEnsureTwoStepApprovalColumns($mysqli);
         $input = json_decode(file_get_contents('php://input'), true);
         $action = $input['action'] ?? '';
 
         if ($action === 'cancel_leave') {
             $id = (int)$input['id'];
+            $cancel_reason = trim((string)($input['cancel_reason'] ?? ''));
+
+            if ($cancel_reason === '') {
+                sendJsonError('กรุณาระบุเหตุผลการยกเลิกใบลา');
+            }
 
             // ตรวจสอบว่าเป็นใบลาของตัวเอง และสถานะยังเป็น pending
-            $check = $mysqli->prepare("SELECT id FROM leave_requests WHERE id = ? AND employee_id = ? AND (request_unit IS NULL OR request_unit <> 'hour') AND status IN ('pending','pending_manager')");
+            $check = $mysqli->prepare("SELECT id, status FROM leave_requests WHERE id = ? AND employee_id = ? AND (request_unit IS NULL OR request_unit <> 'hour') AND status IN ('pending','pending_manager','approved')");
             $check->bind_param('ii', $id, $emp_id);
             $check->execute();
-            if ($check->get_result()->num_rows === 0) {
+            $request = $check->get_result()->fetch_assoc();
+            if (!$request) {
                 sendJsonError('ไม่สามารถยกเลิกได้ (อาจอนุมัติไปแล้ว หรือไม่ใช่ใบลาของคุณ)');
             }
 
-            // อัปเดตสถานะเป็น cancelled
-            $update = $mysqli->prepare("UPDATE leave_requests SET status = 'cancelled' WHERE id = ?");
-            $update->bind_param('i', $id);
+            if ($request['status'] === 'approved') {
+                $update = $mysqli->prepare("UPDATE leave_requests SET status = 'pending_cancel_hr', cancellation_reason = ? WHERE id = ? AND status = 'approved'");
+                $update->bind_param('si', $cancel_reason, $id);
+                $successMessage = 'ส่งคำขอยกเลิกใบลาเรียบร้อยแล้ว รอ HR/Admin อนุมัติ';
+            } else {
+                // อัปเดตสถานะเป็น cancelled
+                $update = $mysqli->prepare("UPDATE leave_requests SET status = 'cancelled', cancellation_reason = ? WHERE id = ?");
+                $update->bind_param('si', $cancel_reason, $id);
+                $successMessage = 'ยกเลิกใบลาเรียบร้อยแล้ว';
+            }
             
             if ($update->execute()) {
-                echo json_encode(['status' => 'success', 'message' => 'ยกเลิกใบลาเรียบร้อยแล้ว']);
+                echo json_encode(['status' => 'success', 'message' => $successMessage]);
             } else {
                 throw new Exception($update->error);
             }

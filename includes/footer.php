@@ -26,8 +26,8 @@
 <script src="assets/js/leave.js"></script>
 <script src="assets/js/leave_request.js"></script>
 <script src="assets/js/late_early_request.js"></script>
-<script src="assets/js/my_leaves.js"></script>
-<script src="assets/js/leave_approval.js"></script>
+<script src="assets/js/my_leaves.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/my_leaves.js'); ?>"></script>
+<script src="assets/js/leave_approval.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/leave_approval.js'); ?>"></script>
 <script src="assets/js/dashboard.js"></script>
 <script src="assets/js/shift.js"></script>
 <script src="assets/js/attendance.js"></script>

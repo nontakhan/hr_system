@@ -30,7 +30,8 @@ try {
         $requestUnitFilter = $_GET['request_unit'] ?? 'day';
         $scopeClause = hrScopeBuildEmployeeWhereClause($my_role, hrScopeCurrentSessionScopes(), 'e');
 
-        $sql = "SELECT lr.*,
+                $sql = "SELECT lr.*,
+                       lr.cancellation_reason AS cancel_reason,
                        e.first_name_th, e.last_name_th, e.citizen_id as employee_code, e.profile_img_url,
                        lt.type_name,
                        la.file_path, la.file_name,
@@ -67,15 +68,15 @@ try {
 
         if ($type === 'pending') {
             if ($my_role === 'hr') {
-                $sql .= " AND lr.status = 'pending_hr' ";
+                $sql .= " AND lr.status IN ('pending_hr','pending_cancel_hr') ";
             } elseif ($my_role === 'admin') {
-                $sql .= " AND lr.status IN ('pending','pending_manager','pending_hr') ";
+                $sql .= " AND lr.status IN ('pending','pending_manager','pending_hr','pending_cancel_hr') ";
             } else {
                 $sql .= " AND lr.status IN ('pending','pending_manager') ";
             }
         } else {
             if ($my_role === 'admin' || $my_role === 'hr') {
-                $sql .= " AND lr.status IN ('approved','rejected') ";
+                $sql .= " AND lr.status IN ('approved','rejected','cancelled') ";
             } else {
                 $sql .= " AND lr.status IN ('pending_hr','approved','rejected') ";
             }
@@ -178,6 +179,32 @@ try {
                                           rejection_reason = ?
                                       WHERE id = ? AND status = 'pending_hr'");
             $stmt->bind_param('sisissi', $newStatus, $my_emp_id, $now, $my_emp_id, $now, $rejectReason, $req_id);
+        } elseif ($currentStatus === 'pending_cancel_hr') {
+            if (!in_array($my_role, ['admin', 'hr'], true)) {
+                sendJsonError('Access Denied');
+            }
+
+            if ($action === 'approve') {
+                $stmt = $mysqli->prepare("UPDATE leave_requests
+                                          SET status = 'cancelled',
+                                              hr_approver_id = ?,
+                                              hr_approval_date = ?,
+                                              approver_id = ?,
+                                              approval_date = ?,
+                                              rejection_reason = NULL
+                                          WHERE id = ? AND status = 'pending_cancel_hr'");
+                $stmt->bind_param('isisi', $my_emp_id, $now, $my_emp_id, $now, $req_id);
+            } else {
+                $stmt = $mysqli->prepare("UPDATE leave_requests
+                                          SET status = 'approved',
+                                              hr_approver_id = ?,
+                                              hr_approval_date = ?,
+                                              approver_id = ?,
+                                              approval_date = ?,
+                                              rejection_reason = ?
+                                          WHERE id = ? AND status = 'pending_cancel_hr'");
+                $stmt->bind_param('isissi', $my_emp_id, $now, $my_emp_id, $now, $reason, $req_id);
+            }
         } else {
             sendJsonError('Request was already processed');
         }

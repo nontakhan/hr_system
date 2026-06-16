@@ -36,6 +36,7 @@ function renderLeaveStatusBadge(status) {
         pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
         pending_hr: ['รอ HR อนุมัติ', 'info text-dark'],
         approved: ['อนุมัติแล้ว', 'success'],
+        pending_cancel_hr: ['รอ HR/Admin อนุมัติยกเลิก', 'warning text-dark'],
         rejected: ['ไม่อนุมัติ', 'danger'],
         cancelled: ['ยกเลิก', 'secondary'],
     };
@@ -72,6 +73,7 @@ async function loadPendingLeaves() {
                 const employeeCode = escapeHtml(item.employee_code);
                 const typeName = escapeHtml(item.type_name);
                 const reason = escapeHtml(item.reason);
+                const cancelReason = escapeHtml(item.cancel_reason || item.cancellation_reason || '');
                 const totalDays = Number.parseFloat(item.total_days) || 0;
                 const durationText = formatLeaveDuration(item);
                 item.file_path = escapeAttr(safeUploadPath(item.file_path));
@@ -82,6 +84,7 @@ async function loadPendingLeaves() {
                 item.employee_code = employeeCode;
                 item.type_name = typeName;
                 item.reason = reason;
+                item.cancel_reason = cancelReason;
                 item.total_days = totalDays;
                 
                 // รูปไฟล์แนบ
@@ -92,6 +95,13 @@ async function loadPendingLeaves() {
 
                 // รูปโปรไฟล์
                 const img = item.profile_img_url;
+
+                const isCancellationRequest = item.status === 'pending_cancel_hr';
+                const reasonHtml = isCancellationRequest
+                    ? `<small class="d-block text-danger">เหตุผลขอยกเลิก: ${item.cancel_reason || '-'}</small>`
+                    : `<small class="d-block text-muted text-truncate" style="max-width: 200px;">${item.reason}</small>`;
+                const approveLabel = isCancellationRequest ? 'อนุมัติยกเลิก' : 'อนุมัติ';
+                const rejectLabel = isCancellationRequest ? 'ไม่อนุมัติยกเลิก' : 'ไม่';
 
                 return `
                     <tr>
@@ -109,15 +119,15 @@ async function loadPendingLeaves() {
                         <td>${dateRange || `${sDate} - ${eDate}`}</td>
                         <td><strong>${durationText}</strong></td>
                         <td>
-                            <small class="d-block text-muted text-truncate" style="max-width: 200px;">${item.reason}</small>
+                            ${reasonHtml}
                             ${fileLink}
                         </td>
                         <td>
-                            <button class="btn btn-sm btn-success me-1" data-id="${item.id}" data-action="approve" data-name="${escapeAttr(item.first_name_th)}" onclick="openActionModalFromButton(this)">
-                                <i class="fas fa-check"></i> อนุมัติ
+                            <button class="btn btn-sm btn-success me-1" data-id="${item.id}" data-action="approve" data-status="${escapeAttr(item.status)}" data-name="${escapeAttr(item.first_name_th)}" onclick="openActionModalFromButton(this)">
+                                <i class="fas fa-check"></i> ${approveLabel}
                             </button>
-                            <button class="btn btn-sm btn-danger" data-id="${item.id}" data-action="reject" data-name="${escapeAttr(item.first_name_th)}" onclick="openActionModalFromButton(this)">
-                                <i class="fas fa-times"></i> ไม่
+                            <button class="btn btn-sm btn-danger" data-id="${item.id}" data-action="reject" data-status="${escapeAttr(item.status)}" data-name="${escapeAttr(item.first_name_th)}" onclick="openActionModalFromButton(this)">
+                                <i class="fas fa-times"></i> ${rejectLabel}
                             </button>
                         </td>
                     </tr>
@@ -175,7 +185,7 @@ async function loadHistoryLeaves() {
 }
 
 // เปิด Modal ยืนยัน
-window.openActionModal = function(id, type, name) {
+window.openActionModal = function(id, type, name, status) {
     const modal = new bootstrap.Modal(document.getElementById('actionModal'));
     const title = document.getElementById('actionModalTitle');
     const msg = document.getElementById('actionMessage');
@@ -189,21 +199,26 @@ window.openActionModal = function(id, type, name) {
 
     name = escapeHtml(name);
     const requestLabel = getLeaveApprovalRequestLabel();
+    const isCancellationRequest = status === 'pending_cancel_hr';
 
     if (type === 'approve') {
-        title.innerText = 'ยืนยันการอนุมัติ';
+        title.innerText = isCancellationRequest ? 'ยืนยันการอนุมัติยกเลิก' : 'ยืนยันการอนุมัติ';
         title.className = 'modal-title text-success';
-        msg.innerHTML = `คุณต้องการอนุมัติ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`;
+        msg.innerHTML = isCancellationRequest
+            ? `คุณต้องการ <strong>อนุมัติยกเลิก</strong> ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`
+            : `คุณต้องการอนุมัติ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`;
         confirmBtn.className = 'btn btn-success';
-        confirmBtn.innerText = 'ยืนยันอนุมัติ';
+        confirmBtn.innerText = isCancellationRequest ? 'ยืนยันอนุมัติยกเลิก' : 'ยืนยันอนุมัติ';
         reasonDiv.style.display = 'none';
         reasonInput.required = false;
     } else {
-        title.innerText = 'ยืนยันการปฏิเสธ';
+        title.innerText = isCancellationRequest ? 'ยืนยันไม่อนุมัติยกเลิก' : 'ยืนยันการปฏิเสธ';
         title.className = 'modal-title text-danger';
-        msg.innerHTML = `คุณต้องการ <strong>ไม่อนุมัติ</strong> ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`;
+        msg.innerHTML = isCancellationRequest
+            ? `คุณต้องการ <strong>ไม่อนุมัติยกเลิก</strong> ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`
+            : `คุณต้องการ <strong>ไม่อนุมัติ</strong> ${requestLabel}ของ <strong>${name}</strong> ใช่หรือไม่?`;
         confirmBtn.className = 'btn btn-danger';
-        confirmBtn.innerText = 'ยืนยันไม่อนุมัติ';
+        confirmBtn.innerText = isCancellationRequest ? 'ยืนยันไม่อนุมัติยกเลิก' : 'ยืนยันไม่อนุมัติ';
         reasonDiv.style.display = 'block';
         reasonInput.required = true;
     }
@@ -215,7 +230,8 @@ window.openActionModalFromButton = function(button) {
     openActionModal(
         Number.parseInt(button.dataset.id, 10) || 0,
         button.dataset.action,
-        button.dataset.name || ''
+        button.dataset.name || '',
+        button.dataset.status || ''
     );
 }
 

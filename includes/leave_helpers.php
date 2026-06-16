@@ -496,7 +496,7 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
             FROM leave_requests lr
             JOIN leave_types lt ON lr.leave_type_id = lt.id
             WHERE lr.employee_id = ?
-              AND lr.status IN ('approved', 'pending', 'pending_manager', 'pending_hr')
+              AND lr.status IN ('approved', 'pending_cancel_hr', 'pending', 'pending_manager', 'pending_hr')
               AND lr.request_unit = 'day'
               AND lr.start_date <= ?
               AND lr.end_date >= ?
@@ -523,7 +523,7 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
                 $countedDays = $summary['valid'] ? (float)$summary['total_days'] : 0.0;
             }
 
-            if ($row['status'] === 'approved') {
+            if (in_array($row['status'], ['approved', 'pending_cancel_hr'], true)) {
                 $summaryItem['approved_days'] += $countedDays;
                 $summaryItem['approved_requests']++;
             } elseif (in_array($row['status'], ['pending', 'pending_manager', 'pending_hr'], true)) {
@@ -714,8 +714,8 @@ function leaveEnsureTwoStepApprovalColumns(mysqli $mysqli) {
         }
     }
 
-    if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_manager') === false) {
-        $mysqli->query("ALTER TABLE leave_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
+    if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_cancel_hr') === false) {
+        $mysqli->query("ALTER TABLE leave_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','pending_cancel_hr','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
     }
 
     if (!isset($columns['manager_approver_id'])) {
@@ -732,5 +732,9 @@ function leaveEnsureTwoStepApprovalColumns(mysqli $mysqli) {
 
     if (!isset($columns['hr_approval_date'])) {
         $mysqli->query("ALTER TABLE leave_requests ADD COLUMN hr_approval_date DATETIME NULL AFTER hr_approver_id");
+    }
+
+    if (!isset($columns['cancellation_reason'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN cancellation_reason TEXT NULL AFTER rejection_reason");
     }
 }

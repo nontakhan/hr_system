@@ -10,8 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Event Delegation สำหรับปุ่มยกเลิก
         table.addEventListener('click', (e) => {
             if (e.target.closest('.btn-cancel')) {
-                const id = e.target.closest('.btn-cancel').getAttribute('data-id');
-                handleCancelLeave(id);
+                const button = e.target.closest('.btn-cancel');
+                const id = button.getAttribute('data-id');
+                const status = button.getAttribute('data-status') || '';
+                handleCancelLeave(id, status);
             }
         });
     }
@@ -23,6 +25,7 @@ function renderLeaveStatusBadge(status) {
         pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
         pending_hr: ['รอ HR อนุมัติ', 'info text-dark'],
         approved: ['อนุมัติแล้ว', 'success'],
+        pending_cancel_hr: ['รอ HR/Admin อนุมัติยกเลิก', 'warning text-dark'],
         rejected: ['ไม่อนุมัติ', 'danger'],
         cancelled: ['ยกเลิกแล้ว', 'secondary'],
     };
@@ -62,11 +65,12 @@ async function loadMyLeaves() {
                 // Badge สถานะ
                 let actionBtn = '';
                 const statusBadge = renderLeaveStatusBadge(item.status);
-                const canCancel = item.status === 'pending' || item.status === 'pending_manager';
+                const canCancel = item.status === 'pending' || item.status === 'pending_manager' || item.status === 'approved';
 
                 if (canCancel) {
-                    actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${itemId}">
-                                    <i class="fas fa-times"></i> ยกเลิก
+                    const cancelLabel = item.status === 'approved' ? 'ขอยกเลิก' : 'ยกเลิก';
+                    actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${itemId}" data-status="${escapeAttr(item.status)}">
+                                    <i class="fas fa-times"></i> ${cancelLabel}
                                  </button>`;
                 }
 
@@ -171,14 +175,27 @@ function formatLeaveDuration(item) {
     return `${parseFloat(item.total_days)} วัน`;
 }
 
-function handleCancelLeave(id) {
+function handleCancelLeave(id, status) {
+    const isApprovedLeave = status === 'approved';
     Swal.fire({
-        title: 'ยืนยันการยกเลิก?',
-        text: "คุณต้องการยกเลิกคำขอลาใบนี้ใช่หรือไม่?",
+        title: isApprovedLeave ? 'ขอยกเลิกใบลาที่อนุมัติแล้ว?' : 'ยืนยันการยกเลิก?',
+        text: isApprovedLeave ? 'คำขอนี้จะถูกส่งให้ HR/Admin อนุมัติ' : "คุณต้องการยกเลิกคำขอลาใบนี้ใช่หรือไม่?",
         icon: 'warning',
+        input: 'textarea',
+        inputLabel: 'เหตุผลการยกเลิกใบลา',
+        inputPlaceholder: 'ระบุเหตุผลการยกเลิก...',
+        inputAttributes: {
+            'aria-label': 'เหตุผลการยกเลิกใบลา'
+        },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) {
+                return 'กรุณาระบุเหตุผลการยกเลิกใบลา';
+            }
+            return null;
+        },
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: 'ใช่, ยกเลิกเลย',
+        confirmButtonText: isApprovedLeave ? 'ส่งคำขอยกเลิก' : 'ใช่, ยกเลิกเลย',
         cancelButtonText: 'ไม่'
     }).then(async (result) => {
         if (result.isConfirmed) {
@@ -186,12 +203,16 @@ function handleCancelLeave(id) {
                 const response = await fetch('api/leave_history_api.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'cancel_leave', id: id })
+                    body: JSON.stringify({
+                        action: 'cancel_leave',
+                        id: id,
+                        cancel_reason: result.value || ''
+                    })
                 });
                 const res = await response.json();
 
                 if (res.status === 'success') {
-                    Swal.fire('สำเร็จ', 'ยกเลิกใบลาเรียบร้อยแล้ว', 'success');
+                    Swal.fire('สำเร็จ', res.message || 'ดำเนินการเรียบร้อยแล้ว', 'success');
                     loadMyLeaves(); // โหลดตารางใหม่
                 } else {
                     Swal.fire('ทำรายการไม่ได้', res.message, 'error');

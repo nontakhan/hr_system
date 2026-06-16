@@ -414,7 +414,7 @@ function fetchApprovedLeavesForMonth($mysqli, $employeeId, $month) {
                               FROM leave_requests lr
                               JOIN leave_types lt ON lr.leave_type_id = lt.id
                               WHERE lr.employee_id = ?
-                                AND lr.status = 'approved'
+                                AND lr.status IN ('approved','pending_cancel_hr')
                                 AND lr.request_unit = 'day'
                                 AND lr.start_date <= ?
                                 AND lr.end_date >= ?
@@ -432,7 +432,7 @@ function fetchApprovedHourlyRequestsForMonth($mysqli, $employeeId, $month) {
     $stmt = $mysqli->prepare("SELECT lr.start_date, lr.request_unit, lr.time_request_type, lr.request_minutes
                               FROM leave_requests lr
                               WHERE lr.employee_id = ?
-                                AND lr.status = 'approved'
+                                AND lr.status IN ('approved','pending_cancel_hr')
                                 AND lr.request_unit = 'hour'
                                 AND lr.start_date BETWEEN ? AND ?
                               ORDER BY lr.start_date, lr.id");
