@@ -53,8 +53,10 @@ assertIncludes(timeRequestScript, 'calculateTimeRequest', 'Late/early request JS
 assertIncludes(timeRequestScript, 'loadTimeRequestHistory', 'Late/early request JS should load its own history.');
 assertNotIncludes(script, "request_unit: 'hour'", 'Leave request JS should no longer calculate hourly requests.');
 const requestApi = fs.readFileSync('api/leave_request_api.php', 'utf8');
+const historyApi = fs.readFileSync('api/leave_history_api.php', 'utf8');
 assertIncludes(requestApi, 'leaveDetectHourlyRequestType($row', 'Leave request API should filter late/early types out of leave options.');
 assertIncludes(requestApi, 'เมนูคำขอเวลา', 'Leave request API should reject old late/early submissions.');
+assertIncludes(historyApi, "lr.request_unit <> 'hour'", 'Leave history API should exclude late/early hourly requests.');
 assertIncludes(styles, '.leave-type-grid', 'Styles should include the leave type icon grid.');
 assertIncludes(styles, '.leave-type-card.is-selected', 'Styles should include a selected card state.');
 assertIncludes(styles, '.leave-usage-card-near', 'Styles should include a near-limit leave usage state.');
