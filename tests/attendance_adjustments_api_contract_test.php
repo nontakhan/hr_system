@@ -13,6 +13,7 @@ assertContainsText($source, "function attendanceEnsureOverrideTable", "API shoul
 assertContainsText($source, "function fetchAttendanceOverridesForMonth", "Reports should load override rows by month.");
 assertContainsText($source, "attendanceApplyRecordOverride", "Reports should merge override values before evaluating status.");
 assertContainsText($source, "\$action === 'adjustment_employees'", "API should expose adjustment employee lookup.");
+assertContainsText($source, "\$action === 'adjustment_filter_options'", "API should expose company, branch, and position filter options.");
 assertContainsText($source, "\$action === 'save_adjustment'", "API should expose single adjustment save.");
 assertContainsText($source, "\$action === 'save_bulk_adjustments'", "API should expose bulk adjustment save.");
 assertContainsText($source, "hrScopeBuildEmployeeWhereClause", "API should reuse HR scope helper for adjustment authorization.");

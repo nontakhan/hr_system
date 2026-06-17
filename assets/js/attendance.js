@@ -9,12 +9,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filters) {
         initAttendanceReport(filters.dataset.canManage === '1');
     }
+
+    const adjustmentPage = document.getElementById('attendanceAdjustmentPage');
+    if (adjustmentPage) {
+        initAttendanceAdjustments();
+    }
 });
 
 let attendanceCalendar = null;
 let attendanceCalendarDayClassMap = {};
 let attendanceImportDetailRows = [];
 let attendanceImportDetailDataTable = null;
+let attendanceAdjustmentRows = [];
+let attendanceAdjustmentDataTable = null;
 
 async function handleAttendanceImport(e) {
     e.preventDefault();
@@ -323,6 +330,202 @@ function buildAttendanceImportDetailRowHtml(item) {
             <td class="text-end">${Number(item.record_count || 0).toLocaleString('th-TH')}</td>
             <td>${escapeHtml(dateRange)}</td>
         </tr>`;
+}
+
+function buildAttendanceAdjustmentEmployeeRowHtml(row) {
+    const fullName = `${row.first_name_th || ''} ${row.last_name_th || ''}`.trim() || '-';
+    const rawIn = formatAttendanceTime(row.raw_check_in);
+    const rawOut = formatAttendanceTime(row.raw_check_out);
+    const overrideIn = formatAttendanceTime(row.override_check_in);
+    const overrideOut = formatAttendanceTime(row.override_check_out);
+    const reason = row.override_reason ? `<div class="small text-primary mt-1">เหตุผล: ${escapeHtml(row.override_reason)}</div>` : '';
+    return `
+        <tr>
+            <td><input type="checkbox" class="attendance-adjustment-select" value="${escapeAttr(row.employee_id)}"></td>
+            <td>
+                <div class="fw-semibold">${escapeHtml(fullName)}</div>
+                <div class="small text-muted">${escapeHtml(row.citizen_id || '-')}</div>
+            </td>
+            <td>${escapeHtml(row.position_name_th || '-')}</td>
+            <td>${escapeHtml(row.branch_name_th || '-')}</td>
+            <td>${escapeHtml(row.company_name_th || '-')}</td>
+            <td>
+                <div class="small">สแกน: ${rawIn} - ${rawOut}</div>
+                <div class="small">ปรับแก้: ${overrideIn} - ${overrideOut}</div>
+                ${reason}
+            </td>
+        </tr>`;
+}
+
+function initAttendanceAdjustments() {
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.attendance-select2').select2({ width: '100%', allowClear: true });
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const singleDate = document.getElementById('attendanceSingleDate');
+    const bulkDate = document.getElementById('attendanceBulkDate');
+    if (singleDate && !singleDate.value) singleDate.value = today;
+    if (bulkDate && !bulkDate.value) bulkDate.value = today;
+
+    const loadBtn = document.getElementById('attendanceAdjustmentLoadBtn');
+    if (loadBtn) loadBtn.addEventListener('click', loadAttendanceAdjustmentEmployees);
+
+    ['attendanceAdjustmentCompany', 'attendanceAdjustmentBranch', 'attendanceAdjustmentPosition'].forEach(id => {
+        const select = document.getElementById(id);
+        if (select) select.addEventListener('change', loadAttendanceAdjustmentEmployees);
+    });
+
+    const selectAll = document.getElementById('attendanceAdjustmentSelectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            document.querySelectorAll('.attendance-adjustment-select').forEach(input => {
+                input.checked = selectAll.checked;
+            });
+        });
+    }
+
+    const singleForm = document.getElementById('attendanceSingleSaveForm');
+    if (singleForm) {
+        singleForm.addEventListener('submit', (event) => saveAttendanceAdjustmentForm(event, false));
+    }
+
+    const bulkForm = document.getElementById('attendanceBulkSaveForm');
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', (event) => saveAttendanceAdjustmentForm(event, true));
+    }
+
+    loadAttendanceAdjustmentFilterOptions();
+    loadAttendanceAdjustmentEmployees();
+}
+
+async function loadAttendanceAdjustmentFilterOptions() {
+    try {
+        const response = await fetch('api/attendance_api.php?action=adjustment_filter_options');
+        const res = await response.json();
+        if (res.status !== 'success') return;
+
+        fillAttendanceAdjustmentSelect('attendanceAdjustmentCompany', res.data?.companies || [], 'บริษัททั้งหมด');
+        fillAttendanceAdjustmentSelect('attendanceAdjustmentBranch', res.data?.branches || [], 'สาขาทั้งหมด');
+        fillAttendanceAdjustmentSelect('attendanceAdjustmentPosition', res.data?.positions || [], 'ตำแหน่งทั้งหมด');
+    } catch (err) {
+        console.warn(err);
+    }
+}
+
+function fillAttendanceAdjustmentSelect(id, rows, placeholder) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const currentValue = select.value;
+    select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + rows.map(row => (
+        `<option value="${escapeAttr(row.id)}">${escapeHtml(row.label || '-')}</option>`
+    )).join('');
+    select.value = rows.some(row => String(row.id) === currentValue) ? currentValue : '';
+    if (typeof $ !== 'undefined') {
+        $(select).trigger('change.select2');
+    }
+}
+
+async function loadAttendanceAdjustmentEmployees() {
+    const rowsEl = document.getElementById('attendanceAdjustmentRows');
+    const workDate = document.getElementById('attendanceBulkDate')?.value || new Date().toISOString().slice(0, 10);
+    const params = new URLSearchParams({
+        action: 'adjustment_employees',
+        work_date: workDate,
+        search: document.getElementById('attendanceAdjustmentSearch')?.value || '',
+        company_id: document.getElementById('attendanceAdjustmentCompany')?.value || '',
+        branch_id: document.getElementById('attendanceAdjustmentBranch')?.value || '',
+        position_id: document.getElementById('attendanceAdjustmentPosition')?.value || '',
+    });
+
+    if (rowsEl) {
+        rowsEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลดรายชื่อ...</td></tr>';
+    }
+
+    try {
+        const response = await fetch(`api/attendance_api.php?${params.toString()}`);
+        const res = await response.json();
+        if (res.status !== 'success') {
+            if (rowsEl) rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">${escapeHtml(res.message || 'โหลดรายชื่อไม่สำเร็จ')}</td></tr>`;
+            return;
+        }
+
+        attendanceAdjustmentRows = res.data || [];
+        renderAttendanceAdjustmentEmployees(attendanceAdjustmentRows);
+        syncAttendanceSingleEmployeeOptions(attendanceAdjustmentRows);
+    } catch (err) {
+        if (rowsEl) rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function renderAttendanceAdjustmentEmployees(rows) {
+    const rowsEl = document.getElementById('attendanceAdjustmentRows');
+    if (!rowsEl) return;
+    if (attendanceAdjustmentDataTable) {
+        attendanceAdjustmentDataTable.destroy();
+        attendanceAdjustmentDataTable = null;
+    }
+    if (!rows.length) {
+        rowsEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ไม่พบพนักงาน</td></tr>';
+        return;
+    }
+    rowsEl.innerHTML = rows.map(buildAttendanceAdjustmentEmployeeRowHtml).join('');
+    const table = typeof $ !== 'undefined' ? $('#attendanceAdjustmentTable') : null;
+    if (rows.length > 10 && table && table.length && $.fn.DataTable) {
+        attendanceAdjustmentDataTable = table.DataTable({
+            pageLength: 10,
+            order: [],
+            language: { search: 'ค้นหา:', lengthMenu: 'แสดง _MENU_ รายการ', info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ' },
+        });
+    }
+}
+
+function syncAttendanceSingleEmployeeOptions(rows) {
+    const select = document.getElementById('attendanceSingleEmployee');
+    if (!select) return;
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">เลือกพนักงาน</option>' + rows.map(row => {
+        const fullName = `${row.first_name_th || ''} ${row.last_name_th || ''}`.trim() || '-';
+        return `<option value="${escapeAttr(row.employee_id)}">${escapeHtml(fullName)}</option>`;
+    }).join('');
+    select.value = currentValue;
+    if (typeof $ !== 'undefined') {
+        $(select).trigger('change.select2');
+    }
+}
+
+function getSelectedAttendanceAdjustmentEmployeeIds() {
+    return Array.from(document.querySelectorAll('.attendance-adjustment-select:checked'))
+        .map(input => input.value)
+        .filter(Boolean);
+}
+
+async function saveAttendanceAdjustmentForm(event, isBulk) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    formData.set('action', isBulk ? 'save_bulk_adjustments' : 'save_adjustment');
+
+    if (isBulk) {
+        const workDate = document.getElementById('attendanceBulkDate')?.value || '';
+        const employeeIds = getSelectedAttendanceAdjustmentEmployeeIds();
+        formData.set('work_date', workDate);
+        employeeIds.forEach(id => formData.append('employee_ids[]', id));
+    }
+
+    try {
+        const response = await fetch('api/attendance_api.php', { method: 'POST', body: formData });
+        const res = await response.json();
+        if (res.status !== 'success') {
+            Swal.fire('Error', res.message || 'บันทึกไม่สำเร็จ', 'error');
+            return;
+        }
+
+        Swal.fire('สำเร็จ', `บันทึก ${Number(res.saved || 0).toLocaleString('th-TH')} รายการ`, 'success');
+        loadAttendanceAdjustmentEmployees();
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    }
 }
 
 function resetAttendanceImportDetailDataTable() {

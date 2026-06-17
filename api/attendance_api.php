@@ -102,6 +102,11 @@ try {
             sendJson(['status' => 'success', 'month' => $month, 'data' => fetchAttendanceImportSummaryEmployees($mysqli, $month, $role)]);
         }
 
+        if ($action === 'adjustment_filter_options') {
+            if (!$canManage) sendJsonError('Access Denied');
+            sendJson(['status' => 'success', 'data' => fetchAttendanceAdjustmentFilterOptions($mysqli, $role)]);
+        }
+
         if ($action === 'adjustment_employees') {
             if (!$canManage) sendJsonError('Access Denied');
             $workDate = $_GET['work_date'] ?? date('Y-m-d');
@@ -705,6 +710,62 @@ function fetchAttendanceAdjustmentEmployees(mysqli $mysqli, $role, $workDate, ar
     hrScopeBindParams($stmt, $types, $params);
     $stmt->execute();
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function fetchAttendanceAdjustmentFilterOptions(mysqli $mysqli, $role) {
+    $sql = "SELECT e.company_id, c.company_name_th,
+                   e.branch_id, b.branch_name_th,
+                   e.position_id, p.position_name_th
+            FROM employees e
+            LEFT JOIN companies c ON e.company_id = c.id
+            LEFT JOIN branches b ON e.branch_id = b.id
+            LEFT JOIN positions p ON e.position_id = p.id
+            WHERE e.status IN ('active', 'probation')";
+    $types = '';
+    $params = [];
+
+    if ($role === 'hr') {
+        $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
+    }
+
+    $stmt = $mysqli->prepare($sql);
+    if ($types !== '') {
+        hrScopeBindParams($stmt, $types, $params);
+    }
+    $stmt->execute();
+
+    $companies = [];
+    $branches = [];
+    $positions = [];
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        if (!empty($row['company_id'])) {
+            $companies[(int)$row['company_id']] = $row['company_name_th'] ?: '-';
+        }
+        if (!empty($row['branch_id'])) {
+            $branches[(int)$row['branch_id']] = $row['branch_name_th'] ?: '-';
+        }
+        if (!empty($row['position_id'])) {
+            $positions[(int)$row['position_id']] = $row['position_name_th'] ?: '-';
+        }
+    }
+
+    return [
+        'companies' => attendanceBuildFilterOptionRows($companies),
+        'branches' => attendanceBuildFilterOptionRows($branches),
+        'positions' => attendanceBuildFilterOptionRows($positions),
+    ];
+}
+
+function attendanceBuildFilterOptionRows(array $items) {
+    asort($items, SORT_NATURAL);
+    $rows = [];
+    foreach ($items as $id => $label) {
+        $rows[] = ['id' => (int)$id, 'label' => $label];
+    }
+    return $rows;
 }
 
 function fetchCompanyHolidaysForMonth($mysqli, $month) {

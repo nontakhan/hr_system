@@ -158,6 +158,9 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             <a href="attendance_import.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance_import.php'); ?>">
                 <i class="fas fa-file-import me-2"></i> นำเข้าลงเวลา
             </a>
+            <a href="attendance_adjustments.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance_adjustments.php'); ?>">
+                <i class="fas fa-pen-to-square me-2"></i> ปรับแก้เวลาสแกน
+            </a>
             <?php endif; ?>
 
             <!-- Settings (Dropdown) -->
