@@ -108,6 +108,25 @@ const leaveDetails = buildAttendanceCalendarDetails({
 assertIncludes(leaveDetails, 'ลาป่วย', 'Leave popup details should include the leave type.');
 assertIncludes(leaveDetails, '08:31', 'Popup details should show check-in time.');
 
+const overrideDetails = buildAttendanceCalendarDetails({
+    work_date: '2026-01-09',
+    day_name: 'Fri',
+    check_in: '08:00:00',
+    check_out: '17:00:00',
+    raw_check_in: null,
+    raw_check_out: '17:00:00',
+    status: 'present',
+    status_label: 'ปกติ',
+    has_override: true,
+    override_check_in: '08:00:00',
+    override_check_out: null,
+    override_reason: 'เครื่องสแกนเสียช่วงเช้า',
+    override_created_by_name: 'ฝ่ายบุคคล',
+});
+assertIncludes(overrideDetails, 'ปรับโดย HR', 'Popup details should disclose HR attendance corrections.');
+assertIncludes(overrideDetails, 'เครื่องสแกนเสียช่วงเช้า', 'Popup details should include the override reason.');
+assertIncludes(overrideDetails, 'ฝ่ายบุคคล', 'Popup details should include the adjusting HR user when available.');
+
 const hourlyRequestEvent = buildAttendanceCalendarEvent({
     work_date: '2026-01-08',
     status: 'present',

@@ -1021,6 +1021,12 @@ function buildAttendanceCalendarDetails(row) {
                 <ul class="mb-0 ps-3">${hourly.map(label => `<li>${escapeHtml(label)}</li>`).join('')}</ul>
            </div>`
         : '';
+    const overrideHtml = row.has_override ? `
+        <div class="alert alert-info text-start mt-3 mb-0 py-2">
+            <div class="fw-semibold">ปรับโดย HR</div>
+            <div class="small">เหตุผล: ${escapeHtml(row.override_reason || '-')}</div>
+            <div class="small">ผู้แก้: ${escapeHtml(row.override_updated_by_name || row.override_created_by_name || '-')}</div>
+        </div>` : '';
     return `
         <div class="attendance-calendar-popup text-start">
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
@@ -1033,6 +1039,7 @@ function buildAttendanceCalendarDetails(row) {
                 <div><dt>รายละเอียด</dt><dd>${escapeHtml(note)}</dd></div>
             </dl>
             ${hourlyHtml}
+            ${overrideHtml}
         </div>`;
 }
 
