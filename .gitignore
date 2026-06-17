@@ -1,3 +1,4 @@
 /.env
 includes/db_config.php
 assets/uploads/leaves/
+.worktrees/
