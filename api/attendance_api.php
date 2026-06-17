@@ -102,7 +102,32 @@ try {
             sendJson(['status' => 'success', 'month' => $month, 'data' => fetchAttendanceImportSummaryEmployees($mysqli, $month, $role)]);
         }
 
+        if ($action === 'adjustment_employees') {
+            if (!$canManage) sendJsonError('Access Denied');
+            $workDate = $_GET['work_date'] ?? date('Y-m-d');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate)) sendJsonError('Invalid date');
+            sendJson([
+                'status' => 'success',
+                'work_date' => $workDate,
+                'data' => fetchAttendanceAdjustmentEmployees($mysqli, $role, $workDate, $_GET),
+            ]);
+        }
+
         sendJsonError('Invalid Action');
+    }
+
+    if ($method === 'POST' && in_array($action, ['save_adjustment', 'save_bulk_adjustments'], true)) {
+        if (!$canManage) sendJsonError('Access Denied');
+
+        if ($action === 'save_adjustment') {
+            $saved = saveAttendanceAdjustment($mysqli, $role, $_POST);
+            sendJson(['status' => 'success', 'saved' => $saved]);
+        }
+
+        if ($action === 'save_bulk_adjustments') {
+            $saved = saveBulkAttendanceAdjustments($mysqli, $role, $_POST);
+            sendJson(['status' => 'success', 'saved' => $saved]);
+        }
     }
 
     if ($method === 'POST') {
@@ -307,6 +332,44 @@ function bindMysqliParams($stmt, $types, array $params) {
     call_user_func_array([$stmt, 'bind_param'], $refs);
 }
 
+function attendanceEnsureOverrideTable(mysqli $mysqli) {
+    $sql = "CREATE TABLE IF NOT EXISTS attendance_record_overrides (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        employee_id INT NOT NULL,
+        work_date DATE NOT NULL,
+        override_check_in TIME NULL,
+        override_check_out TIME NULL,
+        reason TEXT NOT NULL,
+        created_by INT NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_by INT NULL,
+        updated_at DATETIME NULL,
+        UNIQUE KEY uniq_attendance_override_employee_date (employee_id, work_date),
+        KEY idx_attendance_override_work_date (work_date),
+        KEY idx_attendance_override_created_by (created_by)
+    )";
+    if (!$mysqli->query($sql)) {
+        throw new Exception('Create attendance override table failed: ' . $mysqli->error);
+    }
+}
+
+function fetchAttendanceOverridesForMonth(mysqli $mysqli, $employeeId, $month) {
+    attendanceEnsureOverrideTable($mysqli);
+    $stmt = $mysqli->prepare("SELECT aro.employee_id, aro.work_date, aro.override_check_in, aro.override_check_out,
+                                     aro.reason, aro.created_at, aro.updated_at,
+                                     TRIM(CONCAT(COALESCE(c.first_name_th, ''), ' ', COALESCE(c.last_name_th, ''))) AS created_by_name,
+                                     TRIM(CONCAT(COALESCE(u.first_name_th, ''), ' ', COALESCE(u.last_name_th, ''))) AS updated_by_name
+                              FROM attendance_record_overrides aro
+                              LEFT JOIN users cu ON aro.created_by = cu.id
+                              LEFT JOIN employees c ON cu.employee_id = c.id
+                              LEFT JOIN users uu ON aro.updated_by = uu.id
+                              LEFT JOIN employees u ON uu.employee_id = u.id
+                              WHERE aro.employee_id = ? AND DATE_FORMAT(aro.work_date, '%Y-%m') = ?");
+    $stmt->bind_param('is', $employeeId, $month);
+    $stmt->execute();
+    return attendanceBuildOverrideMap($stmt->get_result()->fetch_all(MYSQLI_ASSOC));
+}
+
 function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     $start = new DateTimeImmutable($month . '-01');
     $end = $start->modify('last day of this month');
@@ -319,6 +382,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     while ($row = $res->fetch_assoc()) {
         $records[$row['work_date']] = $row;
     }
+    $overrideMap = fetchAttendanceOverridesForMonth($mysqli, (int)$employee['id'], $month);
 
     $shift = [
         'start_time' => $employee['start_time'],
@@ -335,7 +399,8 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     $rows = [];
     for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
         $workDate = $date->format('Y-m-d');
-        $record = $records[$workDate] ?? ['check_in' => null, 'check_out' => null];
+        $rawRecord = $records[$workDate] ?? ['check_in' => null, 'check_out' => null];
+        $record = attendanceApplyRecordOverride($rawRecord, $overrideMap[$workDate] ?? null);
         $effectiveShift = attendanceResolveShiftForDate($shift, $shiftOverrides, $workDate);
         if (isset($daySwaps[$workDate])) {
             $effectiveShift = attendanceApplyDayTypeOverride($effectiveShift, $workDate, $daySwaps[$workDate]);
@@ -346,6 +411,8 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
             'day_name' => $date->format('D'),
             'check_in' => $record['check_in'],
             'check_out' => $record['check_out'],
+            'raw_check_in' => $rawRecord['check_in'],
+            'raw_check_out' => $rawRecord['check_out'],
             'status' => $status['status'],
             'status_label' => $status['label'],
             'is_late' => $status['is_late'],
@@ -353,6 +420,14 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
             'leave_name' => $status['leave_name'],
             'day_swap_type' => $daySwaps[$workDate] ?? null,
             'hourly_requests' => $hourlyRequests[$workDate] ?? [],
+            'has_override' => $record['has_override'],
+            'override_check_in' => $record['override_check_in'],
+            'override_check_out' => $record['override_check_out'],
+            'override_reason' => $record['override_reason'],
+            'override_created_by_name' => $record['override_created_by_name'],
+            'override_updated_by_name' => $record['override_updated_by_name'],
+            'override_created_at' => $record['override_created_at'],
+            'override_updated_at' => $record['override_updated_at'],
         ];
     }
 
@@ -508,6 +583,128 @@ function fetchAttendanceImportSummaryEmployees($mysqli, $month, $role) {
     hrScopeBindParams($stmt, $types, $params);
     $stmt->execute();
     return attendanceBuildImportEmployeeRows($stmt->get_result()->fetch_all(MYSQLI_ASSOC));
+}
+
+function normalizeAttendanceAdjustmentPayload(array $payload) {
+    $workDate = trim((string)($payload['work_date'] ?? ''));
+    $checkIn = attendanceNormalizeTime($payload['override_check_in'] ?? '');
+    $checkOut = attendanceNormalizeTime($payload['override_check_out'] ?? '');
+    $reason = trim((string)($payload['reason'] ?? ''));
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate)) {
+        sendJsonError('Invalid date');
+    }
+    if ($checkIn === null && $checkOut === null) {
+        sendJsonError('กรุณาระบุเวลาเข้า หรือเวลาออก');
+    }
+    if ($reason === '') {
+        sendJsonError('กรุณาระบุเหตุผล');
+    }
+
+    return [$workDate, $checkIn, $checkOut, $reason];
+}
+
+function saveAttendanceOverrideRow(mysqli $mysqli, $employeeId, $workDate, $checkIn, $checkOut, $reason, $userId) {
+    attendanceEnsureOverrideTable($mysqli);
+    $stmt = $mysqli->prepare("INSERT INTO attendance_record_overrides
+        (employee_id, work_date, override_check_in, override_check_out, reason, created_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+            override_check_in = VALUES(override_check_in),
+            override_check_out = VALUES(override_check_out),
+            reason = VALUES(reason),
+            updated_by = VALUES(created_by),
+            updated_at = NOW()");
+    $stmt->bind_param('issssi', $employeeId, $workDate, $checkIn, $checkOut, $reason, $userId);
+    if (!$stmt->execute()) {
+        throw new Exception('Save attendance override failed: ' . $stmt->error);
+    }
+    return $employeeId;
+}
+
+function saveAttendanceAdjustment(mysqli $mysqli, $role, array $payload) {
+    $employeeId = (int)($payload['employee_id'] ?? 0);
+    if ($employeeId <= 0 || !attendanceCanViewEmployee($mysqli, $employeeId)) {
+        sendJsonError('Access Denied');
+    }
+    [$workDate, $checkIn, $checkOut, $reason] = normalizeAttendanceAdjustmentPayload($payload);
+    saveAttendanceOverrideRow($mysqli, $employeeId, $workDate, $checkIn, $checkOut, $reason, (int)$_SESSION['user_id']);
+    return 1;
+}
+
+function saveBulkAttendanceAdjustments(mysqli $mysqli, $role, array $payload) {
+    [$workDate, $checkIn, $checkOut, $reason] = normalizeAttendanceAdjustmentPayload($payload);
+    $employeeIds = array_values(array_unique(array_map('intval', $payload['employee_ids'] ?? [])));
+    $employeeIds = array_filter($employeeIds, fn($id) => $id > 0);
+    if (!$employeeIds) {
+        sendJsonError('กรุณาเลือกพนักงาน');
+    }
+
+    $mysqli->begin_transaction();
+    try {
+        foreach ($employeeIds as $employeeId) {
+            if (!attendanceCanViewEmployee($mysqli, $employeeId)) {
+                throw new InvalidArgumentException('Access Denied');
+            }
+            saveAttendanceOverrideRow($mysqli, $employeeId, $workDate, $checkIn, $checkOut, $reason, (int)$_SESSION['user_id']);
+        }
+        $mysqli->commit();
+        return count($employeeIds);
+    } catch (Throwable $e) {
+        $mysqli->rollback();
+        if ($e instanceof InvalidArgumentException) {
+            sendJsonError($e->getMessage());
+        }
+        throw $e;
+    }
+}
+
+function fetchAttendanceAdjustmentEmployees(mysqli $mysqli, $role, $workDate, array $filters) {
+    attendanceEnsureOverrideTable($mysqli);
+    $sql = "SELECT e.id AS employee_id, e.citizen_id, e.first_name_th, e.last_name_th,
+                   p.position_name_th, b.branch_name_th, c.company_name_th,
+                   ar.check_in AS raw_check_in, ar.check_out AS raw_check_out,
+                   aro.override_check_in, aro.override_check_out, aro.reason AS override_reason
+            FROM employees e
+            LEFT JOIN positions p ON e.position_id = p.id
+            LEFT JOIN branches b ON e.branch_id = b.id
+            LEFT JOIN companies c ON e.company_id = c.id
+            LEFT JOIN attendance_records ar ON ar.employee_id = e.id AND ar.work_date = ?
+            LEFT JOIN attendance_record_overrides aro ON aro.employee_id = e.id AND aro.work_date = ?
+            WHERE e.status IN ('active', 'probation')";
+    $types = 'ss';
+    $params = [$workDate, $workDate];
+
+    if ($role === 'hr') {
+        $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
+    }
+
+    foreach (['position_id' => 'e.position_id', 'branch_id' => 'e.branch_id', 'company_id' => 'e.company_id'] as $key => $column) {
+        if ((int)($filters[$key] ?? 0) > 0) {
+            $sql .= " AND {$column} = ?";
+            $types .= 'i';
+            $params[] = (int)$filters[$key];
+        }
+    }
+
+    $search = trim((string)($filters['search'] ?? ''));
+    if ($search !== '') {
+        $sql .= " AND (e.first_name_th LIKE ? OR e.last_name_th LIKE ? OR e.citizen_id LIKE ?)";
+        $types .= 'sss';
+        $term = '%' . $search . '%';
+        $params[] = $term;
+        $params[] = $term;
+        $params[] = $term;
+    }
+
+    $sql .= " ORDER BY e.first_name_th, e.last_name_th";
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
 function fetchCompanyHolidaysForMonth($mysqli, $month) {
