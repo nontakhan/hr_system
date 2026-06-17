@@ -340,4 +340,67 @@ $specialHoliday = attendanceEvaluateStatus(
 assertSameValue('holiday', $specialHoliday['status'], 'Special company holidays should override normal workdays.');
 assertSameValue('Company holiday', $specialHoliday['holiday_name'], 'Special holiday names should be returned for reports.');
 
+$overrideMap = attendanceBuildOverrideMap([
+    [
+        'employee_id' => '10',
+        'work_date' => '2026-01-05',
+        'override_check_in' => '08:00:00',
+        'override_check_out' => null,
+        'reason' => 'Scanner failed in the morning',
+        'created_by_name' => 'HR User',
+        'updated_by_name' => null,
+        'created_at' => '2026-01-06 09:00:00',
+        'updated_at' => null,
+    ],
+]);
+assertSameValue(true, isset($overrideMap['2026-01-05']), 'Override map should be keyed by work date.');
+assertSameValue('08:00:00', $overrideMap['2026-01-05']['override_check_in'], 'Override map should normalize check-in time.');
+
+$merged = attendanceApplyRecordOverride(
+    ['check_in' => null, 'check_out' => '17:02:00'],
+    $overrideMap['2026-01-05']
+);
+assertSameValue('08:00:00', $merged['check_in'], 'Override check-in should replace a missing raw check-in.');
+assertSameValue('17:02:00', $merged['check_out'], 'Raw check-out should remain when override check-out is empty.');
+assertSameValue(true, $merged['has_override'], 'Merged record should mark rows with an override.');
+assertSameValue('Scanner failed in the morning', $merged['override_reason'], 'Merged record should expose the override reason.');
+
+$correctedStatus = attendanceEvaluateStatus(
+    '2026-01-05',
+    $merged['check_in'],
+    $merged['check_out'],
+    [
+        'start_time' => '08:00:00',
+        'end_time' => '17:00:00',
+        'late_tolerance_mins' => 15,
+        'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+    ]
+);
+assertSameValue('present', $correctedStatus['status'], 'Missing-in should become present when HR provides an on-time check-in.');
+
+$lateMerged = attendanceApplyRecordOverride(
+    ['check_in' => null, 'check_out' => '17:02:00'],
+    [
+        'override_check_in' => '08:30:00',
+        'override_check_out' => null,
+        'reason' => 'Late real arrival',
+        'created_by_name' => 'HR User',
+        'updated_by_name' => null,
+        'created_at' => '2026-01-06 09:00:00',
+        'updated_at' => null,
+    ]
+);
+$lateCorrectedStatus = attendanceEvaluateStatus(
+    '2026-01-05',
+    $lateMerged['check_in'],
+    $lateMerged['check_out'],
+    [
+        'start_time' => '08:00:00',
+        'end_time' => '17:00:00',
+        'late_tolerance_mins' => 15,
+        'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+    ]
+);
+assertSameValue('late', $lateCorrectedStatus['status'], 'HR override should not force normal status when the entered time is late.');
+
 echo "attendance_helpers_test passed" . PHP_EOL;

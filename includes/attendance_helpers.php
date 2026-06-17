@@ -126,6 +126,62 @@ function attendanceBuildEmployeeIdMap(array $rows) {
     return $map;
 }
 
+function attendanceBuildOverrideMap(array $rows) {
+    $map = [];
+    foreach ($rows as $row) {
+        $workDate = $row['work_date'] ?? null;
+        if (!$workDate) {
+            continue;
+        }
+        $map[$workDate] = [
+            'employee_id' => isset($row['employee_id']) ? (int)$row['employee_id'] : null,
+            'work_date' => $workDate,
+            'override_check_in' => attendanceNormalizeTime($row['override_check_in'] ?? null),
+            'override_check_out' => attendanceNormalizeTime($row['override_check_out'] ?? null),
+            'reason' => trim((string)($row['reason'] ?? '')),
+            'created_by_name' => trim((string)($row['created_by_name'] ?? '')),
+            'updated_by_name' => trim((string)($row['updated_by_name'] ?? '')),
+            'created_at' => $row['created_at'] ?? null,
+            'updated_at' => $row['updated_at'] ?? null,
+        ];
+    }
+    return $map;
+}
+
+function attendanceApplyRecordOverride(array $record, ?array $override) {
+    $checkIn = attendanceNormalizeTime($record['check_in'] ?? null);
+    $checkOut = attendanceNormalizeTime($record['check_out'] ?? null);
+    if (!$override) {
+        return [
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'has_override' => false,
+            'override_reason' => null,
+            'override_check_in' => null,
+            'override_check_out' => null,
+            'override_created_by_name' => null,
+            'override_updated_by_name' => null,
+            'override_created_at' => null,
+            'override_updated_at' => null,
+        ];
+    }
+
+    $overrideCheckIn = attendanceNormalizeTime($override['override_check_in'] ?? null);
+    $overrideCheckOut = attendanceNormalizeTime($override['override_check_out'] ?? null);
+    return [
+        'check_in' => $overrideCheckIn ?? $checkIn,
+        'check_out' => $overrideCheckOut ?? $checkOut,
+        'has_override' => true,
+        'override_reason' => trim((string)($override['reason'] ?? '')),
+        'override_check_in' => $overrideCheckIn,
+        'override_check_out' => $overrideCheckOut,
+        'override_created_by_name' => trim((string)($override['created_by_name'] ?? '')),
+        'override_updated_by_name' => trim((string)($override['updated_by_name'] ?? '')),
+        'override_created_at' => $override['created_at'] ?? null,
+        'override_updated_at' => $override['updated_at'] ?? null,
+    ];
+}
+
 function attendanceBuildImportSummaryMonths(array $monthlyRows, $baseDate = 'now', $limit = 6) {
     $indexed = [];
     foreach ($monthlyRows as $row) {
