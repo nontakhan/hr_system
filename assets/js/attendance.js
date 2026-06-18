@@ -22,6 +22,8 @@ let attendanceImportDetailRows = [];
 let attendanceImportDetailDataTable = null;
 let attendanceAdjustmentRows = [];
 let attendanceAdjustmentDataTable = null;
+let attendanceAdjustmentFilterOptions = { companies: [], branches: [], positions: [] };
+let attendanceAdjustmentSelectedEmployeeIds = new Set();
 
 async function handleAttendanceImport(e) {
     e.preventDefault();
@@ -338,10 +340,11 @@ function buildAttendanceAdjustmentEmployeeRowHtml(row) {
     const rawOut = formatAttendanceTime(row.raw_check_out);
     const overrideIn = formatAttendanceTime(row.override_check_in);
     const overrideOut = formatAttendanceTime(row.override_check_out);
+    const checked = attendanceAdjustmentSelectedEmployeeIds.has(String(row.employee_id)) ? ' checked' : '';
     const reason = row.override_reason ? `<div class="small text-primary mt-1">เหตุผล: ${escapeHtml(row.override_reason)}</div>` : '';
     return `
         <tr>
-            <td><input type="checkbox" class="attendance-adjustment-select" value="${escapeAttr(row.employee_id)}"></td>
+            <td><input type="checkbox" class="attendance-adjustment-select" value="${escapeAttr(row.employee_id)}"${checked}></td>
             <td>
                 <div class="fw-semibold">${escapeHtml(fullName)}</div>
                 <div class="small text-muted">${escapeHtml(row.citizen_id || '-')}</div>
@@ -371,19 +374,22 @@ function initAttendanceAdjustments() {
     const loadBtn = document.getElementById('attendanceAdjustmentLoadBtn');
     if (loadBtn) loadBtn.addEventListener('click', loadAttendanceAdjustmentEmployees);
 
-    ['attendanceAdjustmentCompany', 'attendanceAdjustmentBranch', 'attendanceAdjustmentPosition'].forEach(id => {
-        const select = document.getElementById(id);
-        if (select) select.addEventListener('change', loadAttendanceAdjustmentEmployees);
-    });
-
-    const selectAll = document.getElementById('attendanceAdjustmentSelectAll');
-    if (selectAll) {
-        selectAll.addEventListener('change', () => {
-            document.querySelectorAll('.attendance-adjustment-select').forEach(input => {
-                input.checked = selectAll.checked;
-            });
+    const rowsEl = document.getElementById('attendanceAdjustmentRows');
+    if (rowsEl) {
+        rowsEl.addEventListener('change', (event) => {
+            if (!event.target.classList.contains('attendance-adjustment-select')) return;
+            setAttendanceAdjustmentEmployeeSelected(event.target.value, event.target.checked);
         });
     }
+
+    bindAttendanceAdjustmentFilterChange('attendanceAdjustmentCompany', () => {
+        updateAttendanceAdjustmentBranchOptions();
+        loadAttendanceAdjustmentEmployees();
+    });
+    bindAttendanceAdjustmentFilterChange('attendanceAdjustmentBranch', loadAttendanceAdjustmentEmployees);
+    bindAttendanceAdjustmentFilterChange('attendanceAdjustmentPosition', loadAttendanceAdjustmentEmployees);
+
+    bindAttendanceAdjustmentSelectAll();
 
     const singleForm = document.getElementById('attendanceSingleSaveForm');
     if (singleForm) {
@@ -396,7 +402,41 @@ function initAttendanceAdjustments() {
     }
 
     loadAttendanceAdjustmentFilterOptions();
-    loadAttendanceAdjustmentEmployees();
+}
+
+function bindAttendanceAdjustmentFilterChange(id, handler) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    select.addEventListener('change', handler);
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(select)
+            .off('select2:select.attendanceAdjustment select2:clear.attendanceAdjustment')
+            .on('select2:select.attendanceAdjustment select2:clear.attendanceAdjustment', handler);
+    }
+}
+
+function bindAttendanceAdjustmentSelectAll() {
+    const selectAll = document.getElementById('attendanceAdjustmentSelectAll');
+    if (!selectAll) return;
+    const selectAllCell = selectAll.closest ? selectAll.closest('.attendance-adjustment-select-all-cell') : null;
+
+    selectAll.addEventListener('click', (event) => {
+        event.stopPropagation();
+    });
+    selectAll.addEventListener('change', (event) => {
+        event.stopPropagation();
+        setAllAttendanceAdjustmentEmployeesSelected(selectAll.checked);
+    });
+
+    if (selectAllCell) {
+        selectAllCell.addEventListener('click', (event) => {
+            if (event.target === selectAll) return;
+            event.preventDefault();
+            event.stopPropagation();
+            selectAll.checked = !selectAll.checked;
+            setAllAttendanceAdjustmentEmployeesSelected(selectAll.checked);
+        });
+    }
 }
 
 async function loadAttendanceAdjustmentFilterOptions() {
@@ -404,13 +444,54 @@ async function loadAttendanceAdjustmentFilterOptions() {
         const response = await fetch('api/attendance_api.php?action=adjustment_filter_options');
         const res = await response.json();
         if (res.status !== 'success') return;
+        attendanceAdjustmentFilterOptions = {
+            companies: res.data?.companies || [],
+            branches: res.data?.branches || [],
+            positions: res.data?.positions || [],
+        };
 
         fillAttendanceAdjustmentSelect('attendanceAdjustmentCompany', res.data?.companies || [], 'บริษัททั้งหมด');
         fillAttendanceAdjustmentSelect('attendanceAdjustmentBranch', res.data?.branches || [], 'สาขาทั้งหมด');
         fillAttendanceAdjustmentSelect('attendanceAdjustmentPosition', res.data?.positions || [], 'ตำแหน่งทั้งหมด');
+        updateAttendanceAdjustmentBranchOptions();
     } catch (err) {
         console.warn(err);
     }
+}
+
+function buildAttendanceBranchOptionsForCompany(branches, companyId) {
+    const selectedCompanyId = String(companyId || '');
+    if (!selectedCompanyId) return [];
+    return (branches || []).filter(branch => String(branch.company_id || '') === selectedCompanyId);
+}
+
+function updateAttendanceAdjustmentBranchOptions() {
+    const companyId = document.getElementById('attendanceAdjustmentCompany')?.value || '';
+    const branchSelect = document.getElementById('attendanceAdjustmentBranch');
+    if (branchSelect && typeof $ !== 'undefined') {
+        $(branchSelect).prop('disabled', !companyId);
+    } else if (branchSelect) {
+        branchSelect.disabled = !companyId;
+    }
+    fillAttendanceAdjustmentSelect(
+        'attendanceAdjustmentBranch',
+        buildAttendanceBranchOptionsForCompany(attendanceAdjustmentFilterOptions.branches, companyId),
+        companyId ? 'สาขาทั้งหมดในบริษัท' : 'สาขาทั้งหมด'
+    );
+    if (branchSelect) {
+        if (!companyId) branchSelect.value = '';
+        refreshAttendanceAdjustmentSelect2(branchSelect);
+    }
+}
+
+function refreshAttendanceAdjustmentSelect2(select) {
+    if (typeof $ === 'undefined' || !$.fn.select2 || !select) return;
+    const $select = $(select);
+    if ($select.hasClass('select2-hidden-accessible')) {
+        $select.select2('destroy');
+    }
+    $select.select2({ width: '100%', allowClear: true });
+    $select.trigger('change.select2');
 }
 
 function fillAttendanceAdjustmentSelect(id, rows, placeholder) {
@@ -451,6 +532,7 @@ async function loadAttendanceAdjustmentEmployees() {
         }
 
         attendanceAdjustmentRows = res.data || [];
+        resetAttendanceAdjustmentSelectedEmployeeIds();
         renderAttendanceAdjustmentEmployees(attendanceAdjustmentRows);
         syncAttendanceSingleEmployeeOptions(attendanceAdjustmentRows);
     } catch (err) {
@@ -475,9 +557,14 @@ function renderAttendanceAdjustmentEmployees(rows) {
         attendanceAdjustmentDataTable = table.DataTable({
             pageLength: 10,
             order: [],
+            columnDefs: [
+                { targets: 0, orderable: false, searchable: false },
+            ],
             language: { search: 'ค้นหา:', lengthMenu: 'แสดง _MENU_ รายการ', info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ' },
         });
+        attendanceAdjustmentDataTable.on('draw', syncAttendanceAdjustmentRenderedCheckboxes);
     }
+    syncAttendanceAdjustmentRenderedCheckboxes();
 }
 
 function syncAttendanceSingleEmployeeOptions(rows) {
@@ -494,10 +581,73 @@ function syncAttendanceSingleEmployeeOptions(rows) {
     }
 }
 
+function resetAttendanceAdjustmentSelectedEmployeeIds() {
+    attendanceAdjustmentSelectedEmployeeIds = new Set();
+    if (typeof document.getElementById === 'function') {
+        const selectAll = document.getElementById('attendanceAdjustmentSelectAll');
+        if (selectAll) selectAll.checked = false;
+    }
+}
+
+function setAttendanceAdjustmentEmployeeSelected(employeeId, selected) {
+    const id = String(employeeId || '');
+    if (!id) return;
+    if (selected) {
+        attendanceAdjustmentSelectedEmployeeIds.add(id);
+    } else {
+        attendanceAdjustmentSelectedEmployeeIds.delete(id);
+    }
+}
+
+function setAllAttendanceAdjustmentEmployeesSelected(selected) {
+    getVisibleAttendanceAdjustmentEmployeeIds().forEach(employeeId => {
+        setAttendanceAdjustmentEmployeeSelected(employeeId, selected);
+    });
+    syncAttendanceAdjustmentRenderedCheckboxes();
+}
+
+function getVisibleAttendanceAdjustmentEmployeeIds() {
+    if (attendanceAdjustmentDataTable && typeof attendanceAdjustmentDataTable.rows === 'function') {
+        const nodes = attendanceAdjustmentDataTable.rows({ search: 'applied', page: 'all' }).nodes();
+        return Array.from(nodes).map(row => {
+            const input = row.querySelector ? row.querySelector('.attendance-adjustment-select') : null;
+            return input ? String(input.value || '') : '';
+        }).filter(Boolean);
+    }
+    return attendanceAdjustmentRows.map(row => String(row.employee_id || '')).filter(Boolean);
+}
+
+function syncAttendanceAdjustmentRenderedCheckboxes() {
+    document.querySelectorAll('.attendance-adjustment-select').forEach(input => {
+        input.checked = attendanceAdjustmentSelectedEmployeeIds.has(String(input.value));
+    });
+    updateAttendanceAdjustmentSelectAllState();
+}
+
+function updateAttendanceAdjustmentSelectAllState() {
+    const selectAll = document.getElementById('attendanceAdjustmentSelectAll');
+    if (!selectAll) return;
+    const visibleIds = getVisibleAttendanceAdjustmentEmployeeIds();
+    const total = visibleIds.length;
+    const selected = visibleIds.filter(employeeId => attendanceAdjustmentSelectedEmployeeIds.has(String(employeeId))).length;
+    selectAll.checked = total > 0 && selected === total;
+    selectAll.indeterminate = selected > 0 && selected < total;
+}
+
+function resetAttendanceAdjustmentForm(form, isBulk) {
+    form.querySelectorAll('input[name="override_check_in"], input[name="override_check_out"], input[name="reason"], textarea[name="reason"]').forEach(input => {
+        input.value = '';
+    });
+    if (isBulk) {
+        resetAttendanceAdjustmentSelectedEmployeeIds();
+        document.querySelectorAll('.attendance-adjustment-select').forEach(input => {
+            input.checked = false;
+        });
+    }
+}
+
 function getSelectedAttendanceAdjustmentEmployeeIds() {
-    return Array.from(document.querySelectorAll('.attendance-adjustment-select:checked'))
-        .map(input => input.value)
-        .filter(Boolean);
+    return Array.from(attendanceAdjustmentSelectedEmployeeIds);
 }
 
 async function saveAttendanceAdjustmentForm(event, isBulk) {
@@ -522,6 +672,7 @@ async function saveAttendanceAdjustmentForm(event, isBulk) {
         }
 
         Swal.fire('สำเร็จ', `บันทึก ${Number(res.saved || 0).toLocaleString('th-TH')} รายการ`, 'success');
+        resetAttendanceAdjustmentForm(form, isBulk);
         loadAttendanceAdjustmentEmployees();
     } catch (err) {
         Swal.fire('Error', err.message, 'error');

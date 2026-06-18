@@ -30,7 +30,7 @@
 <script src="assets/js/leave_approval.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/leave_approval.js'); ?>"></script>
 <script src="assets/js/dashboard.js"></script>
 <script src="assets/js/shift.js"></script>
-<script src="assets/js/attendance.js"></script>
+<script src="assets/js/attendance.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/attendance.js'); ?>"></script>
 <script src="assets/js/company_holidays.js"></script>
 <script src="assets/js/holiday_calendar.js"></script>
 <script src="assets/js/day_swap.js"></script>

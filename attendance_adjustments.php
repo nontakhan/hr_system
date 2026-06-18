@@ -88,7 +88,9 @@ require_once 'includes/header.php';
                         <table id="attendanceAdjustmentTable" class="table table-sm table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th><input type="checkbox" id="attendanceAdjustmentSelectAll"></th>
+                                    <th class="text-center attendance-adjustment-select-all-cell">
+                                        <input type="checkbox" id="attendanceAdjustmentSelectAll" class="form-check-input" aria-label="เลือกพนักงานทั้งหมด">
+                                    </th>
                                     <th>พนักงาน</th>
                                     <th>ตำแหน่ง</th>
                                     <th>สาขา</th>

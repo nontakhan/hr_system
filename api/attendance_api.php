@@ -745,7 +745,10 @@ function fetchAttendanceAdjustmentFilterOptions(mysqli $mysqli, $role) {
             $companies[(int)$row['company_id']] = $row['company_name_th'] ?: '-';
         }
         if (!empty($row['branch_id'])) {
-            $branches[(int)$row['branch_id']] = $row['branch_name_th'] ?: '-';
+            $branches[(int)$row['branch_id']] = [
+                'label' => $row['branch_name_th'] ?: '-',
+                'company_id' => (int)$row['company_id'],
+            ];
         }
         if (!empty($row['position_id'])) {
             $positions[(int)$row['position_id']] = $row['position_name_th'] ?: '-';
@@ -760,11 +763,15 @@ function fetchAttendanceAdjustmentFilterOptions(mysqli $mysqli, $role) {
 }
 
 function attendanceBuildFilterOptionRows(array $items) {
-    asort($items, SORT_NATURAL);
     $rows = [];
     foreach ($items as $id => $label) {
-        $rows[] = ['id' => (int)$id, 'label' => $label];
+        if (is_array($label)) {
+            $rows[] = ['id' => (int)$id, 'label' => $label['label'], 'company_id' => $label['company_id']];
+        } else {
+            $rows[] = ['id' => (int)$id, 'label' => $label];
+        }
     }
+    usort($rows, fn($a, $b) => strnatcmp((string)$a['label'], (string)$b['label']));
     return $rows;
 }
 
