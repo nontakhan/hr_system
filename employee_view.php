@@ -9,6 +9,7 @@ require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$shiftOverrides = [];
 
 if ($id > 0) {
     // Query ข้อมูลทั้งหมด รวมถึง work_shifts
@@ -37,6 +38,18 @@ if ($id > 0) {
     $stmt->bind_param('i', $id);
     $stmt->execute();
     $emp = $stmt->get_result()->fetch_assoc();
+
+    if ($emp) {
+        $shiftOverrideStmt = $mysqli->prepare("SELECT day_of_week, start_time, end_time, late_tolerance_mins, effective_from, effective_to
+                                               FROM employee_shift_overrides
+                                               WHERE employee_id = ? AND is_active = 1
+                                               ORDER BY effective_from DESC, id DESC");
+        if ($shiftOverrideStmt) {
+            $shiftOverrideStmt->bind_param('i', $id);
+            $shiftOverrideStmt->execute();
+            $shiftOverrides = $shiftOverrideStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+    }
 }
 
 if (!$emp) { header("Location: employees.php"); exit(); }
@@ -59,6 +72,25 @@ function getGender($g) {
     if ($g == 'male') return 'ชาย';
     if ($g == 'female') return 'หญิง';
     return 'อื่นๆ';
+}
+
+$shiftOverrideDaysMap = [
+    'Mon' => 'จันทร์',
+    'Tue' => 'อังคาร',
+    'Wed' => 'พุธ',
+    'Thu' => 'พฤหัสบดี',
+    'Fri' => 'ศุกร์',
+    'Sat' => 'เสาร์',
+    'Sun' => 'อาทิตย์',
+];
+
+function shiftOverrideDayLabels($dayOfWeek, array $dayMap) {
+    $days = array_filter(array_map('trim', explode(',', (string)$dayOfWeek)));
+    $labels = [];
+    foreach ($days as $day) {
+        $labels[] = $dayMap[$day] ?? $day;
+    }
+    return $labels ? implode(', ', $labels) : '-';
 }
 
 // ดึง Master Data สำหรับ Modal โยกย้าย
@@ -296,6 +328,39 @@ require_once 'includes/header.php';
                                 <span class="text-muted">- ไม่ระบุ -</span>
                             <?php endif; ?>
                         </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small">กะพิเศษรายสัปดาห์</label>
+                        <?php if (!empty($shiftOverrides)): ?>
+                            <div class="d-flex flex-column gap-2 mt-1">
+                                <?php foreach ($shiftOverrides as $override): ?>
+                                    <div class="border rounded p-2 bg-light">
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <span class="badge bg-warning text-dark border">
+                                                <i class="fas fa-calendar-week"></i>
+                                                <?php echo htmlspecialchars(shiftOverrideDayLabels($override['day_of_week'], $shiftOverrideDaysMap)); ?>
+                                            </span>
+                                            <span class="fw-bold text-dark">
+                                                <?php echo htmlspecialchars(substr((string)$override['start_time'], 0, 5) . ' - ' . substr((string)$override['end_time'], 0, 5)); ?>
+                                            </span>
+                                            <span class="text-muted small">
+                                                อนุโลมสาย <?php echo (int)$override['late_tolerance_mins']; ?> นาที
+                                            </span>
+                                        </div>
+                                        <div class="text-muted small mt-1">
+                                            มีผลตั้งแต่ <?php echo formatThaiDate($override['effective_from']); ?>
+                                            <?php if (!empty($override['effective_to'])): ?>
+                                                ถึง <?php echo formatThaiDate($override['effective_to']); ?>
+                                            <?php else: ?>
+                                                เป็นต้นไป
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="text-muted">- ยังไม่มีกะพิเศษรายสัปดาห์ -</div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
