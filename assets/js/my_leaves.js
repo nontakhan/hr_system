@@ -95,6 +95,7 @@ async function loadMyLeaves() {
 
 function renderLeaveUsageSummary(summary) {
     const grid = document.getElementById('leaveUsageSummaryGrid');
+    const overallGrid = document.getElementById('leaveUsageOverallGrid');
     const fiscalText = document.getElementById('leaveUsageFiscalYearText');
     if (!grid) return;
 
@@ -103,11 +104,20 @@ function renderLeaveUsageSummary(summary) {
     }
 
     if (!summary || !summary.overall) {
+        if (overallGrid) {
+            overallGrid.innerHTML = '<div class="text-muted small">ยังไม่มีข้อมูลสรุปการลา</div>';
+        }
         grid.innerHTML = '<div class="text-muted small">ยังไม่มีข้อมูลสรุปการลา</div>';
         return;
     }
 
-    grid.innerHTML = renderOverallLeaveUsageCard(summary.overall);
+    const typeItems = Array.isArray(summary.items) ? summary.items : [];
+    if (overallGrid) {
+        overallGrid.innerHTML = renderOverallLeaveUsageCard(summary.overall);
+    }
+    grid.innerHTML = typeItems.length
+        ? typeItems.map(item => renderTypeLeaveUsageCard(item)).join('')
+        : '<div class="text-muted small">ยังไม่มีประเภทการลาที่นำมาสรุปสิทธิ์</div>';
 }
 
 function renderOverallLeaveUsageCard(item) {
@@ -125,9 +135,12 @@ function renderOverallLeaveUsageCard(item) {
         : '';
 
     return `
-        <div class="leave-usage-card ${statusClass}">
+        <div class="leave-usage-card leave-usage-card-overall ${statusClass}">
             <div class="d-flex justify-content-between gap-2">
-                <strong>รวมการลาทั้งปีงบประมาณ</strong>
+                <div class="leave-usage-card-title">
+                    <span class="leave-usage-icon"><i class="fas fa-chart-pie"></i></span>
+                    <strong>รวมการลาทั้งปีงบประมาณ</strong>
+                </div>
                 <span>${formatLeaveDayNumber(item.approved_days)} / ${requestLimitText}</span>
             </div>
             <div class="leave-usage-progress" aria-hidden="true">
@@ -138,26 +151,62 @@ function renderOverallLeaveUsageCard(item) {
             </div>
             <div class="small mt-1">จำนวนใบลาที่อนุมัติแล้ว: ${item.approved_requests || 0} ครั้ง</div>
             ${pendingText}
-            ${renderLeaveUsageEntries(item.entries || [])}
         </div>
     `;
 }
 
-function renderLeaveUsageEntries(entries) {
-    if (!entries.length) {
-        return '<div class="leave-usage-entry-list text-muted">ยังไม่มีรายการลาในปีงบประมาณนี้</div>';
-    }
+function renderTypeLeaveUsageCard(item) {
+    const presentation = getLeaveTypePresentation(item.type_name || '');
+    const statusClass = `leave-usage-card-${item.status || 'normal'}`;
+    const percent = Number.parseFloat(item.usage_percent || 0);
+    const progressWidth = Math.min(Math.max(percent, 0), 100);
+    const limitDays = Number.parseFloat(item.limit_days || 0);
+    const limitText = limitDays > 0
+        ? `${formatLeaveDayNumber(limitDays)} วัน`
+        : 'ไม่จำกัด';
+    const remainingDays = item.remaining_days === null
+        ? 'ไม่จำกัด'
+        : `${formatLeaveDayNumber(item.remaining_days)} วัน`;
+    const pendingText = Number.parseFloat(item.pending_days || 0) > 0
+        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
+        : '';
 
     return `
-        <div class="leave-usage-entry-list">
-            ${entries.map(entry => `
-                <div class="leave-usage-entry">
-                    <span>${formatLeaveDateRange(entry.start_date, entry.end_date, 'full', 'full')} ${entry.type_name ? `- ${escapeHtml(entry.type_name)}` : ''}</span>
-                    <span>${escapeHtml(entry.duration_label || `${formatLeaveDayNumber(entry.days)} วัน`)} (${isPendingLeaveStatus(entry.status) ? 'รออนุมัติ' : 'อนุมัติแล้ว'})</span>
+        <div class="leave-usage-card leave-usage-card-${presentation.tone} ${statusClass}">
+            <div class="d-flex justify-content-between gap-2">
+                <div class="leave-usage-card-title">
+                    <span class="leave-usage-icon"><i class="fas ${presentation.icon}"></i></span>
+                    <strong>${escapeHtml(item.type_name || 'ประเภทการลา')}</strong>
                 </div>
-            `).join('')}
+                <span>${formatLeaveDayNumber(item.approved_days)} / ${limitText}</span>
+            </div>
+            <div class="leave-usage-progress" aria-hidden="true">
+                <span style="width: ${progressWidth}%"></span>
+            </div>
+            <div class="small mt-2">
+                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, คงเหลือ ${remainingDays}
+            </div>
+            <div class="small mt-1">สิทธิ์ตามหน้าตั้งค่าประเภทการลา: ${limitText}</div>
+            ${pendingText}
         </div>
     `;
+}
+
+function getLeaveTypePresentation(typeName) {
+    const name = String(typeName || '').toLowerCase();
+    const rules = [
+        { match: ['ป่วย', 'sick'], icon: 'fa-user-injured', tone: 'blue' },
+        { match: ['คลอด', 'maternity', 'บุตร'], icon: 'fa-baby', tone: 'purple' },
+        { match: ['กิจ', 'business'], icon: 'fa-envelope-open-text', tone: 'cyan' },
+        { match: ['พักผ่อน', 'annual', 'vacation'], icon: 'fa-mug-hot', tone: 'rose' },
+        { match: ['ศาสนา', 'relig'], icon: 'fa-bookmark', tone: 'amber' },
+        { match: ['ช่วยภริยา', 'ภรรยา', 'paternity'], icon: 'fa-baby-carriage', tone: 'green' },
+        { match: ['ศึกษา', 'ฝึกอบรม', 'อบรม', 'training', 'study'], icon: 'fa-graduation-cap', tone: 'indigo' },
+        { match: ['สมรส', 'แต่งงาน', 'marriage'], icon: 'fa-venus-mars', tone: 'pink' },
+        { match: ['เลี้ยงดู', 'child'], icon: 'fa-hand-holding-heart', tone: 'orange' },
+    ];
+    return rules.find(rule => rule.match.some(keyword => name.includes(keyword)))
+        || { icon: 'fa-calendar-check', tone: 'slate' };
 }
 
 function formatLeaveDayNumber(value) {

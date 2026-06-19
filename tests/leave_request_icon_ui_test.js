@@ -20,6 +20,7 @@ const page = fs.readFileSync('leave_request.php', 'utf8');
 const timeRequestPage = fs.readFileSync('late_early_request.php', 'utf8');
 const leaveTypesPage = fs.readFileSync('leave_types.php', 'utf8');
 const script = fs.readFileSync('assets/js/leave_request.js', 'utf8');
+const myLeavesScript = fs.readFileSync('assets/js/my_leaves.js', 'utf8');
 const timeRequestScript = fs.readFileSync('assets/js/late_early_request.js', 'utf8');
 const leaveSettingsScript = fs.readFileSync('assets/js/leave.js', 'utf8');
 const styles = fs.readFileSync('assets/style.css', 'utf8');
@@ -43,6 +44,7 @@ assertIncludes(script, 'function selectLeaveType', 'Leave request JS should sele
 assertIncludes(script, 'function getLeaveTypePresentation', 'Leave request JS should map leave type names to icons and colors.');
 assertIncludes(script, 'function renderLeaveUsageSummary', 'Leave request JS should render leave usage warnings.');
 assertIncludes(script, 'function renderLeaveUsageEntries', 'Leave request JS should render every counted leave entry for comparison.');
+assertNotIncludes(myLeavesScript, 'renderLeaveUsageEntries', 'My leaves summary cards should not duplicate leave entries already shown in the table.');
 assertIncludes(script, 'function renderOverallLeaveUsageCard', 'Leave request JS should render one overall leave usage card.');
 assertIncludes(script, 'วัน', 'Leave request usage summary should display annual quota in days.');
 assertNotIncludes(script, '${item.request_limit} ครั้ง', 'Leave request usage summary should not display annual quota as request counts.');

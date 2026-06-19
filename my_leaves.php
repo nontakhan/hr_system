@@ -28,6 +28,13 @@ require_once 'includes/header.php';
             </div>
             <span class="badge bg-light text-dark border">นับจากรายการที่อนุมัติแล้ว</span>
         </div>
+        <div id="leaveUsageOverallGrid" class="leave-usage-overall-grid mb-3">
+            <div class="text-muted small">กำลังโหลดข้อมูล...</div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="h6 mb-0 text-gray-800">แยกตามประเภทการลา</h3>
+            <span class="text-muted small">อ้างอิงสิทธิ์จากหน้าตั้งค่าประเภทการลา</span>
+        </div>
         <div id="leaveUsageSummaryGrid" class="leave-usage-summary-grid">
             <div class="text-muted small">กำลังโหลดข้อมูล...</div>
         </div>

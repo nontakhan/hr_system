@@ -457,6 +457,111 @@ function leaveBuildUsageWarningStatus($usedDays, $requestLimit) {
     return 'normal';
 }
 
+function leaveFetchLeaveTypeLimits(mysqli $mysqli) {
+    $types = [];
+    $result = $mysqli->query("SELECT id, type_name, days_per_year FROM leave_types ORDER BY id ASC");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            if (leaveDetectHourlyRequestType($row['type_name']) !== null) {
+                continue;
+            }
+
+            $types[] = [
+                'id' => (int)$row['id'],
+                'type_name' => $row['type_name'],
+                'days_per_year' => (float)$row['days_per_year'],
+            ];
+        }
+    }
+
+    return $types;
+}
+
+function leaveBuildUsageSummaryItems(array $leaveTypes, array $entries) {
+    $items = [];
+    foreach ($leaveTypes as $type) {
+        $typeId = (int)($type['id'] ?? $type['leave_type_id'] ?? 0);
+        if ($typeId <= 0) {
+            continue;
+        }
+
+        $typeName = (string)($type['type_name'] ?? '');
+        if (leaveDetectHourlyRequestType($typeName) !== null) {
+            continue;
+        }
+
+        $limitDays = (float)($type['days_per_year'] ?? $type['limit_days'] ?? 0);
+        $items[$typeId] = [
+            'leave_type_id' => $typeId,
+            'type_name' => $typeName,
+            'limit_days' => $limitDays,
+            'request_limit' => $limitDays,
+            'approved_days' => 0.0,
+            'approved_requests' => 0,
+            'pending_days' => 0.0,
+            'pending_requests' => 0,
+            'usage_percent' => 0.0,
+            'request_usage_percent' => 0.0,
+            'remaining_days' => $limitDays > 0 ? $limitDays : null,
+            'remaining_requests' => $limitDays > 0 ? $limitDays : null,
+            'status' => 'normal',
+            'entries' => [],
+        ];
+    }
+
+    foreach ($entries as $entry) {
+        $typeId = (int)($entry['leave_type_id'] ?? 0);
+        if ($typeId <= 0) {
+            continue;
+        }
+
+        if (!isset($items[$typeId])) {
+            $items[$typeId] = [
+                'leave_type_id' => $typeId,
+                'type_name' => (string)($entry['type_name'] ?? ''),
+                'limit_days' => 0.0,
+                'request_limit' => 0.0,
+                'approved_days' => 0.0,
+                'approved_requests' => 0,
+                'pending_days' => 0.0,
+                'pending_requests' => 0,
+                'usage_percent' => 0.0,
+                'request_usage_percent' => 0.0,
+                'remaining_days' => null,
+                'remaining_requests' => null,
+                'status' => 'normal',
+                'entries' => [],
+            ];
+        }
+
+        $days = (float)($entry['days'] ?? 0);
+        $status = (string)($entry['status'] ?? '');
+        if (in_array($status, ['approved', 'pending_cancel_hr'], true)) {
+            $items[$typeId]['approved_days'] += $days;
+            $items[$typeId]['approved_requests']++;
+        } elseif (in_array($status, ['pending', 'pending_manager', 'pending_hr'], true)) {
+            $items[$typeId]['pending_days'] += $days;
+            $items[$typeId]['pending_requests']++;
+        }
+
+        $items[$typeId]['entries'][] = $entry;
+    }
+
+    foreach ($items as &$item) {
+        $limitDays = (float)$item['limit_days'];
+        if ($limitDays > 0) {
+            $item['usage_percent'] = round(((float)$item['approved_days'] / $limitDays) * 100, 1);
+            $item['request_usage_percent'] = $item['usage_percent'];
+            $item['remaining_days'] = $limitDays - (float)$item['approved_days'];
+            $item['remaining_requests'] = $item['remaining_days'];
+        }
+        $item['status'] = leaveBuildUsageWarningStatus($item['approved_days'], $limitDays);
+    }
+    unset($item);
+
+    return array_values($items);
+}
+
 function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = null) {
     $employeeId = (int)$employeeId;
     $policy = leaveGetActivePolicy($mysqli);
@@ -482,8 +587,11 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
 
     $workDays = leaveFetchEmployeeWorkDays($mysqli, $employeeId);
     $holidays = leaveFetchCompanyHolidays($mysqli, $fiscal['start_date'], $fiscal['end_date']);
+    $leaveTypes = leaveFetchLeaveTypeLimits($mysqli);
+    $entries = [];
 
     $sql = "SELECT lr.status,
+                   lr.leave_type_id,
                    lr.start_date,
                    lr.end_date,
                    lr.start_day_part,
@@ -492,7 +600,8 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
                    lr.time_request_type,
                    lr.request_minutes,
                    lr.total_days,
-                   lt.type_name
+                   lt.type_name,
+                   lt.days_per_year
             FROM leave_requests lr
             JOIN leave_types lt ON lr.leave_type_id = lt.id
             WHERE lr.employee_id = ?
@@ -531,7 +640,8 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
                 $summaryItem['pending_requests']++;
             }
 
-            $summaryItem['entries'][] = [
+            $entry = [
+                'leave_type_id' => (int)$row['leave_type_id'],
                 'status' => $row['status'],
                 'start_date' => max($row['start_date'], $fiscal['start_date']),
                 'end_date' => min($row['end_date'], $fiscal['end_date']),
@@ -547,6 +657,8 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
                     'days' => $countedDays,
                 ]),
             ];
+            $summaryItem['entries'][] = $entry;
+            $entries[] = $entry;
         }
         $stmt->close();
     }
@@ -561,7 +673,7 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
         'fiscal_year' => $fiscal,
         'policy' => $policy,
         'overall' => $summaryItem,
-        'items' => [$summaryItem],
+        'items' => leaveBuildUsageSummaryItems($leaveTypes, $entries),
     ];
 }
 

@@ -81,6 +81,71 @@ assertLeaveSame('near', $nearByRequests, 'Leave warning status should turn near 
 $overByRequests = leaveBuildUsageWarningStatus(5.5, 5);
 assertLeaveSame('over', $overByRequests, 'Leave warning status should turn over when approved leave days exceed the fiscal year limit.');
 
+$perTypeSummary = leaveBuildUsageSummaryItems([
+    [
+        'id' => 1,
+        'type_name' => 'Annual leave',
+        'days_per_year' => 6,
+    ],
+    [
+        'id' => 2,
+        'type_name' => 'Sick leave',
+        'days_per_year' => 30,
+    ],
+    [
+        'id' => 3,
+        'type_name' => 'ขอมาสาย',
+        'days_per_year' => 0,
+    ],
+    [
+        'id' => 4,
+        'type_name' => 'ขอออกก่อน',
+        'days_per_year' => 0,
+    ],
+], [
+    [
+        'leave_type_id' => 1,
+        'type_name' => 'Annual leave',
+        'status' => 'approved',
+        'start_date' => '2026-01-05',
+        'end_date' => '2026-01-06',
+        'days' => 2.0,
+        'duration_label' => '2 days',
+    ],
+    [
+        'leave_type_id' => 1,
+        'type_name' => 'Annual leave',
+        'status' => 'pending_hr',
+        'start_date' => '2026-02-02',
+        'end_date' => '2026-02-02',
+        'days' => 1.0,
+        'duration_label' => '1 day',
+    ],
+    [
+        'leave_type_id' => 2,
+        'type_name' => 'Sick leave',
+        'status' => 'pending_cancel_hr',
+        'start_date' => '2026-03-03',
+        'end_date' => '2026-03-03',
+        'days' => 0.5,
+        'duration_label' => '0.5 day',
+    ],
+]);
+
+assertLeaveSame(2, count($perTypeSummary), 'Per-type usage summary should include configured day-leave types only.');
+$annualSummary = $perTypeSummary[0];
+assertLeaveSame(1, $annualSummary['leave_type_id'], 'Per-type summary should preserve leave type id.');
+assertLeaveSame('Annual leave', $annualSummary['type_name'], 'Per-type summary should preserve leave type name.');
+assertLeaveSame(6.0, $annualSummary['limit_days'], 'Per-type summary should use days_per_year from leave type settings.');
+assertLeaveSame(2.0, $annualSummary['approved_days'], 'Per-type summary should count approved days for that type only.');
+assertLeaveSame(1.0, $annualSummary['pending_days'], 'Per-type summary should count pending days for that type only.');
+assertLeaveSame(4.0, $annualSummary['remaining_days'], 'Per-type summary should subtract approved days from the configured type limit.');
+assertLeaveSame(33.3, $annualSummary['usage_percent'], 'Per-type summary should calculate usage percent from approved days.');
+assertLeaveSame(2, count($annualSummary['entries']), 'Per-type summary should include entries for that type only.');
+$sickSummary = $perTypeSummary[1];
+assertLeaveSame(0.5, $sickSummary['approved_days'], 'Pending cancellation should still count as approved usage by type.');
+assertLeaveSame(29.5, $sickSummary['remaining_days'], 'Per-type remaining days should support half-day approved usage.');
+
 $lateHourlyType = leaveDetectHourlyRequestType('ขอมาสาย');
 assertLeaveSame('late_arrival', $lateHourlyType, 'Late arrival leave type names should be detected as hourly requests.');
 
