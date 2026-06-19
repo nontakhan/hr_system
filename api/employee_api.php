@@ -13,6 +13,29 @@ function getEmployeePrefixVal($arr, $titleKey, $prefixKey, $default = null) {
     return getVal($arr, $titleKey, getVal($arr, $prefixKey, $default));
 }
 
+function normalizeTrainingDate($value, bool $required = false): ?string
+{
+    $text = trim((string)$value);
+    if ($text === '') {
+        if ($required) throw new InvalidArgumentException('กรุณาระบุวันที่อบรม');
+        return null;
+    }
+    $dt = DateTime::createFromFormat('Y-m-d', $text);
+    if (!$dt || $dt->format('Y-m-d') !== $text) {
+        throw new InvalidArgumentException('รูปแบบวันที่ไม่ถูกต้อง');
+    }
+    return $text;
+}
+
+function trimTrainingText($value, int $maxLength): string
+{
+    $text = trim((string)$value);
+    if (mb_strlen($text, 'UTF-8') > $maxLength) {
+        return mb_substr($text, 0, $maxLength, 'UTF-8');
+    }
+    return $text;
+}
+
 function sendJsonError($message) {
     header('Content-Type: application/json');
     echo json_encode(['status' => 'error', 'message' => $message]);
@@ -28,12 +51,15 @@ try {
     require_once '../includes/db_connect.php';
     require_once '../includes/upload_security.php';
     require_once '../includes/hr_scope_helpers.php';
+    require_once '../includes/employee_training_helpers.php';
     header('Content-Type: application/json');
 
     // 2. Check Login
     if (!isset($_SESSION['user_id'])) {
         sendJsonError('กรุณาเข้าสู่ระบบก่อนใช้งาน (Login Required)');
     }
+
+    ensureEmployeeTrainingRecordsTable($mysqli);
 
     $method = $_SERVER['REQUEST_METHOD'];
 
@@ -60,12 +86,22 @@ try {
         elseif ($action === 'update_transfer_history') {
             echo json_encode(updateTransferHistory($mysqli, $_POST));
         }
+        elseif ($action === 'save_training') {
+            echo json_encode(saveEmployeeTrainingRecord($mysqli, $_POST, $_FILES));
+        }
+        elseif ($action === 'delete_training') {
+            echo json_encode(deleteEmployeeTrainingRecord($mysqli, $_POST));
+        }
         else {
             sendJsonError('Invalid Action: ' . $action);
         }
 
     } elseif ($method === 'GET') {
-        if (isset($_GET['action']) && $_GET['action'] === 'get_history') {
+        if (isset($_GET['action']) && $_GET['action'] === 'training_history') {
+            $emp_id = isset($_GET['employee_id']) ? (int)$_GET['employee_id'] : 0;
+            echo json_encode(getEmployeeTrainingHistory($mysqli, $emp_id));
+        }
+        elseif (isset($_GET['action']) && $_GET['action'] === 'get_history') {
             $emp_id = isset($_GET['employee_id']) ? (int)$_GET['employee_id'] : 0;
             echo json_encode(getTransferHistory($mysqli, $emp_id));
         } else {
@@ -625,6 +661,105 @@ function deleteEmployee($mysqli, $id) {
         throw new Exception("ลบไม่สำเร็จ");
     } catch (Throwable $e) {
         $mysqli->rollback();
+        error_log($e->getMessage());
+        return ['status' => 'error', 'message' => 'System Error'];
+    }
+}
+
+function getEmployeeTrainingHistory($mysqli, $emp_id) {
+    try {
+        if ($emp_id <= 0) throw new InvalidArgumentException('Invalid employee ID');
+
+        $sql = "SELECT tr.*, u.username AS created_by_username
+                FROM employee_training_records tr
+                LEFT JOIN users u ON tr.created_by = u.id
+                WHERE tr.employee_id = ?
+                ORDER BY tr.training_date DESC, tr.id DESC";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param('i', $emp_id);
+        $stmt->execute();
+        return ['status' => 'success', 'data' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)];
+    } catch (Throwable $e) {
+        error_log($e->getMessage());
+        return ['status' => 'error', 'message' => 'System Error'];
+    }
+}
+
+function saveEmployeeTrainingRecord($mysqli, $data, $files) {
+    $mysqli->begin_transaction();
+    try {
+        $training_id = (int)getVal($data, 'training_id', 0);
+        $emp_id = (int)getVal($data, 'employee_id', 0);
+        if ($emp_id <= 0) throw new InvalidArgumentException('Invalid employee ID');
+
+        $course_name = trimTrainingText(getVal($data, 'course_name', ''), 255);
+        if ($course_name === '') throw new InvalidArgumentException('กรุณาระบุชื่อหลักสูตร');
+
+        $training_date = normalizeTrainingDate(getVal($data, 'training_date', ''), true);
+        $provider = trimTrainingText(getVal($data, 'provider', ''), 255);
+        $training_type = trimTrainingText(getVal($data, 'training_type', ''), 100);
+        $result_status = trimTrainingText(getVal($data, 'result_status', ''), 100);
+        $certificate_expiry_date = normalizeTrainingDate(getVal($data, 'certificate_expiry_date', ''), false);
+        $notes = trim((string)getVal($data, 'notes', ''));
+        $user_id = (int)($_SESSION['user_id'] ?? 0);
+
+        $attachment_path = null;
+        if (isset($files['attachment']) && ($files['attachment']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $attachment_path = saveEmployeeTrainingAttachment($files['attachment'], $emp_id);
+        }
+
+        if ($training_id > 0) {
+            $check = $mysqli->prepare("SELECT attachment_path FROM employee_training_records WHERE id = ? AND employee_id = ?");
+            $check->bind_param('ii', $training_id, $emp_id);
+            $check->execute();
+            $current = $check->get_result()->fetch_assoc();
+            if (!$current) throw new InvalidArgumentException('ไม่พบประวัติอบรมที่ต้องการแก้ไข');
+            if ($attachment_path === null) $attachment_path = $current['attachment_path'];
+
+            $sql = "UPDATE employee_training_records
+                    SET training_date = ?, course_name = ?, provider = ?, training_type = ?,
+                        result_status = ?, certificate_expiry_date = ?, attachment_path = ?,
+                        notes = ?, updated_by = ?
+                    WHERE id = ? AND employee_id = ?";
+            $stmt = $mysqli->prepare($sql);
+            $stmt->bind_param('ssssssssiii', $training_date, $course_name, $provider, $training_type, $result_status, $certificate_expiry_date, $attachment_path, $notes, $user_id, $training_id, $emp_id);
+            $stmt->execute();
+            $message = 'แก้ไขประวัติอบรมสำเร็จ';
+        } else {
+            $sql = "INSERT INTO employee_training_records
+                    (employee_id, training_date, course_name, provider, training_type,
+                     result_status, certificate_expiry_date, attachment_path, notes, created_by, updated_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $mysqli->prepare($sql);
+            $stmt->bind_param('issssssssii', $emp_id, $training_date, $course_name, $provider, $training_type, $result_status, $certificate_expiry_date, $attachment_path, $notes, $user_id, $user_id);
+            $stmt->execute();
+            $message = 'บันทึกประวัติอบรมสำเร็จ';
+        }
+
+        $mysqli->commit();
+        return ['status' => 'success', 'message' => $message];
+    } catch (Throwable $e) {
+        $mysqli->rollback();
+        if ($e instanceof InvalidArgumentException) return ['status' => 'error', 'message' => $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status' => 'error', 'message' => 'System Error'];
+    }
+}
+
+function deleteEmployeeTrainingRecord($mysqli, $data) {
+    try {
+        $training_id = (int)getVal($data, 'training_id', 0);
+        $emp_id = (int)getVal($data, 'employee_id', 0);
+        if ($training_id <= 0 || $emp_id <= 0) throw new InvalidArgumentException('Invalid training record');
+
+        $stmt = $mysqli->prepare("DELETE FROM employee_training_records WHERE id = ? AND employee_id = ?");
+        $stmt->bind_param('ii', $training_id, $emp_id);
+        $stmt->execute();
+        if ($stmt->affected_rows < 1) throw new InvalidArgumentException('ไม่พบประวัติอบรมที่ต้องการลบ');
+
+        return ['status' => 'success', 'message' => 'ลบประวัติอบรมสำเร็จ'];
+    } catch (Throwable $e) {
+        if ($e instanceof InvalidArgumentException) return ['status' => 'error', 'message' => $e->getMessage()];
         error_log($e->getMessage());
         return ['status' => 'error', 'message' => 'System Error'];
     }

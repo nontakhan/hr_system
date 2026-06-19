@@ -7,6 +7,9 @@
  */
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php';
+require_once 'includes/employee_training_helpers.php';
+
+ensureEmployeeTrainingRecordsTable($mysqli);
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $shiftOverrides = [];
@@ -117,6 +120,9 @@ require_once 'includes/header.php';
         <a href="employees.php" class="btn btn-outline-secondary me-2"><i class="fas fa-arrow-left"></i> ย้อนกลับ</a>
         
         <?php if($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'hr'): ?>
+        <button class="btn btn-info text-white me-2" data-bs-toggle="modal" data-bs-target="#trainingModal">
+            <i class="fas fa-graduation-cap"></i> บันทึกอบรม
+        </button>
         <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#transferModal">
             <i class="fas fa-exchange-alt"></i> โยกย้าย/ปรับตำแหน่ง
         </button>
@@ -419,6 +425,102 @@ require_once 'includes/header.php';
             </div>
         </div>
 
+        <!-- Training History -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-primary"><i class="fas fa-graduation-cap me-2"></i> ประวัติการฝึกอบรม</h5>
+                <div class="d-flex gap-2">
+                    <?php if($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'hr'): ?>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#trainingModal">
+                        <i class="fas fa-plus"></i> เพิ่ม
+                    </button>
+                    <?php endif; ?>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadTrainingHistory(<?php echo $emp['id']; ?>)">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0" id="trainingHistoryTable" data-can-manage-training="<?php echo ($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'hr') ? '1' : '0'; ?>">
+                        <thead class="table-light">
+                            <tr>
+                                <th>วันที่อบรม</th>
+                                <th>หลักสูตร</th>
+                                <th>ผู้จัด/สถาบัน</th>
+                                <th>ประเภท</th>
+                                <th>ผลลัพธ์</th>
+                                <th>ใบรับรองหมดอายุ</th>
+                                <th>เอกสาร</th>
+                                <th>หมายเหตุ</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Training Modal -->
+<div class="modal fade" id="trainingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="trainingModalTitle"><i class="fas fa-graduation-cap"></i> บันทึกประวัติการฝึกอบรม</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="trainingForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="employee_id" value="<?php echo $emp['id']; ?>">
+                    <input type="hidden" name="training_id" id="trainingId" value="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">วันที่อบรม <span class="text-danger">*</span></label>
+                            <input type="date" name="training_date" id="trainingDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">ชื่อหลักสูตร <span class="text-danger">*</span></label>
+                            <input type="text" name="course_name" id="trainingCourseName" class="form-control" required maxlength="255">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">ผู้จัด/สถาบัน</label>
+                            <input type="text" name="provider" id="trainingProvider" class="form-control" maxlength="255">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">ประเภทอบรม</label>
+                            <input type="text" name="training_type" id="trainingType" class="form-control" maxlength="100" placeholder="เช่น ภายใน, ภายนอก, Online">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">ผลลัพธ์/สถานะ</label>
+                            <input type="text" name="result_status" id="trainingResultStatus" class="form-control" maxlength="100" placeholder="เช่น ผ่าน, เข้าร่วม, ได้ใบรับรอง">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">ใบรับรองหมดอายุ</label>
+                            <input type="date" name="certificate_expiry_date" id="trainingCertificateExpiryDate" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">เอกสารแนบ/ใบประกาศ (ถ้ามี)</label>
+                            <input type="file" name="attachment" id="trainingAttachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                            <div class="form-text" id="trainingCurrentAttachment"></div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">หมายเหตุ</label>
+                            <textarea name="notes" id="trainingNotes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-info text-white" id="trainingSubmitBtn">บันทึกประวัติอบรม</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -504,6 +606,9 @@ require_once 'includes/header.php';
     document.addEventListener('DOMContentLoaded', function() {
         if(typeof loadTransferHistory === 'function') {
             loadTransferHistory(<?php echo $emp['id']; ?>);
+        }
+        if(typeof loadTrainingHistory === 'function') {
+            loadTrainingHistory(<?php echo $emp['id']; ?>);
         }
     });
 </script>

@@ -53,6 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setupTransferHistoryForm(transferForm);
     }
 
+    const trainingForm = document.getElementById('trainingForm');
+    if (trainingForm) {
+        setupTrainingHistoryForm(trainingForm);
+    }
+
     document.querySelectorAll('select[name="role"]').forEach(roleSelect => {
         const toggleHrScopes = () => {
             const form = roleSelect.closest('form');
@@ -532,4 +537,162 @@ window.openTransferHistoryEdit = function(button) {
     document.getElementById('trans_branch').value = row.to_branch_id || '';
 
     new bootstrap.Modal(document.getElementById('transferModal')).show();
+}
+
+function setupTrainingHistoryForm(form) {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        formData.append('action', 'save_training');
+
+        Swal.fire({
+            title: 'กำลังบันทึก...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch('api/employee_api.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                Swal.fire('สำเร็จ', result.message, 'success');
+                bootstrap.Modal.getInstance(document.getElementById('trainingModal')).hide();
+                loadTrainingHistory(Number.parseInt(formData.get('employee_id'), 10) || 0);
+            } else {
+                Swal.fire('บันทึกไม่สำเร็จ', result.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', error.message, 'error');
+        }
+    });
+
+    document.getElementById('trainingModal')?.addEventListener('hidden.bs.modal', () => {
+        resetTrainingForm(form);
+    });
+}
+
+function resetTrainingForm(form) {
+    form.reset();
+    document.getElementById('trainingId').value = '';
+    setThaiDateInputValue(document.getElementById('trainingDate'), new Date().toISOString().slice(0, 10));
+    document.getElementById('trainingCurrentAttachment').innerHTML = '';
+    document.getElementById('trainingModalTitle').innerHTML = '<i class="fas fa-graduation-cap"></i> บันทึกประวัติการฝึกอบรม';
+    document.getElementById('trainingSubmitBtn').textContent = 'บันทึกประวัติอบรม';
+}
+
+window.loadTrainingHistory = async function(empId) {
+    const table = document.getElementById('trainingHistoryTable');
+    const tbody = table?.querySelector('tbody');
+    if (!tbody) return;
+
+    const canManage = table.dataset.canManageTraining === '1';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>';
+
+    try {
+        const response = await fetch(`api/employee_api.php?action=training_history&employee_id=${encodeURIComponent(empId)}`);
+        const result = await response.json();
+
+        if (result.status !== 'success') {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml(result.message || 'โหลดข้อมูลไม่สำเร็จ')}</td></tr>`;
+            return;
+        }
+
+        if (result.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ยังไม่มีประวัติการฝึกอบรม</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = result.data.map(row => {
+            const payload = escapeAttr(JSON.stringify(row));
+            const attachment = row.attachment_path
+                ? `<a href="${escapeAttr(safeUploadPath(row.attachment_path, '#'))}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">เปิดไฟล์</a>`
+                : '-';
+            const actions = canManage ? `
+                <button type="button" class="btn btn-sm btn-warning me-1" data-training="${payload}" onclick="openTrainingHistoryEdit(this)">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-danger" data-id="${escapeAttr(row.id)}" data-employee-id="${escapeAttr(row.employee_id)}" onclick="deleteTrainingHistory(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : '-';
+
+            return `
+                <tr>
+                    <td>${formatThaiDate(row.training_date)}</td>
+                    <td>${escapeHtml(row.course_name || '-')}</td>
+                    <td>${escapeHtml(row.provider || '-')}</td>
+                    <td>${escapeHtml(row.training_type || '-')}</td>
+                    <td>${escapeHtml(row.result_status || '-')}</td>
+                    <td>${formatThaiDate(row.certificate_expiry_date)}</td>
+                    <td>${attachment}</td>
+                    <td>${escapeHtml(row.notes || '-')}</td>
+                    <td>${actions}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+    }
+}
+
+window.openTrainingHistoryEdit = function(button) {
+    const row = JSON.parse(button.dataset.training);
+
+    document.getElementById('trainingId').value = row.id || '';
+    setThaiDateInputValue(document.getElementById('trainingDate'), row.training_date || new Date().toISOString().slice(0, 10));
+    document.getElementById('trainingCourseName').value = row.course_name || '';
+    document.getElementById('trainingProvider').value = row.provider || '';
+    document.getElementById('trainingType').value = row.training_type || '';
+    document.getElementById('trainingResultStatus').value = row.result_status || '';
+    setThaiDateInputValue(document.getElementById('trainingCertificateExpiryDate'), row.certificate_expiry_date || '');
+    document.getElementById('trainingNotes').value = row.notes || '';
+    document.getElementById('trainingAttachment').value = '';
+    document.getElementById('trainingCurrentAttachment').innerHTML = row.attachment_path
+        ? `ไฟล์ปัจจุบัน: <a href="${escapeAttr(safeUploadPath(row.attachment_path, '#'))}" target="_blank" rel="noopener">เปิดไฟล์</a>`
+        : '';
+    document.getElementById('trainingModalTitle').innerHTML = '<i class="fas fa-pencil-alt"></i> แก้ไขประวัติการฝึกอบรม';
+    document.getElementById('trainingSubmitBtn').textContent = 'บันทึกการแก้ไข';
+
+    new bootstrap.Modal(document.getElementById('trainingModal')).show();
+}
+
+window.deleteTrainingHistory = async function(button) {
+    const trainingId = Number.parseInt(button.dataset.id, 10) || 0;
+    const employeeId = Number.parseInt(button.dataset.employeeId, 10) || 0;
+    const confirm = await Swal.fire({
+        title: 'ลบประวัติอบรม?',
+        text: 'รายการนี้จะถูกลบออกจากประวัติพนักงาน',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ลบ',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#dc3545'
+    });
+    if (!confirm.isConfirmed) return;
+
+    const formData = new FormData();
+    formData.append('action', 'delete_training');
+    formData.append('training_id', trainingId);
+    formData.append('employee_id', employeeId);
+
+    try {
+        const response = await fetch('api/employee_api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            Swal.fire('สำเร็จ', result.message, 'success');
+            loadTrainingHistory(employeeId);
+        } else {
+            Swal.fire('ลบไม่สำเร็จ', result.message, 'error');
+        }
+    } catch (error) {
+        Swal.fire('Error', error.message, 'error');
+    }
 }

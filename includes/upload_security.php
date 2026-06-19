@@ -84,4 +84,23 @@ function saveLeaveAttachment(array $file, int $requestId): string
         'leave_' . $requestId
     );
 }
+
+function saveEmployeeTrainingAttachment(array $file, int $employeeId): string
+{
+    return saveUploadedFile(
+        $file,
+        __DIR__ . '/../assets/uploads/employee_training',
+        'assets/uploads/employee_training',
+        [
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/pjpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/x-png' => 'png',
+            'image/webp' => 'webp',
+        ],
+        5 * 1024 * 1024,
+        'training_' . $employeeId
+    );
+}
 ?>
