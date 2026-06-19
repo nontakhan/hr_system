@@ -13,3 +13,5 @@ assertContainsText($source, 'employee_shift_overrides', 'Employee view should lo
 assertContainsText($source, '$shiftOverrideDaysMap', 'Employee view should translate override weekdays for display.');
 assertContainsText($source, '$shiftOverrides', 'Employee view should render the loaded weekly shift override rows.');
 assertContainsText($source, 'shiftOverrideDayLabels', 'Employee view should build readable weekday labels for each override.');
+assertContainsText($source, 'ชื่อเล่น', 'Employee view should show the employee nickname label.');
+assertContainsText($source, 'employeeNickname', 'Employee view should normalize and render the employee nickname.');

@@ -236,6 +236,7 @@ function createEmployee($mysqli, $data, $files) {
         $params = [
             // Strings (20)
             getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
+            getVal($data, 'nickname'),
             getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
             getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
@@ -252,17 +253,17 @@ function createEmployee($mysqli, $data, $files) {
         ];
 
         $sql = "INSERT INTO employees 
-        (prefix_th, first_name_th, last_name_th, prefix_en, first_name_en, last_name_en, 
+        (prefix_th, first_name_th, last_name_th, nickname, prefix_en, first_name_en, last_name_en,
         citizen_id, birth_date, gender, religion, blood_group, marital_status,
         phone_number, current_address, district, province, education_level, emergency_contact_name, emergency_contact_phone,
         profile_img_url, company_id, branch_id, department_id, position_id, employment_type_id, supervisor_id, default_shift_id, start_date, status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULLIF(?,0),?,?,?)";
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULLIF(?,0),?,?,?)";
 
         $stmt = $mysqli->prepare($sql);
         if(!$stmt) throw new Exception("Prepare failed: " . $mysqli->error);
 
-        // สร้าง Type String อัตโนมัติ: s(20) + i(7) + s(2) = 29 chars
-        $types = str_repeat('s', 20) . str_repeat('i', 7) . str_repeat('s', 2);
+        // สร้าง Type String อัตโนมัติ: s(21) + i(7) + s(2) = 30 chars
+        $types = str_repeat('s', 21) . str_repeat('i', 7) . str_repeat('s', 2);
 
         bindParamsStrict($stmt, $types, $params);
 
@@ -316,6 +317,7 @@ function updateEmployee($mysqli, $data, $files) {
         $params = [
             // Strings (20)
             getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
+            getVal($data, 'nickname'),
             getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
             getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
@@ -334,7 +336,7 @@ function updateEmployee($mysqli, $data, $files) {
         ];
 
         $sql = "UPDATE employees SET 
-            prefix_th=?, first_name_th=?, last_name_th=?, prefix_en=?, first_name_en=?, last_name_en=?, 
+            prefix_th=?, first_name_th=?, last_name_th=?, nickname=?, prefix_en=?, first_name_en=?, last_name_en=?,
             citizen_id=?, birth_date=?, gender=?, religion=?, blood_group=?, marital_status=?,
             phone_number=?, current_address=?, district=?, province=?, education_level=?, emergency_contact_name=?, emergency_contact_phone=?,
             profile_img_url=?, company_id=?, branch_id=?, department_id=?, position_id=?, 
@@ -344,8 +346,8 @@ function updateEmployee($mysqli, $data, $files) {
         $stmt = $mysqli->prepare($sql);
         if (!$stmt) throw new Exception("Prepare Update Failed: " . $mysqli->error);
 
-        // สร้าง Type String อัตโนมัติ: s(20) + i(7) + s(2) + i(1) = 30 chars
-        $types = str_repeat('s', 20) . str_repeat('i', 7) . str_repeat('s', 2) . 'i';
+        // สร้าง Type String อัตโนมัติ: s(21) + i(7) + s(2) + i(1) = 31 chars
+        $types = str_repeat('s', 21) . str_repeat('i', 7) . str_repeat('s', 2) . 'i';
 
         bindParamsStrict($stmt, $types, $params);
 

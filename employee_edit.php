@@ -74,6 +74,78 @@ $use_select2 = true;
 require_once 'includes/header.php';
 ?>
 
+<style>
+    .employee-general-card {
+        border-color: #f0dada;
+        overflow: hidden;
+    }
+
+    .employee-general-card .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        background: #fffafa;
+        border-bottom-color: #f5caca;
+    }
+
+    .employee-section-note {
+        margin: 0.25rem 0 0;
+        color: #6b7280;
+        font-size: 0.9rem;
+        font-weight: 400;
+    }
+
+    .employee-general-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .employee-general-grid .form-label {
+        margin-bottom: 0.4rem;
+        color: #374151;
+        font-size: 0.92rem;
+        font-weight: 600;
+    }
+
+    .employee-general-grid .form-control,
+    .employee-general-grid .form-select,
+    .employee-general-grid .select2-container--default .select2-selection--single {
+        min-height: 42px;
+    }
+
+    .field-span-1 { grid-column: span 1; }
+    .field-span-2 { grid-column: span 2; }
+    .field-span-3 { grid-column: span 3; }
+
+    .employee-field-break {
+        grid-column: 1 / -1;
+        height: 1px;
+        background: #f3e7e7;
+        margin: 0.2rem 0;
+    }
+
+    @media (max-width: 1199.98px) {
+        .employee-general-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .employee-general-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .field-span-1,
+        .field-span-2,
+        .field-span-3 {
+            grid-column: 1 / -1;
+        }
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h3 mb-0">แก้ไขข้อมูลพนักงาน</h1>
@@ -115,49 +187,62 @@ require_once 'includes/header.php';
             </div>
 
             <!-- ข้อมูลส่วนตัว -->
-            <div class="card mb-3">
-                <div class="card-header bg-light">ข้อมูลส่วนตัว</div>
+            <div class="card mb-3 employee-general-card">
+                <div class="card-header">
+                    <div>
+                        <div>ข้อมูลส่วนตัว</div>
+                        <p class="employee-section-note">จัดกลุ่มชื่อไทย ชื่ออังกฤษ และข้อมูลประจำตัวให้อ่านง่ายขึ้น</p>
+                    </div>
+                </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-2">
+                    <div class="employee-general-grid">
+                        <div class="field-span-1">
                             <label class="form-label">คำนำหน้า (ไทย) <span class="text-danger">*</span></label>
                             <select name="title_th" class="form-select" required>
                                 <?php foreach(['นาย','นาง','นางสาว'] as $v) echo "<option value='$v' ".($emp['prefix_th']==$v?'selected':'').">$v</option>"; ?>
                             </select>
                         </div>
-                        <div class="col-md-5">
+                        <div class="field-span-2">
                             <label class="form-label">ชื่อ (ไทย) <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="first_name_th" value="<?php echo $emp['first_name_th']; ?>" required>
                         </div>
-                        <div class="col-md-5">
+                        <div class="field-span-2">
                             <label class="form-label">นามสกุล (ไทย) <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="last_name_th" value="<?php echo $emp['last_name_th']; ?>" required>
                         </div>
-                        
-                        <div class="col-md-2">
+                        <div class="field-span-1">
+                            <label class="form-label">ชื่อเล่น</label>
+                            <input type="text" class="form-control" name="nickname" maxlength="100" value="<?php echo htmlspecialchars($emp['nickname'] ?? ''); ?>">
+                        </div>
+
+                        <div class="employee-field-break"></div>
+
+                        <div class="field-span-1">
                             <label class="form-label">คำนำหน้า (Eng)</label>
                             <select name="title_en" class="form-select">
                                 <?php foreach(['Mr.','Mrs.','Miss'] as $v) echo "<option value='$v' ".($emp['prefix_en']==$v?'selected':'').">$v</option>"; ?>
                             </select>
                         </div>
-                        <div class="col-md-5">
+                        <div class="field-span-2">
                             <label class="form-label">ชื่อ (Eng)</label>
                             <input type="text" class="form-control" name="first_name_en" value="<?php echo $emp['first_name_en']; ?>">
                         </div>
-                        <div class="col-md-5">
+                        <div class="field-span-3">
                             <label class="form-label">นามสกุล (Eng)</label>
                             <input type="text" class="form-control" name="last_name_en" value="<?php echo $emp['last_name_en']; ?>">
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="employee-field-break"></div>
+
+                        <div class="field-span-2">
                             <label class="form-label">เลขบัตรประชาชน <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="citizen_id" maxlength="13" value="<?php echo $emp['citizen_id']; ?>" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="field-span-2">
                             <label class="form-label">วันเกิด <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="birth_date" value="<?php echo $emp['birth_date']; ?>" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="field-span-1">
                             <label class="form-label">เพศ <span class="text-danger">*</span></label>
                             <select name="gender" class="form-select" required>
                                 <option value="male" <?php echo $emp['gender']=='male'?'selected':''; ?>>ชาย</option>
@@ -166,7 +251,7 @@ require_once 'includes/header.php';
                             </select>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="field-span-1">
                             <label class="form-label">สถานภาพสมรส</label>
                             <select name="marital_status" class="form-select">
                                 <?php 
@@ -175,14 +260,14 @@ require_once 'includes/header.php';
                                 ?>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="field-span-2">
                             <label class="form-label">ศาสนา</label>
                             <select name="religion" class="form-select">
                                 <option value="">-- ระบุศาสนา --</option>
                                 <?php foreach(['พุทธ','อิสลาม','คริสต์','ฮินดู','ซิกข์','ไม่มีศาสนา','อื่นๆ'] as $v) echo "<option value='$v' ".($emp['religion']==$v?'selected':'').">$v</option>"; ?>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="field-span-1">
                             <label class="form-label">กรุ๊ปเลือด</label>
                             <select name="blood_group" class="form-select">
                                 <option value="">-- ไม่ระบุ --</option>

@@ -96,6 +96,10 @@ require_once 'includes/header.php';
                             <label class="form-label">นามสกุล (ไทย) <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="last_name_th" required>
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label">ชื่อเล่น</label>
+                            <input type="text" class="form-control" name="nickname" maxlength="100">
+                        </div>
                         <div class="col-md-2">
                             <label class="form-label">คำนำหน้า (Eng)</label>
                             <select name="title_en" class="form-select">

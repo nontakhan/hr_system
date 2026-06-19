@@ -93,6 +93,8 @@ function shiftOverrideDayLabels($dayOfWeek, array $dayMap) {
     return $labels ? implode(', ', $labels) : '-';
 }
 
+$employeeNickname = trim((string)($emp['nickname'] ?? $emp['nick_name'] ?? $emp['nickname_th'] ?? ''));
+
 // ดึง Master Data สำหรับ Modal โยกย้าย
 try {
     @$companies = $mysqli->query("SELECT id, company_name_th FROM companies ORDER BY company_name_th")->fetch_all(MYSQLI_ASSOC);
@@ -142,6 +144,9 @@ require_once 'includes/header.php';
 
                 <h4 class="mb-1 text-dark fw-bold"><?php echo $emp['prefix_th'] . $emp['first_name_th'] . ' ' . $emp['last_name_th']; ?></h4>
                 <p class="text-muted mb-2"><?php echo $emp['first_name_en'] . ' ' . $emp['last_name_en']; ?></p>
+                <?php if ($employeeNickname !== ''): ?>
+                    <p class="text-muted mb-2">ชื่อเล่น: <span class="fw-semibold text-dark"><?php echo htmlspecialchars($employeeNickname); ?></span></p>
+                <?php endif; ?>
                 
                 <div class="badge bg-primary mb-3 px-3 py-2 fs-6 rounded-pill">
                     <?php echo $emp['position_name_th']; ?>
