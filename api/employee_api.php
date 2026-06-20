@@ -13,6 +13,18 @@ function getEmployeePrefixVal($arr, $titleKey, $prefixKey, $default = null) {
     return getVal($arr, $titleKey, getVal($arr, $prefixKey, $default));
 }
 
+function ensureEmployeePostalCodeColumn(mysqli $mysqli): void
+{
+    $result = $mysqli->query("SHOW COLUMNS FROM employees LIKE 'postal_code'");
+    if ($result && $result->num_rows > 0) {
+        return;
+    }
+
+    if (!$mysqli->query("ALTER TABLE employees ADD COLUMN postal_code VARCHAR(10) NULL AFTER province")) {
+        throw new Exception('Ensure employees.postal_code failed: ' . $mysqli->error);
+    }
+}
+
 function normalizeTrainingDate($value, bool $required = false): ?string
 {
     $text = trim((string)$value);
@@ -61,6 +73,7 @@ try {
     }
 
     ensureEmployeeTrainingRecordsTable($mysqli);
+    ensureEmployeePostalCodeColumn($mysqli);
 
     $method = $_SERVER['REQUEST_METHOD'];
 

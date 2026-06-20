@@ -22,4 +22,6 @@ assertContainsText($editForm, 'name="postal_code"', 'Employee edit form should s
 assertContainsText($editForm, '$emp[\'postal_code\']', 'Employee edit form should preload postal code.');
 assertContainsText($api, 'getVal($data, \'postal_code\')', 'Employee API should read posted postal code.');
 assertContainsText($api, 'postal_code', 'Employee API should insert and update postal code.');
+assertContainsText($api, 'function ensureEmployeePostalCodeColumn', 'Employee API should define a lazy postal code schema guard.');
+assertContainsText($api, 'ensureEmployeePostalCodeColumn($mysqli);', 'Employee API should ensure employees.postal_code exists before save queries.');
 assertContainsText($viewPage, '$emp[\'postal_code\']', 'Employee view should display postal code.');
