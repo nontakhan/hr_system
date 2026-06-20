@@ -48,7 +48,10 @@ assertIncludes(script, 'function renderLeaveUsageSummary', 'Leave request JS sho
 assertIncludes(script, 'function renderLeaveUsageEntries', 'Leave request JS should render every counted leave entry for comparison.');
 assertNotIncludes(myLeavesScript, 'renderLeaveUsageEntries', 'My leaves summary cards should not duplicate leave entries already shown in the table.');
 assertIncludes(script, 'function renderOverallLeaveUsageCard', 'Leave request JS should render one overall leave usage card.');
+assertIncludes(script, 'leaveUsageSummary.items.find', 'Leave request condition text should compare usage against the selected leave type limit.');
 assertIncludes(script, 'วัน', 'Leave request usage summary should display annual quota in days.');
+assertIncludes(script, 'เกินสิทธิ์', 'Leave request usage summary should explain over-limit leave as a warning.');
+assertIncludes(myLeavesScript, 'เกินสิทธิ์', 'My leaves summary cards should explain over-limit leave as a warning.');
 assertNotIncludes(script, '${item.request_limit} ครั้ง', 'Leave request usage summary should not display annual quota as request counts.');
 assertNotIncludes(script, 'จากสิทธิ์ ${usage.request_limit} ครั้ง/ปีงบ', 'Leave request condition text should not describe quota as request counts.');
 assertNotIncludes(script, 'projectedRequests', 'Leave request projection should calculate with projected leave days.');

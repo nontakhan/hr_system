@@ -77,7 +77,10 @@ function renderLeaveTypeCards(types) {
 
 function getLeaveUsageItem(typeId) {
     if (!leaveUsageSummary) return null;
-    return leaveUsageSummary.overall || null;
+    const selectedItem = Array.isArray(leaveUsageSummary.items)
+        ? leaveUsageSummary.items.find(item => String(item.leave_type_id) === String(typeId))
+        : null;
+    return selectedItem || leaveUsageSummary.overall || null;
 }
 
 function getSelectedLeaveType() {
@@ -109,9 +112,7 @@ function renderOverallLeaveUsageCard(item) {
     const requestLimitText = Number.parseInt(item.request_limit || 0, 10) > 0
         ? `${formatLeaveDayNumber(item.request_limit)} วัน`
         : 'ไม่จำกัด';
-    const remainingDays = item.remaining_requests === null
-        ? 'ไม่จำกัด'
-        : `${formatLeaveDayNumber(item.remaining_requests)} วัน`;
+    const balanceText = formatUsageBalanceText(item, 'remaining_requests');
     const pendingText = Number.parseFloat(item.pending_days || 0) > 0
         ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
         : '';
@@ -126,7 +127,7 @@ function renderOverallLeaveUsageCard(item) {
                 <span style="width: ${progressWidth}%"></span>
             </div>
             <div class="small mt-2">
-                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, คงเหลือ ${remainingDays}
+                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, ${balanceText}
             </div>
             <div class="small mt-1">จำนวนใบลาที่อนุมัติแล้ว: ${item.approved_requests || 0} ครั้ง</div>
             ${pendingText}
@@ -188,8 +189,12 @@ function updateLeaveTypeCondition() {
         const usage = getLeaveUsageItem(selectedId);
         if (usage) {
             conditionText.textContent += ` | ปีงบนี้ลาแล้ว ${formatLeaveDayNumber(usage.approved_days)} วัน`;
-            if (Number.parseInt(usage.request_limit || 0, 10) > 0) {
+            if (Number.parseFloat(usage.request_limit || 0) > 0) {
                 conditionText.textContent += ` จากสิทธิ์ ${formatLeaveDayNumber(usage.request_limit)} วัน/ปีงบ`;
+            }
+            if (usage.is_over_limit || Number.parseFloat(usage.over_limit_days || 0) > 0) {
+                conditionDiv.classList.add('text-danger');
+                conditionText.textContent += ` | เกินสิทธิ์แล้ว ${formatLeaveDayNumber(usage.over_limit_days)} วัน`;
             }
         }
 
@@ -220,13 +225,13 @@ function updateSelectedLeaveUsageProjection() {
 
     conditionDiv.classList.remove('text-danger', 'text-warning');
     const projectedDays = (Number.parseFloat(usage.approved_days || 0) || 0) + (Number.parseFloat(latestLeaveSummary.total_days || 0) || 0);
-    const requestLimit = Number.parseInt(usage.request_limit || 0, 10);
+    const requestLimit = Number.parseFloat(usage.request_limit || 0);
     const projectedRequestPercent = requestLimit > 0 ? (projectedDays / requestLimit) * 100 : 0;
     const projectedPercent = projectedRequestPercent;
 
     if (projectedPercent > 100) {
         conditionDiv.classList.add('text-danger');
-        conditionText.textContent += ` | หลังส่งใบนี้จะเกินสิทธิ์เป็น ${formatLeaveDayNumber(projectedDays)} วัน`;
+        conditionText.textContent += ` | หลังส่งใบนี้จะเกินสิทธิ์ ${formatLeaveDayNumber(projectedDays - requestLimit)} วัน`;
     } else if (projectedPercent >= 80) {
         conditionDiv.classList.add('text-warning');
         conditionText.textContent += ` | หลังส่งใบนี้จะใกล้ครบ ${formatLeaveDayNumber(projectedDays)} วัน`;
@@ -402,6 +407,21 @@ function renderLeaveBreakdown(summary) {
 function formatLeaveDayNumber(value) {
     const number = Number.parseFloat(value) || 0;
     return Number.isInteger(number) ? String(number) : number.toFixed(1);
+}
+
+function formatUsageBalanceText(item, remainingKey) {
+    const remaining = item[remainingKey];
+    if (remaining === null || remaining === undefined) {
+        return 'ไม่จำกัด';
+    }
+
+    const overLimitDays = Number.parseFloat(item.over_limit_days || 0);
+    if (item.is_over_limit || overLimitDays > 0 || Number.parseFloat(remaining) < 0) {
+        const exceededDays = overLimitDays > 0 ? overLimitDays : Math.abs(Number.parseFloat(remaining) || 0);
+        return `เกินสิทธิ์ ${formatLeaveDayNumber(exceededDays)} วัน (ยังส่งคำขอได้)`;
+    }
+
+    return `คงเหลือ ${formatLeaveDayNumber(remaining)} วัน`;
 }
 
 async function handleSubmitLeave(e) {

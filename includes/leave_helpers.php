@@ -457,6 +457,24 @@ function leaveBuildUsageWarningStatus($usedDays, $requestLimit) {
     return 'normal';
 }
 
+function leaveApplyUsageLimitFields(array &$item, $usedDays, $limitDays, $remainingKey = 'remaining_days') {
+    $usedDays = (float)$usedDays;
+    $limitDays = (float)$limitDays;
+    $remaining = null;
+    $overLimitDays = 0.0;
+
+    if ($limitDays > 0) {
+        $remaining = $limitDays - $usedDays;
+        if ($remaining < 0) {
+            $overLimitDays = abs($remaining);
+        }
+    }
+
+    $item[$remainingKey] = $remaining;
+    $item['over_limit_days'] = $overLimitDays;
+    $item['is_over_limit'] = $overLimitDays > 0;
+}
+
 function leaveFetchLeaveTypeLimits(mysqli $mysqli) {
     $types = [];
     $result = $mysqli->query("SELECT id, type_name, days_per_year FROM leave_types ORDER BY id ASC");
@@ -504,6 +522,8 @@ function leaveBuildUsageSummaryItems(array $leaveTypes, array $entries) {
             'request_usage_percent' => 0.0,
             'remaining_days' => $limitDays > 0 ? $limitDays : null,
             'remaining_requests' => $limitDays > 0 ? $limitDays : null,
+            'over_limit_days' => 0.0,
+            'is_over_limit' => false,
             'status' => 'normal',
             'entries' => [],
         ];
@@ -529,6 +549,8 @@ function leaveBuildUsageSummaryItems(array $leaveTypes, array $entries) {
                 'request_usage_percent' => 0.0,
                 'remaining_days' => null,
                 'remaining_requests' => null,
+                'over_limit_days' => 0.0,
+                'is_over_limit' => false,
                 'status' => 'normal',
                 'entries' => [],
             ];
@@ -552,9 +574,9 @@ function leaveBuildUsageSummaryItems(array $leaveTypes, array $entries) {
         if ($limitDays > 0) {
             $item['usage_percent'] = round(((float)$item['approved_days'] / $limitDays) * 100, 1);
             $item['request_usage_percent'] = $item['usage_percent'];
-            $item['remaining_days'] = $limitDays - (float)$item['approved_days'];
-            $item['remaining_requests'] = $item['remaining_days'];
         }
+        leaveApplyUsageLimitFields($item, $item['approved_days'], $limitDays, 'remaining_days');
+        $item['remaining_requests'] = $item['remaining_days'];
         $item['status'] = leaveBuildUsageWarningStatus($item['approved_days'], $limitDays);
     }
     unset($item);
@@ -581,6 +603,8 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
         'request_usage_percent' => 0.0,
         'remaining_days' => null,
         'remaining_requests' => $requestLimit > 0 ? $requestLimit : null,
+        'over_limit_days' => 0.0,
+        'is_over_limit' => false,
         'status' => 'normal',
         'entries' => [],
     ];
@@ -665,8 +689,8 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
 
     if ($requestLimit > 0) {
         $summaryItem['request_usage_percent'] = round(($summaryItem['approved_days'] / $requestLimit) * 100, 1);
-        $summaryItem['remaining_requests'] = $requestLimit - $summaryItem['approved_days'];
     }
+    leaveApplyUsageLimitFields($summaryItem, $summaryItem['approved_days'], $requestLimit, 'remaining_requests');
     $summaryItem['status'] = leaveBuildUsageWarningStatus($summaryItem['approved_days'], $requestLimit);
 
     return [

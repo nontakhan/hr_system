@@ -127,9 +127,7 @@ function renderOverallLeaveUsageCard(item) {
     const requestLimitText = Number.parseInt(item.request_limit || 0, 10) > 0
         ? `${formatLeaveDayNumber(item.request_limit)} วัน`
         : 'ไม่จำกัด';
-    const remainingDays = item.remaining_requests === null
-        ? 'ไม่จำกัด'
-        : `${formatLeaveDayNumber(item.remaining_requests)} วัน`;
+    const balanceText = formatUsageBalanceText(item, 'remaining_requests');
     const pendingText = Number.parseFloat(item.pending_days || 0) > 0
         ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
         : '';
@@ -147,7 +145,7 @@ function renderOverallLeaveUsageCard(item) {
                 <span style="width: ${progressWidth}%"></span>
             </div>
             <div class="small mt-2">
-                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, คงเหลือ ${remainingDays}
+                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, ${balanceText}
             </div>
             <div class="small mt-1">จำนวนใบลาที่อนุมัติแล้ว: ${item.approved_requests || 0} ครั้ง</div>
             ${pendingText}
@@ -164,9 +162,7 @@ function renderTypeLeaveUsageCard(item) {
     const limitText = limitDays > 0
         ? `${formatLeaveDayNumber(limitDays)} วัน`
         : 'ไม่จำกัด';
-    const remainingDays = item.remaining_days === null
-        ? 'ไม่จำกัด'
-        : `${formatLeaveDayNumber(item.remaining_days)} วัน`;
+    const balanceText = formatUsageBalanceText(item, 'remaining_days');
     const pendingText = Number.parseFloat(item.pending_days || 0) > 0
         ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
         : '';
@@ -184,7 +180,7 @@ function renderTypeLeaveUsageCard(item) {
                 <span style="width: ${progressWidth}%"></span>
             </div>
             <div class="small mt-2">
-                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, คงเหลือ ${remainingDays}
+                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, ${balanceText}
             </div>
             <div class="small mt-1">สิทธิ์ตามหน้าตั้งค่าประเภทการลา: ${limitText}</div>
             ${pendingText}
@@ -212,6 +208,21 @@ function getLeaveTypePresentation(typeName) {
 function formatLeaveDayNumber(value) {
     const number = Number.parseFloat(value) || 0;
     return Number.isInteger(number) ? String(number) : number.toFixed(1);
+}
+
+function formatUsageBalanceText(item, remainingKey) {
+    const remaining = item[remainingKey];
+    if (remaining === null || remaining === undefined) {
+        return 'ไม่จำกัด';
+    }
+
+    const overLimitDays = Number.parseFloat(item.over_limit_days || 0);
+    if (item.is_over_limit || overLimitDays > 0 || Number.parseFloat(remaining) < 0) {
+        const exceededDays = overLimitDays > 0 ? overLimitDays : Math.abs(Number.parseFloat(remaining) || 0);
+        return `เกินสิทธิ์ ${formatLeaveDayNumber(exceededDays)} วัน`;
+    }
+
+    return `คงเหลือ ${formatLeaveDayNumber(remaining)} วัน`;
 }
 
 function formatLeaveDuration(item) {

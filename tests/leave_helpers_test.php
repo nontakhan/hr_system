@@ -178,6 +178,25 @@ $sickSummary = $perTypeSummary[1];
 assertLeaveSame(0.5, $sickSummary['approved_days'], 'Pending cancellation should still count as approved usage by type.');
 assertLeaveSame(29.5, $sickSummary['remaining_days'], 'Per-type remaining days should support half-day approved usage.');
 
+$overLimitSummary = leaveBuildUsageSummaryItems([[
+    'id' => 5,
+    'type_name' => 'Personal leave',
+    'days_per_year' => 3,
+]], [[
+    'leave_type_id' => 5,
+    'type_name' => 'Personal leave',
+    'status' => 'approved',
+    'start_date' => '2026-04-01',
+    'end_date' => '2026-04-04',
+    'days' => 4.0,
+    'duration_label' => '4 days',
+]]);
+$overLimitItem = $overLimitSummary[0];
+assertLeaveSame('over', $overLimitItem['status'], 'Per-type summary should warn when approved leave days exceed the configured type limit.');
+assertLeaveSame(true, $overLimitItem['is_over_limit'], 'Per-type summary should mark over-limit usage as warning-only.');
+assertLeaveSame(1.0, $overLimitItem['over_limit_days'], 'Per-type summary should report how many days exceed the configured limit.');
+assertLeaveSame(-1.0, $overLimitItem['remaining_days'], 'Per-type summary should keep negative balance for backward-compatible consumers.');
+
 $lateHourlyType = leaveDetectHourlyRequestType('ขอมาสาย');
 assertLeaveSame('late_arrival', $lateHourlyType, 'Late arrival leave type names should be detected as hourly requests.');
 
