@@ -481,7 +481,7 @@ function getAllEmployees($mysqli) {
         // รับค่า branch_id จาก URL
         $filter_branch_id = isset($_GET['branch_id']) && is_numeric($_GET['branch_id']) ? (int)$_GET['branch_id'] : 0;
 
-        $sql = "SELECT e.id, e.citizen_id, e.first_name_th, e.last_name_th, e.profile_img_url, e.status,
+        $sql = "SELECT e.id, e.citizen_id, e.first_name_th, e.last_name_th, e.nickname, e.profile_img_url, e.status,
                        p.position_name_th, d.dept_name_th, c.company_name_th, b.branch_name_th 
                 FROM employees e
                 LEFT JOIN positions p ON e.position_id = p.id

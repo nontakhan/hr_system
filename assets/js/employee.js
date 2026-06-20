@@ -112,13 +112,14 @@ async function loadEmployeeData() {
             }
 
             if (result.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">ไม่พบข้อมูลพนักงาน</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">ไม่พบข้อมูลพนักงาน</td></tr>`;
             } else {
                 const rowsHtml = result.data.map(emp => {
                     const empId = Number.parseInt(emp.id, 10) || 0;
                     const firstName = escapeHtml(emp.first_name_th);
                     const lastName = escapeHtml(emp.last_name_th);
                     const fullName = `${firstName} ${lastName}`.trim();
+                    const nickname = emp.nickname ? escapeHtml(emp.nickname) : '-';
                     const imgSrc = safeUploadPath(emp.profile_img_url, 'assets/img/user.png');
                     const idDisplay = emp.citizen_id ? escapeHtml(emp.citizen_id) : '-';
                     const position = escapeHtml(emp.position_name_th || '-');
@@ -135,6 +136,7 @@ async function loadEmployeeData() {
                                     ${fullName || '-'}
                                 </div>
                             </td>
+                            <td>${nickname}</td>
                             <td>${position}</td>
                             <td>${department}</td>
                             <td><div class="fw-semibold">${company}</div><small class="text-muted">${branch}</small></td>

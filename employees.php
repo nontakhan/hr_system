@@ -69,6 +69,7 @@ try {
                     <tr>
                         <th>เลขบัตรประชาชน</th>
                         <th>ชื่อ - นามสกุล</th>
+                        <th>ชื่อเล่น</th>
                         <th>ตำแหน่ง</th>
                         <th>แผนก</th>
                         <th>สังกัด (บ./สาขา)</th>
@@ -77,7 +78,7 @@ try {
                     </tr>
                 </thead>
                 <tbody id="employeeTableBody">
-                    <tr><td colspan="7" class="text-center text-muted py-3">... กำลังโหลดข้อมูล ...</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-3">... กำลังโหลดข้อมูล ...</td></tr>
                 </tbody>
             </table>
         </div>
