@@ -269,16 +269,16 @@ function createEmployee($mysqli, $data, $files) {
             $profile_img_url = saveProfileImage($files['profile_image']);
         }
 
-        // 2. Prepare Variables (29 items)
+        // 2. Prepare Variables (31 items)
         $params = [
-            // Strings (20)
+            // Strings (22)
             getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
             getVal($data, 'nickname'),
             getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
             getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
             getVal($data, 'phone_number'), getVal($data, 'current_address'), getVal($data, 'district'), getVal($data, 'province'),
-            getVal($data, 'education_level'), getVal($data, 'emergency_contact_name'), getVal($data, 'emergency_contact_phone'),
+            getVal($data, 'postal_code'), getVal($data, 'education_level'), getVal($data, 'emergency_contact_name'), getVal($data, 'emergency_contact_phone'),
             $profile_img_url,
             // Ints (7)
             (int)getVal($data, 'company_id', 0), (int)getVal($data, 'branch_id', 0), (int)getVal($data, 'department_id', 0),
@@ -292,15 +292,15 @@ function createEmployee($mysqli, $data, $files) {
         $sql = "INSERT INTO employees 
         (prefix_th, first_name_th, last_name_th, nickname, prefix_en, first_name_en, last_name_en,
         citizen_id, birth_date, gender, religion, blood_group, marital_status,
-        phone_number, current_address, district, province, education_level, emergency_contact_name, emergency_contact_phone,
+        phone_number, current_address, district, province, postal_code, education_level, emergency_contact_name, emergency_contact_phone,
         profile_img_url, company_id, branch_id, department_id, position_id, employment_type_id, supervisor_id, default_shift_id, start_date, status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULLIF(?,0),?,?,?)";
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULLIF(?,0),?,?,?)";
 
         $stmt = $mysqli->prepare($sql);
         if(!$stmt) throw new Exception("Prepare failed: " . $mysqli->error);
 
-        // สร้าง Type String อัตโนมัติ: s(21) + i(7) + s(2) = 30 chars
-        $types = str_repeat('s', 21) . str_repeat('i', 7) . str_repeat('s', 2);
+        // สร้าง Type String อัตโนมัติ: s(22) + i(7) + s(2) = 31 chars
+        $types = str_repeat('s', 22) . str_repeat('i', 7) . str_repeat('s', 2);
 
         bindParamsStrict($stmt, $types, $params);
 
@@ -366,16 +366,16 @@ function updateEmployee($mysqli, $data, $files) {
             $profile_img_url = saveProfileImage($files['profile_image']);
         }
 
-        // 2. Prepare Variables (30 items: 29 updates + 1 ID)
+        // 2. Prepare Variables (32 items: 31 updates + 1 ID)
         $params = [
-            // Strings (20)
+            // Strings (22)
             getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
             getVal($data, 'nickname'),
             getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
             getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
             getVal($data, 'phone_number'), getVal($data, 'current_address'), getVal($data, 'district'), getVal($data, 'province'),
-            getVal($data, 'education_level'), getVal($data, 'emergency_contact_name'), getVal($data, 'emergency_contact_phone'),
+            getVal($data, 'postal_code'), getVal($data, 'education_level'), getVal($data, 'emergency_contact_name'), getVal($data, 'emergency_contact_phone'),
             $profile_img_url,
             // Ints (7)
             (int)getVal($data, 'company_id', 0), (int)getVal($data, 'branch_id', 0), (int)getVal($data, 'department_id', 0),
@@ -391,7 +391,7 @@ function updateEmployee($mysqli, $data, $files) {
         $sql = "UPDATE employees SET 
             prefix_th=?, first_name_th=?, last_name_th=?, nickname=?, prefix_en=?, first_name_en=?, last_name_en=?,
             citizen_id=?, birth_date=?, gender=?, religion=?, blood_group=?, marital_status=?,
-            phone_number=?, current_address=?, district=?, province=?, education_level=?, emergency_contact_name=?, emergency_contact_phone=?,
+            phone_number=?, current_address=?, district=?, province=?, postal_code=?, education_level=?, emergency_contact_name=?, emergency_contact_phone=?,
             profile_img_url=?, company_id=?, branch_id=?, department_id=?, position_id=?, 
             employment_type_id=?, supervisor_id=NULLIF(?,0), default_shift_id=?, start_date=?, status=?
             WHERE id=?";
@@ -399,8 +399,8 @@ function updateEmployee($mysqli, $data, $files) {
         $stmt = $mysqli->prepare($sql);
         if (!$stmt) throw new Exception("Prepare Update Failed: " . $mysqli->error);
 
-        // สร้าง Type String อัตโนมัติ: s(21) + i(7) + s(2) + i(1) = 31 chars
-        $types = str_repeat('s', 21) . str_repeat('i', 7) . str_repeat('s', 2) . 'i';
+        // สร้าง Type String อัตโนมัติ: s(22) + i(7) + s(2) + i(1) = 32 chars
+        $types = str_repeat('s', 22) . str_repeat('i', 7) . str_repeat('s', 2) . 'i';
 
         bindParamsStrict($stmt, $types, $params);
 

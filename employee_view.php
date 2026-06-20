@@ -263,6 +263,7 @@ require_once 'includes/header.php';
                                 echo $emp['current_address'] ?: '-';
                                 if ($emp['district']) echo " อ." . $emp['district'];
                                 if ($emp['province']) echo " จ." . $emp['province'];
+                                if ($emp['postal_code']) echo " " . $emp['postal_code'];
                             ?>
                         </div>
                     </div>

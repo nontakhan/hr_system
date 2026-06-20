@@ -193,6 +193,10 @@ require_once 'includes/header.php';
                             <label class="form-label">เบอร์โทรศัพท์มือถือ</label>
                             <input type="text" class="form-control" name="phone_number" maxlength="10">
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label">รหัสไปรษณีย์</label>
+                            <input type="text" class="form-control" name="postal_code" maxlength="10" inputmode="numeric">
+                        </div>
                     </div>
                 </div>
             </div>

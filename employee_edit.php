@@ -305,6 +305,10 @@ require_once 'includes/header.php';
                             <label class="form-label">เบอร์โทรศัพท์มือถือ</label>
                             <input type="text" class="form-control" name="phone_number" maxlength="10" value="<?php echo $emp['phone_number']; ?>">
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label">รหัสไปรษณีย์</label>
+                            <input type="text" class="form-control" name="postal_code" maxlength="10" inputmode="numeric" value="<?php echo htmlspecialchars($emp['postal_code'] ?? ''); ?>">
+                        </div>
                     </div>
                 </div>
             </div>
