@@ -221,8 +221,8 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                                 </div>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-id-card me-2 text-muted"></i> โปรไฟล์</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-key me-2 text-muted"></i> เปลี่ยนรหัสผ่าน</a></li>
+                                <li><a class="dropdown-item" href="my_profile.php"><i class="fas fa-id-card me-2 text-muted"></i> โปรไฟล์</a></li>
+                                <li><a class="dropdown-item" href="change_password.php"><i class="fas fa-key me-2 text-muted"></i> เปลี่ยนรหัสผ่าน</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i> ออกจากระบบ</a></li>
                             </ul>

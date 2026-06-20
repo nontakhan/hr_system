@@ -79,12 +79,17 @@ try {
 
     // 3. Handle POST
     if ($method === 'POST') {
+        $action = $_POST['action'] ?? ($_GET['action'] ?? '');
+
+        if ($action === 'update_my_profile') {
+            echo json_encode(updateMyProfile($mysqli, $_POST));
+            exit;
+        }
+
         if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'hr') {
             sendJsonError('Access Denied');
         }
 
-        $action = $_POST['action'] ?? '';
-        
         if ($action === 'create_employee') {
             echo json_encode(createEmployee($mysqli, $_POST, $_FILES));
         } 
@@ -518,6 +523,50 @@ function updateEmployeeProfileImage($mysqli, $data, $files) {
         if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=> 'System Error'];
+    }
+}
+
+function updateMyProfile($mysqli, $data) {
+    try {
+        $employeeId = (int)($_SESSION['employee_id'] ?? 0);
+        if ($employeeId <= 0) {
+            throw new InvalidArgumentException('ไม่พบข้อมูลพนักงานของผู้ใช้งานนี้');
+        }
+
+        ensureEmployeePostalCodeColumn($mysqli);
+
+        $params = [
+            getVal($data, 'phone_number'),
+            getVal($data, 'current_address'),
+            getVal($data, 'district'),
+            getVal($data, 'province'),
+            getVal($data, 'postal_code'),
+            getVal($data, 'education_level'),
+            getVal($data, 'emergency_contact_name'),
+            getVal($data, 'emergency_contact_phone'),
+            $employeeId,
+        ];
+
+        $stmt = $mysqli->prepare("UPDATE employees SET
+            phone_number=?,
+            current_address=?,
+            district=?,
+            province=?,
+            postal_code=?,
+            education_level=?,
+            emergency_contact_name=?,
+            emergency_contact_phone=?
+            WHERE id=?");
+        if (!$stmt) throw new Exception('Prepare self-service profile update failed: ' . $mysqli->error);
+
+        $stmt->bind_param('ssssssssi', ...$params);
+        if (!$stmt->execute()) throw new Exception('Self-service profile update failed: ' . $stmt->error);
+
+        return ['status' => 'success', 'message' => 'บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว'];
+    } catch (Throwable $e) {
+        if ($e instanceof InvalidArgumentException) return ['status' => 'error', 'message' => $e->getMessage()];
+        error_log($e->getMessage());
+        return ['status' => 'error', 'message' => 'System Error'];
     }
 }
 
