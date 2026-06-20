@@ -317,7 +317,7 @@ function createEmployee($mysqli, $data, $files) {
 
         bindParamsStrict($stmt, $types, $params);
 
-        if (!$stmt->execute()) throw new Exception("Insert Failed: " . $stmt->error);
+        if (!$stmt->execute()) throw new Exception("Insert Failed: " . $stmt->error, $stmt->errno);
         $emp_pk = $mysqli->insert_id;
 
         syncEmployeeShiftOverrides($mysqli, $emp_pk, $data);
@@ -354,7 +354,7 @@ function createEmployee($mysqli, $data, $files) {
 
     } catch (Throwable $e) {
         $mysqli->rollback();
-        if ($mysqli->errno == 1062) return ['status'=>'error', 'message'=>'ข้อมูลซ้ำ (บัตรประชาชน หรือ Username)'];
+        if ($e->getCode() === 1062 || $mysqli->errno == 1062) return ['status'=>'error', 'message'=>'ข้อมูลซ้ำ (บัตรประชาชน หรือ Username)'];
         if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=> 'System Error'];
@@ -417,7 +417,7 @@ function updateEmployee($mysqli, $data, $files) {
 
         bindParamsStrict($stmt, $types, $params);
 
-        if (!$stmt->execute()) throw new Exception("Update Failed: " . $stmt->error);
+        if (!$stmt->execute()) throw new Exception("Update Failed: " . $stmt->error, $stmt->errno);
 
         syncEmployeeShiftOverrides($mysqli, $id, $data);
         $newShiftId = (int)getVal($data, 'default_shift_id', 0);
@@ -485,8 +485,8 @@ function updateEmployee($mysqli, $data, $files) {
 
     } catch (Throwable $e) {
         $mysqli->rollback();
-        if ($mysqli->errno == 1062) return ['status'=>'error', 'message'=>'ข้อมูลซ้ำ (เช่น เลขบัตรประชาชน หรือ Username)'];
-        if ($mysqli->errno == 1452) return ['status'=>'error', 'message'=>'ข้อมูลอ้างอิงไม่ถูกต้อง กรุณาตรวจสอบ บริษัท/สาขา/แผนก/ตำแหน่ง/หัวหน้างาน'];
+        if ($e->getCode() === 1062 || $mysqli->errno == 1062) return ['status'=>'error', 'message'=>'ข้อมูลซ้ำ (เช่น เลขบัตรประชาชน หรือ Username)'];
+        if ($e->getCode() === 1452 || $mysqli->errno == 1452) return ['status'=>'error', 'message'=>'ข้อมูลอ้างอิงไม่ถูกต้อง กรุณาตรวจสอบ บริษัท/สาขา/แผนก/ตำแหน่ง/หัวหน้างาน'];
         if ($e instanceof InvalidArgumentException) return ['status'=>'error', 'message'=> $e->getMessage()];
         error_log($e->getMessage());
         return ['status'=>'error', 'message'=> 'System Error'];
