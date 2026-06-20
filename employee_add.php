@@ -260,6 +260,15 @@ require_once 'includes/header.php';
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label">วันที่เริ่มใช้กะ <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="shift_effective_from" data-shift-effective-from required>
+                            <small class="text-muted">สำหรับพนักงานใหม่ควรตรงกับวันที่เริ่มงาน</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">เหตุผลการกำหนดกะ</label>
+                            <input type="text" class="form-control" name="shift_assignment_reason" value="Initial shift assignment">
+                        </div>
 
                         <div class="col-md-3">
                             <label class="form-label">วันที่เริ่มงาน <span class="text-danger">*</span></label>
@@ -408,5 +417,18 @@ require_once 'includes/header.php';
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var startDate = document.querySelector('input[name="start_date"]');
+    var shiftEffectiveFrom = document.querySelector('[data-shift-effective-from]');
+    if (!startDate || !shiftEffectiveFrom) return;
+    startDate.addEventListener('change', function () {
+        if (!shiftEffectiveFrom.value) {
+            shiftEffectiveFrom.value = startDate.value;
+        }
+    });
+});
+</script>
 
 <?php require_once 'includes/footer.php'; ?>

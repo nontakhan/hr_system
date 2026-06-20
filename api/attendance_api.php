@@ -19,6 +19,7 @@ try {
     require_once '../includes/leave_helpers.php';
     require_once '../includes/day_swap_helpers.php';
     require_once '../includes/hr_scope_helpers.php';
+    require_once '../includes/employee_shift_assignment_helpers.php';
 
     if (!isset($_SESSION['user_id'])) sendJsonError('Login Required');
 
@@ -395,6 +396,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
         'late_tolerance_mins' => $employee['late_tolerance_mins'],
         'work_days' => $employee['work_days'],
     ];
+    $shiftAssignments = employeeShiftAssignmentsFetchForMonth($mysqli, (int)$employee['id'], $month);
     $shiftOverrides = fetchEmployeeShiftOverridesForMonth($mysqli, (int)$employee['id'], $month);
     $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
     $leaves = fetchApprovedLeavesForMonth($mysqli, (int)$employee['id'], $month);
@@ -406,7 +408,8 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
         $workDate = $date->format('Y-m-d');
         $rawRecord = $records[$workDate] ?? ['check_in' => null, 'check_out' => null];
         $record = attendanceApplyRecordOverride($rawRecord, $overrideMap[$workDate] ?? null);
-        $effectiveShift = attendanceResolveShiftForDate($shift, $shiftOverrides, $workDate);
+        $assignmentShift = employeeShiftAssignmentsResolveForDate($shiftAssignments, $shift, $workDate);
+        $effectiveShift = attendanceResolveShiftForDate($assignmentShift, $shiftOverrides, $workDate);
         if (isset($daySwaps[$workDate])) {
             $effectiveShift = attendanceApplyDayTypeOverride($effectiveShift, $workDate, $daySwaps[$workDate]);
         }

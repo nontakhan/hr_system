@@ -52,6 +52,7 @@ try {
     require_once '../includes/upload_security.php';
     require_once '../includes/hr_scope_helpers.php';
     require_once '../includes/employee_training_helpers.php';
+    require_once '../includes/employee_shift_assignment_helpers.php';
     header('Content-Type: application/json');
 
     // 2. Check Login
@@ -307,6 +308,16 @@ function createEmployee($mysqli, $data, $files) {
         $emp_pk = $mysqli->insert_id;
 
         syncEmployeeShiftOverrides($mysqli, $emp_pk, $data);
+        employeeShiftAssignmentsSyncCurrent(
+            $mysqli,
+            $emp_pk,
+            (int)getVal($data, 'default_shift_id', 0),
+            getVal($data, 'shift_effective_from', getVal($data, 'start_date', date('Y-m-d'))),
+            getVal($data, 'shift_assignment_reason', 'Initial shift assignment'),
+            (int)($_SESSION['user_id'] ?? 0),
+            (int)getVal($data, 'default_shift_id', 0),
+            getVal($data, 'start_date', date('Y-m-d'))
+        );
 
         // Create User
         $username = getVal($data, 'username');
@@ -342,6 +353,12 @@ function updateEmployee($mysqli, $data, $files) {
     try {
         $id = (int)getVal($data, 'id', 0);
         if ($id <= 0) throw new Exception("Invalid ID");
+        $existingStmt = $mysqli->prepare("SELECT default_shift_id, start_date FROM employees WHERE id = ?");
+        if (!$existingStmt) throw new Exception("Prepare employee shift lookup failed: " . $mysqli->error);
+        $existingStmt->bind_param('i', $id);
+        $existingStmt->execute();
+        $existingShift = $existingStmt->get_result()->fetch_assoc();
+        if (!$existingShift) throw new Exception("Employee not found");
 
         // 1. Image Logic
         $profile_img_url = getVal($data, 'old_profile_image', 'assets/img/user.png');
@@ -390,6 +407,25 @@ function updateEmployee($mysqli, $data, $files) {
         if (!$stmt->execute()) throw new Exception("Update Failed: " . $stmt->error);
 
         syncEmployeeShiftOverrides($mysqli, $id, $data);
+        $newShiftId = (int)getVal($data, 'default_shift_id', 0);
+        $oldShiftId = (int)($existingShift['default_shift_id'] ?? 0);
+        if ($newShiftId === $oldShiftId) {
+            $shiftEffectiveFrom = getVal($data, 'start_date', $existingShift['start_date'] ?? date('Y-m-d'));
+            $shiftReason = 'Current shift assignment';
+        } else {
+            $shiftEffectiveFrom = getVal($data, 'shift_effective_from', date('Y-m-d'));
+            $shiftReason = getVal($data, 'shift_assignment_reason', 'Shift assignment updated');
+        }
+        employeeShiftAssignmentsSyncCurrent(
+            $mysqli,
+            $id,
+            $newShiftId,
+            $shiftEffectiveFrom,
+            $shiftReason,
+            (int)($_SESSION['user_id'] ?? 0),
+            $oldShiftId,
+            $existingShift['start_date'] ?? getVal($data, 'start_date', date('Y-m-d'))
+        );
 
         // 3. Update User
         $username = getVal($data, 'username');

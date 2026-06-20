@@ -5,6 +5,7 @@
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php';
 require_once 'includes/hr_scope_helpers.php';
+require_once 'includes/employee_shift_assignment_helpers.php';
 
 // 1. รับค่า ID
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -53,6 +54,7 @@ try {
         $shiftOverrideStmt->execute();
         $shiftOverride = $shiftOverrideStmt->get_result()->fetch_assoc();
     }
+    $shiftAssignmentHistory = employeeShiftAssignmentsFetchHistory($mysqli, $id);
 
 } catch (Exception $e) {
     die("Error: " . $e->getMessage());
@@ -381,6 +383,15 @@ require_once 'includes/header.php';
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label">วันที่เริ่มใช้กะใหม่</label>
+                            <input type="date" class="form-control" name="shift_effective_from" value="<?php echo date('Y-m-d'); ?>" data-native-date-picker="true">
+                            <small class="text-muted">ใช้เมื่อเปลี่ยนกะ เพื่อไม่กระทบย้อนหลัง</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">เหตุผลการเปลี่ยนกะ</label>
+                            <input type="text" class="form-control" name="shift_assignment_reason" placeholder="เช่น ย้ายแผนก / เปลี่ยนรอบงาน">
+                        </div>
 
                         <div class="col-md-3">
                             <label class="form-label">วันที่เริ่มงาน</label>
@@ -395,6 +406,38 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-light">ประวัติกะการทำงาน</div>
+                <div class="card-body">
+                    <?php if (empty($shiftAssignmentHistory)): ?>
+                        <div class="text-muted">ยังไม่มีประวัติกะ ระบบจะสร้างจากกะปัจจุบันเมื่อบันทึกครั้งถัดไป</div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>กะ</th>
+                                        <th>เริ่มใช้</th>
+                                        <th>สิ้นสุด</th>
+                                        <th>เหตุผล</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($shiftAssignmentHistory as $assignment): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($assignment['shift_name'] . ' (' . substr((string)$assignment['start_time'], 0, 5) . '-' . substr((string)$assignment['end_time'], 0, 5) . ')'); ?></td>
+                                            <td><?php echo htmlspecialchars((string)$assignment['effective_from']); ?></td>
+                                            <td><?php echo htmlspecialchars((string)($assignment['effective_to'] ?: 'ปัจจุบัน')); ?></td>
+                                            <td><?php echo htmlspecialchars((string)($assignment['reason'] ?? '')); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
