@@ -33,7 +33,7 @@ function saveUploadedFile(array $file, string $targetDir, string $publicPrefix, 
     $extension = $allowedTypes[$mime];
     $safeName = $namePrefix . '_' . bin2hex(random_bytes(12)) . '.' . $extension;
 
-    if (!is_dir($targetDir) && !mkdir($targetDir, 0755, true)) {
+    if (!is_dir($targetDir) && !@mkdir($targetDir, 0755, true) && !is_dir($targetDir)) {
         throw new InvalidArgumentException('ไม่สามารถสร้างโฟลเดอร์อัปโหลดได้ กรุณาตรวจสอบสิทธิ์โฟลเดอร์');
     }
 

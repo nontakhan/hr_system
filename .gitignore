@@ -1,4 +1,5 @@
 /.env
 includes/db_config.php
-assets/uploads/leaves/
+assets/uploads/leaves/*
+!assets/uploads/leaves/.gitkeep
 .worktrees/
