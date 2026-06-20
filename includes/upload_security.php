@@ -37,6 +37,9 @@ function saveUploadedFile(array $file, string $targetDir, string $publicPrefix, 
         throw new InvalidArgumentException('ไม่สามารถสร้างโฟลเดอร์อัปโหลดได้ กรุณาตรวจสอบสิทธิ์โฟลเดอร์');
     }
 
+    @chmod($targetDir, 0777);
+    clearstatcache(true, $targetDir);
+
     if (!is_writable($targetDir)) {
         throw new InvalidArgumentException('โฟลเดอร์อัปโหลดไม่สามารถเขียนไฟล์ได้ กรุณาตรวจสอบสิทธิ์โฟลเดอร์');
     }
