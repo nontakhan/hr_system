@@ -127,12 +127,6 @@ function submitLeaveRequest($mysqli, $data, $files) {
             throw new Exception('Selected date is not a work day');
         }
 
-        if ((int)$type_info['requires_file'] === 1) {
-            if (!isset($files['attachment']) || $files['attachment']['error'] !== UPLOAD_ERR_OK) {
-                throw new Exception('ประเภทการลานี้ต้องแนบไฟล์หลักฐาน');
-            }
-        }
-
         leaveEnsureRequestPartColumns($mysqli);
         leaveEnsureTwoStepApprovalColumns($mysqli);
         $requestUnit = $hourlyPayload['request_unit'] ?? 'day';

@@ -90,11 +90,11 @@ require_once 'includes/header.php';
                     </div>
 
                     <div class="mb-4 d-none" id="attachmentSection">
-                        <label class="form-label text-danger">
-                            เอกสารแนบ (จำเป็นสำหรับประเภทนี้) <span class="text-danger">*</span>
+                        <label class="form-label">
+                            เอกสารแนบ (ถ้ามี)
                         </label>
                         <input type="file" name="attachment" id="attachmentInput" class="form-control">
-                        <div class="form-text">รองรับไฟล์ .jpg, .png, .pdf</div>
+                        <div class="form-text">รองรับไฟล์ .jpg, .png, .pdf ไม่บังคับอัปโหลด</div>
                     </div>
 
                     <div class="d-grid gap-2">

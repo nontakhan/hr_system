@@ -195,7 +195,7 @@ function updateLeaveTypeCondition() {
 
         if (type.requires_file == 1) {
             attachmentSection.classList.remove('d-none');
-            attachmentInput.required = true;
+            attachmentInput.required = false;
         } else {
             attachmentSection.classList.add('d-none');
             attachmentInput.required = false;

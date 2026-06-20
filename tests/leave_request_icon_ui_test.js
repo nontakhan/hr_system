@@ -42,6 +42,8 @@ assertIncludes(script, 'function renderLeaveTypeCards', 'Leave request JS should
 assertIncludes(leaveSettingsScript, 'function renderLeavePolicyRows', 'Leave settings JS should render saved policy rows.');
 assertIncludes(script, 'function selectLeaveType', 'Leave request JS should select a leave type card and sync the hidden field.');
 assertIncludes(script, 'function getLeaveTypePresentation', 'Leave request JS should map leave type names to icons and colors.');
+assertIncludes(script, "attachmentSection.classList.remove('d-none');", 'Leave request JS should show the attachment field for leave types configured with evidence.');
+assertNotIncludes(script, 'attachmentInput.required = true', 'Leave request attachments should be optional even when the leave type is configured to show evidence upload.');
 assertIncludes(script, 'function renderLeaveUsageSummary', 'Leave request JS should render leave usage warnings.');
 assertIncludes(script, 'function renderLeaveUsageEntries', 'Leave request JS should render every counted leave entry for comparison.');
 assertNotIncludes(myLeavesScript, 'renderLeaveUsageEntries', 'My leaves summary cards should not duplicate leave entries already shown in the table.');
@@ -58,6 +60,7 @@ const requestApi = fs.readFileSync('api/leave_request_api.php', 'utf8');
 const historyApi = fs.readFileSync('api/leave_history_api.php', 'utf8');
 assertIncludes(requestApi, 'leaveDetectHourlyRequestType($row', 'Leave request API should filter late/early types out of leave options.');
 assertIncludes(requestApi, 'เมนูคำขอเวลา', 'Leave request API should reject old late/early submissions.');
+assertNotIncludes(requestApi, "if ((int)$type_info['requires_file'] === 1)", 'Leave request API should not require an attachment just because the type is configured to show evidence upload.');
 assertIncludes(historyApi, "lr.request_unit <> 'hour'", 'Leave history API should exclude late/early hourly requests.');
 assertIncludes(styles, '.leave-type-grid', 'Styles should include the leave type icon grid.');
 assertIncludes(styles, '.leave-type-card.is-selected', 'Styles should include a selected card state.');
