@@ -127,6 +127,12 @@ function submitLeaveRequest($mysqli, $data, $files) {
             throw new Exception('Selected date is not a work day');
         }
 
+        $requestedLeaveDates = array_column($summary['included_dates'] ?? [], 'date');
+        $conflictingLeaveDates = leaveFetchConflictingLeaveDates($mysqli, $emp_id, $start, $end, $requestedLeaveDates);
+        if (!empty($conflictingLeaveDates)) {
+            throw new Exception('มีใบลาในวันที่เลือกอยู่แล้ว: ' . implode(', ', $conflictingLeaveDates));
+        }
+
         leaveEnsureRequestPartColumns($mysqli);
         leaveEnsureTwoStepApprovalColumns($mysqli);
         $requestUnit = $hourlyPayload['request_unit'] ?? 'day';

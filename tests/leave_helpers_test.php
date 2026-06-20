@@ -67,6 +67,38 @@ $invalid = leaveBuildDateSummary(
 );
 assertLeaveSame(false, $invalid['valid'], 'A single date cannot end before it starts when using half-day parts.');
 
+$conflictingDates = leaveFindConflictingLeaveDates([
+    [
+        'start_date' => '2026-01-07',
+        'end_date' => '2026-01-07',
+        'request_unit' => 'day',
+        'status' => 'approved',
+    ],
+    [
+        'start_date' => '2026-01-08',
+        'end_date' => '2026-01-08',
+        'request_unit' => 'hour',
+        'status' => 'approved',
+    ],
+    [
+        'start_date' => '2026-01-09',
+        'end_date' => '2026-01-09',
+        'request_unit' => 'day',
+        'status' => 'cancelled',
+    ],
+], ['2026-01-07', '2026-01-08', '2026-01-09']);
+assertLeaveSame(['2026-01-07'], $conflictingDates, 'Day leave should not be submitted again on a date with an active day-leave request.');
+
+$rangeConflictingDates = leaveFindConflictingLeaveDates([
+    [
+        'start_date' => '2026-01-05',
+        'end_date' => '2026-01-07',
+        'request_unit' => 'day',
+        'status' => 'pending_hr',
+    ],
+], ['2026-01-06']);
+assertLeaveSame(['2026-01-06'], $rangeConflictingDates, 'Overlapping multi-day active requests should conflict with included requested dates.');
+
 $octoberFiscal = leaveBuildFiscalYearRange(10, '2026-06-10');
 assertLeaveSame('2025-10-01', $octoberFiscal['start_date'], 'October fiscal year should start in the previous calendar year before October.');
 assertLeaveSame('2026-09-30', $octoberFiscal['end_date'], 'October fiscal year should end on September 30.');

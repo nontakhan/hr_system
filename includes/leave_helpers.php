@@ -763,6 +763,92 @@ function leaveBuildDateSummary($startDate, $endDate, $startPart, $endPart, $work
     ];
 }
 
+function leaveFindConflictingLeaveDates(array $existingRequests, array $requestedDates) {
+    $requestedDateSet = [];
+    foreach ($requestedDates as $date) {
+        if (is_array($date)) {
+            $date = $date['date'] ?? '';
+        }
+        $date = (string)$date;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $requestedDateSet[$date] = true;
+        }
+    }
+
+    if (empty($requestedDateSet)) {
+        return [];
+    }
+
+    $activeStatuses = ['pending', 'pending_manager', 'pending_hr', 'approved', 'pending_cancel_hr'];
+    $conflicts = [];
+    foreach ($existingRequests as $request) {
+        $requestUnit = $request['request_unit'] ?? 'day';
+        if ($requestUnit !== 'day') {
+            continue;
+        }
+
+        $status = (string)($request['status'] ?? '');
+        if (!in_array($status, $activeStatuses, true)) {
+            continue;
+        }
+
+        $startDate = (string)($request['start_date'] ?? '');
+        $endDate = (string)($request['end_date'] ?? '');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+            continue;
+        }
+
+        $start = new DateTimeImmutable($startDate);
+        $end = new DateTimeImmutable($endDate);
+        if ($end < $start) {
+            continue;
+        }
+
+        for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
+            $workDate = $date->format('Y-m-d');
+            if (isset($requestedDateSet[$workDate])) {
+                $conflicts[$workDate] = true;
+            }
+        }
+    }
+
+    $dates = array_keys($conflicts);
+    sort($dates);
+    return $dates;
+}
+
+function leaveFetchConflictingLeaveDates(mysqli $mysqli, $employeeId, $startDate, $endDate, array $requestedDates) {
+    $employeeId = (int)$employeeId;
+    $requestedDates = array_values(array_filter($requestedDates, function ($date) {
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$date);
+    }));
+    if ($employeeId <= 0 || empty($requestedDates)) {
+        return [];
+    }
+
+    leaveEnsureRequestPartColumns($mysqli);
+    leaveEnsureTwoStepApprovalColumns($mysqli);
+
+    $sql = "SELECT start_date, end_date, request_unit, status
+            FROM leave_requests
+            WHERE employee_id = ?
+              AND request_unit = 'day'
+              AND status IN ('pending', 'pending_manager', 'pending_hr', 'approved', 'pending_cancel_hr')
+              AND start_date <= ?
+              AND end_date >= ?
+            ORDER BY start_date ASC, id ASC";
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Cannot prepare leave conflict lookup');
+    }
+    $stmt->bind_param('iss', $employeeId, $endDate, $startDate);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return leaveFindConflictingLeaveDates($rows, $requestedDates);
+}
+
 function leaveFetchEmployeeWorkDays(mysqli $mysqli, $employeeId) {
     $stmt = $mysqli->prepare("SELECT ws.work_days FROM employees e LEFT JOIN work_shifts ws ON e.default_shift_id = ws.id WHERE e.id = ?");
     $stmt->bind_param('i', $employeeId);
