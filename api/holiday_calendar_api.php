@@ -44,7 +44,8 @@ try {
 
     $companyHolidays = holidayCalendarFetchCompanyHolidaysForMonth($mysqli, $month);
     $regularHolidays = daySwapBuildHolidayOptions($mysqli, $employeeId, $month);
-    $events = holidayCalendarBuildEvents($companyHolidays, $regularHolidays);
+    $approvedLeaves = holidayCalendarFetchApprovedLeavesForMonth($mysqli, $employeeId, $month);
+    $events = holidayCalendarBuildEvents($companyHolidays, $regularHolidays, $approvedLeaves);
 
     sendHolidayCalendarJson([
         'status' => 'success',

@@ -45,24 +45,52 @@ const regularEvent = buildHolidayCalendarEvent({
 assertSame('#bbf7d0', regularEvent.backgroundColor, 'Regular holidays should use green background.');
 assertIncludes(regularEvent.classNames.join(' '), 'holiday-calendar-regular', 'Regular holidays should have a class.');
 
+const approvedLeaveEvent = buildHolidayCalendarEvent({
+    date: '2026-06-09',
+    type: 'approved_leave',
+    title: 'Annual Leave',
+    reason: 'Family trip',
+});
+assertSame('#ddd6fe', approvedLeaveEvent.backgroundColor, 'Approved leave should use purple background.');
+assertIncludes(approvedLeaveEvent.classNames.join(' '), 'holiday-calendar-approved-leave', 'Approved leave should have a class.');
+
 holidayCalendarDayClassMap = buildHolidayCalendarDayClassMap([
     { date: '2026-06-03', type: 'company_holiday' },
+    { date: '2026-06-09', type: 'approved_leave' },
     { date: '2026-06-07', type: 'regular_holiday' },
 ]);
 const calendarOptions = buildHolidayCalendarOptions();
 const companyDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 5, 3) });
+const approvedLeaveDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 5, 9) });
 const regularDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 5, 7) });
 assertIncludes(companyDayClasses.join(' '), 'holiday-calendar-day-company', 'Company holiday cells should be fully colored.');
+assertIncludes(approvedLeaveDayClasses.join(' '), 'holiday-calendar-day-approved-leave', 'Approved leave cells should be fully colored.');
 assertIncludes(regularDayClasses.join(' '), 'holiday-calendar-day-regular', 'Regular holiday cells should be fully colored.');
 
 const summaryHtml = buildHolidayCalendarSummaryHtml({
     company_holiday: 2,
     regular_holiday: 4,
-    total: 6,
+    approved_leave: 1,
+    total: 7,
 });
 assertIncludes(summaryHtml, 'วันหยุดบริษัท', 'Summary should include company holiday label.');
 assertIncludes(summaryHtml, 'วันหยุดประจำสัปดาห์', 'Summary should include regular holiday label.');
-assertIncludes(summaryHtml, '6', 'Summary should include total count.');
+assertIncludes(summaryHtml, 'holiday-calendar-summary-leave', 'Summary should include approved leave card.');
+assertIncludes(summaryHtml, '7', 'Summary should include total count.');
+
+const detailHtml = buildHolidayCalendarDetailHtml({
+    type: 'approved_leave',
+    title: 'Annual Leave',
+    date: '2026-06-09',
+    start_date: '2026-06-09',
+    end_date: '2026-06-10',
+    total_days: '2.00',
+    reason: 'Family trip',
+    status: 'approved',
+});
+assertIncludes(detailHtml, 'Annual Leave', 'Approved leave detail should include leave type.');
+assertIncludes(detailHtml, 'Family trip', 'Approved leave detail should include reason.');
+assertIncludes(detailHtml, '2', 'Approved leave detail should include total days.');
 
 const loadingHtml = buildHolidayCalendarLoadingHtml();
 assertIncludes(loadingHtml, 'spinner-border', 'Loading state should show a spinner.');

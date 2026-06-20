@@ -31,6 +31,12 @@ function buildHolidayCalendarOptions() {
         headerToolbar: false,
         initialDate: `${month}-01`,
         events: [],
+        eventClick(info) {
+            const item = info.event.extendedProps?.item;
+            if (item) {
+                showHolidayCalendarDetail(item);
+            }
+        },
         dayCellClassNames(info) {
             const dateKey = formatHolidayCalendarDateKey(info.date);
             return holidayCalendarDayClassMap[dateKey] ? [holidayCalendarDayClassMap[dateKey]] : [];
@@ -45,6 +51,15 @@ function holidayCalendarColors(type) {
             border: '#60a5fa',
             text: '#1e3a8a',
             className: 'holiday-calendar-company',
+        };
+    }
+
+    if (type === 'approved_leave') {
+        return {
+            background: '#ddd6fe',
+            border: '#8b5cf6',
+            text: '#4c1d95',
+            className: 'holiday-calendar-approved-leave',
         };
     }
 
@@ -67,8 +82,10 @@ function buildHolidayCalendarDayClassMap(rows) {
     return rows.reduce((map, item) => {
         if (item.type === 'company_holiday') {
             map[item.date] = 'holiday-calendar-day-company';
+        } else if (item.type === 'approved_leave' && map[item.date] !== 'holiday-calendar-day-company') {
+            map[item.date] = 'holiday-calendar-day-approved-leave';
         } else if (item.type === 'regular_holiday') {
-            map[item.date] = 'holiday-calendar-day-regular';
+            map[item.date] = map[item.date] || 'holiday-calendar-day-regular';
         }
         return map;
     }, {});
@@ -91,11 +108,13 @@ function buildHolidayCalendarEvent(item) {
 function buildHolidayCalendarSummaryHtml(summary) {
     const company = Number(summary?.company_holiday || 0);
     const regular = Number(summary?.regular_holiday || 0);
+    const leave = Number(summary?.approved_leave || 0);
     const total = Number(summary?.total || 0);
     return `
         <div class="row g-3 holiday-calendar-summary">
             ${holidayCalendarSummaryCard('วันหยุดบริษัท', company, 'fa-building-circle-check', 'company')}
             ${holidayCalendarSummaryCard('วันหยุดประจำสัปดาห์', regular, 'fa-calendar-day', 'regular')}
+            ${holidayCalendarSummaryCard('วันลาอนุมัติ', leave, 'fa-person-walking-arrow-right', 'leave')}
             ${holidayCalendarSummaryCard('รวมวันหยุด', total, 'fa-calendar-check', 'total')}
         </div>
     `;
@@ -103,7 +122,7 @@ function buildHolidayCalendarSummaryHtml(summary) {
 
 function holidayCalendarSummaryCard(label, value, icon, tone) {
     return `
-        <div class="col-md-4">
+        <div class="col-md-3 col-sm-6">
             <div class="holiday-calendar-summary-card holiday-calendar-summary-${tone}">
                 <div>
                     <div class="text-muted small">${label}</div>
@@ -113,6 +132,62 @@ function holidayCalendarSummaryCard(label, value, icon, tone) {
             </div>
         </div>
     `;
+}
+
+function holidayCalendarStatusLabel(status) {
+    if (status === 'pending_cancel_hr') return 'รอยืนยันการยกเลิก';
+    if (status === 'approved') return 'อนุมัติแล้ว';
+    return status || '-';
+}
+
+function formatHolidayCalendarDayCount(value) {
+    const number = Number.parseFloat(value || 0);
+    if (!Number.isFinite(number) || number <= 0) return '-';
+    const text = number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    return text;
+}
+
+function buildHolidayCalendarDetailHtml(item) {
+    if (item.type !== 'approved_leave') {
+        return `
+            <div class="holiday-calendar-detail text-start">
+                <div class="fw-semibold mb-2">${escapeHtml(item.title || '')}</div>
+                <div class="small text-muted">${escapeHtml(item.description || '')}</div>
+                <div class="mt-2"><strong>วันที่:</strong> ${escapeHtml(item.date || '-')}</div>
+            </div>
+        `;
+    }
+
+    const range = item.start_date && item.end_date && item.start_date !== item.end_date
+        ? `${item.start_date} - ${item.end_date}`
+        : (item.date || item.start_date || '-');
+
+    return `
+        <div class="holiday-calendar-detail text-start">
+            <div><strong>ประเภทลา:</strong> ${escapeHtml(item.title || '-')}</div>
+            <div><strong>วันที่:</strong> ${escapeHtml(range)}</div>
+            <div><strong>จำนวนวัน:</strong> ${escapeHtml(formatHolidayCalendarDayCount(item.total_days))}</div>
+            <div><strong>สถานะ:</strong> ${escapeHtml(holidayCalendarStatusLabel(item.status))}</div>
+            <div><strong>เหตุผล:</strong> ${escapeHtml(item.reason || '-')}</div>
+        </div>
+    `;
+}
+
+function showHolidayCalendarDetail(item) {
+    const title = item.type === 'approved_leave' ? 'รายละเอียดวันลา' : 'รายละเอียด';
+    const html = buildHolidayCalendarDetailHtml(item);
+
+    if (window.Swal) {
+        window.Swal.fire({
+            title,
+            html,
+            icon: item.type === 'approved_leave' ? 'info' : undefined,
+            confirmButtonText: 'ปิด',
+        });
+        return;
+    }
+
+    alert(`${item.title || ''}\n${item.date || ''}`);
 }
 
 function buildHolidayCalendarLoadingHtml() {

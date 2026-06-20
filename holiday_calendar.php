@@ -44,6 +44,7 @@ require_once 'includes/header.php';
         <div class="holiday-calendar-legend mb-3" aria-label="Holiday calendar colors">
             <span><i class="holiday-calendar-dot holiday-calendar-dot-company"></i> วันหยุดบริษัท</span>
             <span><i class="holiday-calendar-dot holiday-calendar-dot-regular"></i> วันหยุดประจำสัปดาห์</span>
+            <span><i class="holiday-calendar-dot holiday-calendar-dot-leave"></i> วันลาอนุมัติ</span>
         </div>
         <div class="holiday-calendar-shell">
             <div id="holidayCalendar"></div>

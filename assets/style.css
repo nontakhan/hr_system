@@ -1086,6 +1086,11 @@ canvas#deptChart {
     border: 1px solid #22c55e;
 }
 
+.holiday-calendar-dot-leave {
+    background: #ddd6fe;
+    border: 1px solid #8b5cf6;
+}
+
 .holiday-calendar-summary-card {
     display: flex;
     align-items: center;
@@ -1110,6 +1115,10 @@ canvas#deptChart {
     color: #6b7280;
 }
 
+.holiday-calendar-summary-leave i {
+    color: #7c3aed;
+}
+
 .holiday-calendar-summary-total i {
     color: #16a34a;
 }
@@ -1122,19 +1131,27 @@ canvas#deptChart {
     background: #dcfce7;
 }
 
+#holidayCalendar .holiday-calendar-day-approved-leave {
+    background: #ede9fe;
+}
+
 #holidayCalendar .holiday-calendar-day-company .fc-daygrid-day-frame,
-#holidayCalendar .holiday-calendar-day-regular .fc-daygrid-day-frame {
+#holidayCalendar .holiday-calendar-day-regular .fc-daygrid-day-frame,
+#holidayCalendar .holiday-calendar-day-approved-leave .fc-daygrid-day-frame {
     min-height: 96px;
 }
 
 #holidayCalendar .fc-event.holiday-calendar-company,
-#holidayCalendar .fc-event.holiday-calendar-regular {
+#holidayCalendar .fc-event.holiday-calendar-regular,
+#holidayCalendar .fc-event.holiday-calendar-approved-leave {
     border-radius: 6px;
     font-weight: 600;
+    cursor: pointer;
 }
 
 #holidayCalendar .holiday-calendar-day-company.fc-day-today,
-#holidayCalendar .holiday-calendar-day-regular.fc-day-today {
+#holidayCalendar .holiday-calendar-day-regular.fc-day-today,
+#holidayCalendar .holiday-calendar-day-approved-leave.fc-day-today {
     box-shadow: inset 0 0 0 2px rgba(17, 24, 39, 0.1);
 }
 
