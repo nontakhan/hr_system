@@ -337,9 +337,20 @@ function loadSouthernProvinces(defaultProv = null, defaultDist = null) {
 
     if (defaultProv) populateDistricts(defaultProv, defaultDist);
 
-    pSelect.addEventListener('change', function() {
-        populateDistricts(this.value);
-    });
+    bindProvinceDistrictChange(pSelect, () => populateDistricts(pSelect.value));
+}
+
+function bindProvinceDistrictChange(provinceSelect, onProvinceChange) {
+    if (!provinceSelect || typeof onProvinceChange !== 'function') return;
+
+    provinceSelect.addEventListener('change', onProvinceChange);
+
+    const jquery = window.jQuery || window.$;
+    if (!jquery || !jquery.fn || !jquery.fn.select2) return;
+
+    jquery(provinceSelect)
+        .off('select2:select.employeeAddress select2:clear.employeeAddress')
+        .on('select2:select.employeeAddress select2:clear.employeeAddress', onProvinceChange);
 }
 
 function initializeEmployeeEditSelect2(form) {
