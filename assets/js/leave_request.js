@@ -27,7 +27,7 @@ async function loadLeaveUsageSummary() {
         }
 
         leaveUsageSummary = res.data;
-        renderLeaveUsageSummary(leaveUsageSummary);
+        renderProjectedLeaveUsageSummary();
         updateLeaveTypeCondition();
     } catch (error) {
         const grid = document.getElementById('leaveUsageSummaryGrid');
@@ -103,7 +103,61 @@ function renderLeaveUsageSummary(summary) {
         return;
     }
 
-    grid.innerHTML = renderOverallLeaveUsageCard(summary.overall);
+    const typeItems = Array.isArray(summary.items) ? summary.items : [];
+    grid.innerHTML = typeItems.length
+        ? typeItems.map(item => renderTypeLeaveUsageCard(item)).join('')
+        : renderOverallLeaveUsageCard(summary.overall);
+}
+
+function renderProjectedLeaveUsageSummary() {
+    renderLeaveUsageSummary(buildProjectedLeaveUsageSummary());
+}
+
+function buildProjectedLeaveUsageSummary() {
+    if (!leaveUsageSummary) return leaveUsageSummary;
+
+    const selectedId = document.getElementById('leaveTypeSelect')?.value;
+    const projectedSelectedDays = Number.parseFloat(latestLeaveSummary?.total_days || 0) || 0;
+    if (!selectedId || projectedSelectedDays <= 0) {
+        return leaveUsageSummary;
+    }
+
+    const clone = {
+        ...leaveUsageSummary,
+        overall: leaveUsageSummary.overall ? { ...leaveUsageSummary.overall } : null,
+        items: Array.isArray(leaveUsageSummary.items)
+            ? leaveUsageSummary.items.map(item => ({ ...item }))
+            : [],
+    };
+
+    clone.items = clone.items.map(item => {
+        if (String(item.leave_type_id) !== String(selectedId)) {
+            return item;
+        }
+        return applyProjectedLeaveDays(item, projectedSelectedDays);
+    });
+    if (clone.overall) {
+        clone.overall = applyProjectedLeaveDays(clone.overall, projectedSelectedDays);
+    }
+
+    return clone;
+}
+
+function applyProjectedLeaveDays(item, projectedSelectedDays) {
+    const projected = { ...item };
+    const approvedDays = Number.parseFloat(projected.approved_days || 0) || 0;
+    const pendingDays = Number.parseFloat(projected.pending_days || 0) || 0;
+    const limit = Number.parseFloat(projected.request_limit || projected.limit_days || 0) || 0;
+    const projectedTotalDays = approvedDays + projectedSelectedDays;
+
+    projected.pending_days = Number.parseFloat(pendingDays.toFixed(2));
+    projected.projectedSelectedDays = Number.parseFloat(projectedSelectedDays.toFixed(2));
+    projected.projected_total_days = Number.parseFloat(projectedTotalDays.toFixed(2));
+    projected.remaining_days = limit > 0 ? Number.parseFloat((limit - approvedDays).toFixed(2)) : projected.remaining_days;
+    projected.remaining_requests = limit > 0 ? Number.parseFloat((limit - approvedDays).toFixed(2)) : projected.remaining_requests;
+    projected.projected_remaining_days = limit > 0 ? Number.parseFloat((limit - projectedTotalDays).toFixed(2)) : null;
+    projected.projected_usage_percent = limit > 0 ? Number.parseFloat(((projectedTotalDays / limit) * 100).toFixed(1)) : 0;
+    return projected;
 }
 
 function renderOverallLeaveUsageCard(item) {
@@ -135,6 +189,65 @@ function renderOverallLeaveUsageCard(item) {
             ${renderLeaveUsageEntries(item.entries || [])}
         </div>
     `;
+}
+
+function renderTypeLeaveUsageCard(item) {
+    const presentation = getLeaveTypePresentation(item.type_name || '');
+    const tone = getLeaveUsageCardTone(presentation.color);
+    const statusClass = `leave-usage-card-${item.status || 'normal'}`;
+    const percent = Number.parseFloat(item.projected_usage_percent || item.usage_percent || 0);
+    const progressWidth = Math.min(Math.max(percent, 0), 100);
+    const limitDays = Number.parseFloat(item.limit_days || item.request_limit || 0);
+    const limitText = limitDays > 0
+        ? `${formatLeaveDayNumber(limitDays)} วัน`
+        : 'ไม่จำกัด';
+    const projectedSelectedDays = Number.parseFloat(item.projectedSelectedDays || 0);
+    const displayedUsedDays = projectedSelectedDays > 0
+        ? Number.parseFloat(item.projected_total_days || 0)
+        : Number.parseFloat(item.approved_days || 0);
+    const projectedText = projectedSelectedDays > 0
+        ? `<div class="leave-usage-pending text-primary">ใบนี้ ${formatLeaveDayNumber(projectedSelectedDays)} วัน หลังส่งจะใช้รวม ${formatLeaveDayNumber(item.projected_total_days || 0)} วัน</div>`
+        : '';
+    const pendingDays = Number.parseFloat(item.pending_days || 0);
+    const pendingText = pendingDays > 0
+        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(pendingDays)} วัน</div>`
+        : '';
+    const balanceText = item.projected_remaining_days !== null && item.projected_remaining_days !== undefined
+        ? `หลังส่งคงเหลือ ${formatLeaveDayNumber(item.projected_remaining_days)} วัน`
+        : formatUsageBalanceText(item, 'remaining_days');
+
+    return `
+        <div class="leave-usage-card leave-usage-card-${tone} ${statusClass}">
+            <div class="d-flex justify-content-between gap-2">
+                <div class="leave-usage-card-title">
+                    <span class="leave-usage-icon text-${presentation.color || 'secondary'}"><i class="fas ${presentation.icon}"></i></span>
+                    <strong>${escapeHtml(item.type_name || 'ประเภทการลา')}</strong>
+                </div>
+                <span>${formatLeaveDayNumber(displayedUsedDays)} / ${limitText}</span>
+            </div>
+            <div class="leave-usage-progress" aria-hidden="true">
+                <span style="width: ${progressWidth}%"></span>
+            </div>
+            <div class="small mt-2">
+                ใช้แล้ว ${formatLeaveDayNumber(displayedUsedDays)} วัน, ${balanceText}
+            </div>
+            <div class="small mt-1">สิทธิ์ตามหน้าตั้งค่าประเภทการลา: ${limitText}</div>
+            ${projectedText}
+            ${pendingText}
+        </div>
+    `;
+}
+
+function getLeaveUsageCardTone(color) {
+    return {
+        primary: 'blue',
+        info: 'cyan',
+        danger: 'rose',
+        warning: 'amber',
+        success: 'green',
+        purple: 'purple',
+        secondary: 'slate',
+    }[color] || 'slate';
 }
 
 function renderLeaveUsageEntries(entries) {
@@ -267,7 +380,10 @@ function updateLeaveTypeCondition() {
 
 function updateSelectedLeaveUsageProjection() {
     const selectedId = document.getElementById('leaveTypeSelect')?.value;
-    if (!selectedId || !latestLeaveSummary) return;
+    if (!selectedId || !latestLeaveSummary) {
+        renderProjectedLeaveUsageSummary();
+        return;
+    }
 
     const usage = getLeaveUsageItem(selectedId);
     const conditionDiv = document.getElementById('leaveTypeCondition');
@@ -287,6 +403,7 @@ function updateSelectedLeaveUsageProjection() {
         conditionDiv.classList.add('text-warning');
         conditionText.textContent += ` | หลังส่งใบนี้จะใกล้ครบ ${formatLeaveDayNumber(projectedDays)} วัน`;
     }
+    renderProjectedLeaveUsageSummary();
 }
 
 function getLeaveTypePresentation(typeName) {
@@ -409,6 +526,7 @@ async function calculateLeaveDays() {
             totalDisplay.textContent = '0';
             totalInput.value = 0;
             breakdown.innerHTML = '';
+            renderProjectedLeaveUsageSummary();
             return;
         }
 
@@ -435,6 +553,7 @@ async function calculateLeaveDays() {
         totalDisplay.textContent = '0';
         totalInput.value = 0;
         breakdown.innerHTML = '';
+        renderProjectedLeaveUsageSummary();
         return;
     }
 
@@ -443,6 +562,7 @@ async function calculateLeaveDays() {
         totalDisplay.classList.add('text-danger');
         totalInput.value = 0;
         breakdown.innerHTML = '';
+        renderProjectedLeaveUsageSummary();
         return;
     }
 
@@ -475,6 +595,7 @@ async function calculateLeaveDays() {
         totalDisplay.textContent = error.message;
         totalDisplay.classList.add('text-danger');
         breakdown.innerHTML = '';
+        renderProjectedLeaveUsageSummary();
     }
 }
 

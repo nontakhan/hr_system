@@ -54,6 +54,10 @@ assertIncludes(script, 'function getLeaveTypePresentation', 'Leave request JS sh
 assertIncludes(script, "attachmentSection.classList.remove('d-none');", 'Leave request JS should show the attachment field for leave types configured with evidence.');
 assertNotIncludes(script, 'attachmentInput.required = true', 'Leave request attachments should be optional even when the leave type is configured to show evidence upload.');
 assertIncludes(script, 'function renderLeaveUsageSummary', 'Leave request JS should render leave usage warnings.');
+assertIncludes(script, 'function renderProjectedLeaveUsageSummary', 'Leave request JS should re-render summary cards with the in-progress leave projection.');
+assertIncludes(script, 'function buildProjectedLeaveUsageSummary', 'Leave request JS should calculate projected card balances from the selected leave type.');
+assertIncludes(script, 'function renderTypeLeaveUsageCard', 'Leave request JS should render per-type summary cards on the request page.');
+assertIncludes(script, 'projectedSelectedDays', 'Leave request summary cards should display the selected hourly leave as projected quota usage.');
 assertIncludes(script, 'function renderLeaveUsageEntries', 'Leave request JS should render every counted leave entry for comparison.');
 assertNotIncludes(myLeavesScript, 'renderLeaveUsageEntries', 'My leaves summary cards should not duplicate leave entries already shown in the table.');
 assertIncludes(script, 'function renderOverallLeaveUsageCard', 'Leave request JS should render one overall leave usage card.');
