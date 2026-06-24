@@ -275,6 +275,39 @@ $hourlyRequestMap = attendanceBuildApprovedHourlyRequestMap([
 assertSameValue(['ขอมาสาย 35 นาที', 'ขอออกก่อน 40 นาที'], $hourlyRequestMap['2026-01-07'], 'Approved hourly requests should be grouped by work date with requested minutes.');
 assertSameValue(false, isset($hourlyRequestMap['2026-01-08']), 'Day-based leave rows should not be included as hourly requests.');
 
+$otRequestMap = attendanceBuildApprovedHourlyRequestMap([
+    [
+        'start_date' => '2026-01-09',
+        'request_unit' => 'hour',
+        'time_request_type' => 'overtime_after_work',
+        'request_minutes' => 120,
+        'approved_request_minutes' => 90,
+    ],
+], '2026-01');
+assertSameValue(['OT หลังเลิกงาน 1 ชม. 30 นาที'], $otRequestMap['2026-01-09'], 'Approved OT should use approved_request_minutes in attendance labels.');
+
+$otFullApproval = attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', '19:15:00', 120);
+assertSameValue(true, $otFullApproval['valid'], 'OT should be valid when check-out is after shift end.');
+assertSameValue(135, $otFullApproval['eligible_minutes'], 'OT eligible minutes should be measured from shift end to check-out.');
+assertSameValue(120, $otFullApproval['approved_minutes'], 'OT approved minutes should be capped by requested minutes.');
+
+$otPartialApproval = attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', '17:45:00', 120);
+assertSameValue(true, $otPartialApproval['valid'], 'OT should still be valid when scan-out supports less than requested.');
+assertSameValue(45, $otPartialApproval['eligible_minutes'], 'OT eligible minutes should reflect actual scan-out.');
+assertSameValue(45, $otPartialApproval['approved_minutes'], 'OT approved minutes should not exceed eligible minutes.');
+
+$invalidOtCases = [
+    attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '', '18:00:00', 60),
+    attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', null, 60),
+    attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', '17:00:00', 60),
+    attendanceCalculateOvertimeAfterWorkMinutes('bad-date', '17:00:00', '18:00:00', 60),
+    attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', '18:00:00', 0),
+];
+foreach ($invalidOtCases as $case) {
+    assertSameValue(false, $case['valid'], 'Invalid OT cases should be rejected.');
+    assertSameValue(false, preg_match('/[A-Za-z]/', $case['message']) === 1, 'OT validation messages should be Thai.');
+}
+
 $lateMinutes = attendanceCalculateTimeRequestMinutes('late_arrival', '2026-01-07', '08:35', [
     'start_time' => '08:00:00',
     'end_time' => '17:00:00',
