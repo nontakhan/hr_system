@@ -12,12 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const typeInputs = Array.from(document.querySelectorAll('input[name="time_request_type"]'));
         const dateInput = document.getElementById('timeRequestDate');
         const timeInput = document.getElementById('timeRequestTime');
+        const overtimeInput = document.getElementById('overtimeMinutes');
 
-        [...typeInputs, dateInput, timeInput].forEach(input => {
+        [...typeInputs, dateInput, timeInput, overtimeInput].forEach(input => {
             if (!input) return;
             input.addEventListener('change', scheduleTimeRequestCalculation);
             input.addEventListener('input', scheduleTimeRequestCalculation);
         });
+        typeInputs.forEach(input => input.addEventListener('change', syncTimeRequestFields));
+        syncTimeRequestFields();
 
         form.addEventListener('submit', submitLateEarlyRequest);
     }
@@ -32,10 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = document.getElementById('timeRequestCalculationText');
         const dateInput = document.getElementById('timeRequestDate');
         const timeInput = document.getElementById('timeRequestTime');
+        const overtimeInput = document.getElementById('overtimeMinutes');
         latestCalculation = null;
 
         const requestType = getSelectedTimeRequestType();
-        if (!requestType || !dateInput.value || !timeInput.value) {
+        if (!requestType || !dateInput.value || (!isOvertimeRequest() && !timeInput.value) || (isOvertimeRequest() && !overtimeInput.value)) {
             box?.classList.add('d-none');
             return;
         }
@@ -44,8 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
             action: 'calculate',
             time_request_type: requestType,
             work_date: dateInput.value,
-            request_time: timeInput.value,
         });
+        if (isOvertimeRequest()) {
+            params.set('overtime_minutes', overtimeInput.value);
+        } else {
+            params.set('request_time', timeInput.value);
+        }
 
         try {
             const response = await fetch(`api/late_early_request_api.php?${params.toString()}`);
@@ -55,7 +63,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (result.status === 'success') {
                 latestCalculation = result.data;
-                text.textContent = `ขอเวลา ${result.data.request_minutes} นาที (กะ ${formatTime(result.data.shift_start_time)} - ${formatTime(result.data.shift_end_time)})`;
+                if (isOvertimeRequest()) {
+                    text.textContent = `ขอ OT ${formatHourMinuteDuration(result.data.request_minutes)} หลังเลิกงาน (กะ ${formatTime(result.data.shift_start_time)} - ${formatTime(result.data.shift_end_time)})`;
+                } else {
+                    text.textContent = `ขอเวลา ${result.data.request_minutes} นาที (กะ ${formatTime(result.data.shift_start_time)} - ${formatTime(result.data.shift_end_time)})`;
+                }
             } else {
                 text.textContent = result.message || 'ไม่สามารถคำนวณเวลาได้';
             }
@@ -71,11 +83,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return form?.querySelector('input[name="time_request_type"]:checked')?.value || '';
     }
 
+    function isOvertimeRequest() {
+        return getSelectedTimeRequestType() === 'overtime_after_work';
+    }
+
+    function syncTimeRequestFields() {
+        const timeField = document.getElementById('timeRequestTime')?.closest('.col-md-6');
+        const timeInput = document.getElementById('timeRequestTime');
+        const overtimeField = document.getElementById('overtimeDurationField');
+        const overtimeInput = document.getElementById('overtimeMinutes');
+        const ot = isOvertimeRequest();
+        timeField?.classList.toggle('d-none', ot);
+        overtimeField?.classList.toggle('d-none', !ot);
+        if (timeInput) timeInput.required = !ot;
+        if (overtimeInput) overtimeInput.required = ot;
+    }
+
     async function submitLateEarlyRequest(event) {
         event.preventDefault();
+        syncTimeRequestFields();
         await calculateTimeRequest();
         if (!latestCalculation || !latestCalculation.valid) {
-            Swal.fire('ตรวจสอบเวลา', 'กรุณาระบุเวลาที่อยู่ภายในช่วง 1-60 นาทีจากกะของวันนั้น', 'warning');
+            const message = isOvertimeRequest()
+                ? 'กรุณาระบุจำนวนเวลา OT 1-480 นาทีในวันทำงานตามกะ'
+                : 'กรุณาระบุเวลาที่อยู่ภายในช่วง 1-60 นาทีจากกะของวันนั้น';
+            Swal.fire('ตรวจสอบเวลา', message, 'warning');
             return;
         }
 
@@ -140,12 +172,28 @@ async function loadTimeRequestHistory() {
 }
 
 function formatTimeRequestType(type) {
+    if (type === 'overtime_after_work') {
+        return 'ขอ OT หลังเลิกงาน';
+    }
     return type === 'early_departure' ? 'ขอออกก่อนเวลา' : 'ขอมาสาย';
 }
 
 function formatTimeRequestDuration(item) {
+    if (item.time_request_type === 'overtime_after_work') {
+        return `OT หลังเลิกงาน ${formatHourMinuteDuration(item.request_minutes)}`;
+    }
     const minutes = Math.max(1, Math.min(60, Number.parseInt(item.request_minutes || 0, 10) || 60));
     return `${formatTimeRequestType(item.time_request_type)} ${minutes} นาที`;
+}
+
+function formatHourMinuteDuration(minutes) {
+    const safeMinutes = Math.max(0, Number.parseInt(minutes || 0, 10) || 0);
+    const hours = Math.floor(safeMinutes / 60);
+    const remaining = safeMinutes % 60;
+    const parts = [];
+    if (hours > 0) parts.push(`${hours} ชม.`);
+    if (remaining > 0 || !parts.length) parts.push(`${remaining} นาที`);
+    return parts.join(' ');
 }
 
 function formatRequestStatusBadge(status) {

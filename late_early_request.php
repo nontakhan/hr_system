@@ -45,6 +45,12 @@ require_once 'includes/header.php';
                                 <i class="fas fa-person-walking-arrow-right me-1"></i>
                                 <span>ขอออกก่อนเวลา</span>
                             </label>
+
+                            <input type="radio" name="time_request_type" id="timeRequestOvertime" value="overtime_after_work" class="btn-check time-request-type-option" autocomplete="off" required>
+                            <label class="btn btn-outline-primary py-3 time-request-type-btn" for="timeRequestOvertime">
+                                <i class="fas fa-business-time me-1"></i>
+                                <span>ขอ OT หลังเลิกงาน</span>
+                            </label>
                         </div>
                     </div>
 
@@ -57,6 +63,11 @@ require_once 'includes/header.php';
                         <div class="col-md-6">
                             <label class="form-label">เวลาที่ต้องการ <span class="text-danger">*</span></label>
                             <input type="time" name="request_time" id="timeRequestTime" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-6 d-none" id="overtimeDurationField">
+                            <label class="form-label">จำนวน OT ที่ขอ (นาที) <span class="text-danger">*</span></label>
+                            <input type="number" name="overtime_minutes" id="overtimeMinutes" class="form-control" min="1" max="480" step="1" placeholder="เช่น 120">
                         </div>
                     </div>
                     <div class="form-text mt-2 mb-3">มาสายจะอิงเวลาเริ่มกะ, ออกก่อนจะอิงเวลาเลิกกะของวันนั้น</div>

@@ -100,6 +100,9 @@ async function loadPendingLeaves() {
                 const reasonHtml = isCancellationRequest
                     ? `<small class="d-block text-danger">เหตุผลขอยกเลิก: ${item.cancel_reason || '-'}</small>`
                     : `<small class="d-block text-muted text-truncate" style="max-width: 200px;">${item.reason}</small>`;
+                const otScanHtml = item.time_request_type === 'overtime_after_work'
+                    ? `<small class="d-block text-primary">สแกนออก: ${formatApprovalTime(item.actual_check_out)} | เลิกกะ: ${formatApprovalTime(item.shift_end_time)} | OT ที่อนุมัติได้: ${formatHourMinuteDuration(item.eligible_overtime_minutes || 0)}</small>`
+                    : '';
                 const approveLabel = isCancellationRequest ? 'อนุมัติยกเลิก' : 'อนุมัติ';
                 const rejectLabel = isCancellationRequest ? 'ไม่อนุมัติยกเลิก' : 'ไม่';
 
@@ -120,6 +123,7 @@ async function loadPendingLeaves() {
                         <td><strong>${durationText}</strong></td>
                         <td>
                             ${reasonHtml}
+                            ${otScanHtml}
                             ${fileLink}
                         </td>
                         <td>
@@ -242,6 +246,11 @@ function formatLeaveDuration(item) {
             const hours = rawMinutes / 60;
             return `${formatLeaveDayNumber(hours)} ชม. (${formatLeaveDayNumber(item.total_days || 0)} วัน)`;
         }
+        if (item.time_request_type === 'overtime_after_work') {
+            const approved = Number.parseInt(item.approved_request_minutes || item.approval_overtime_minutes || 0, 10) || 0;
+            const suffix = approved > 0 && approved !== rawMinutes ? `, อนุมัติได้ ${formatHourMinuteDuration(approved)}` : '';
+            return `OT หลังเลิกงาน ${formatHourMinuteDuration(rawMinutes)}${suffix}`;
+        }
         const minutes = Math.max(1, Math.min(60, rawMinutes || 60));
         return item.time_request_type === 'early_departure'
             ? `ขอออกก่อน ${minutes} นาที`
@@ -253,6 +262,20 @@ function formatLeaveDuration(item) {
 function formatLeaveDayNumber(value) {
     const number = Number.parseFloat(value) || 0;
     return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function formatHourMinuteDuration(minutes) {
+    const safeMinutes = Math.max(0, Number.parseInt(minutes || 0, 10) || 0);
+    const hours = Math.floor(safeMinutes / 60);
+    const remaining = safeMinutes % 60;
+    const parts = [];
+    if (hours > 0) parts.push(`${hours} ชม.`);
+    if (remaining > 0 || !parts.length) parts.push(`${remaining} นาที`);
+    return parts.join(' ');
+}
+
+function formatApprovalTime(value) {
+    return value ? String(value).substring(0, 5) : '-';
 }
 
 // Submit การอนุมัติ/ไม่อนุมัติ

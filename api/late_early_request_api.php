@@ -35,7 +35,10 @@ try {
             $type = normalizeTimeRequestType($_GET['time_request_type'] ?? '');
             $workDate = trim((string)($_GET['work_date'] ?? ''));
             $requestTime = trim((string)($_GET['request_time'] ?? ''));
-            $calculation = calculateMyTimeRequest($mysqli, $type, $workDate, $requestTime);
+            $overtimeMinutes = (int)($_GET['overtime_minutes'] ?? 0);
+            $calculation = $type === 'overtime_after_work'
+                ? calculateMyOvertimeRequest($mysqli, $workDate, $overtimeMinutes)
+                : calculateMyTimeRequest($mysqli, $type, $workDate, $requestTime);
             sendJson(['status' => $calculation['valid'] ? 'success' : 'error', 'message' => $calculation['message'], 'data' => $calculation]);
         }
 
@@ -57,10 +60,13 @@ try {
 }
 
 function normalizeTimeRequestType($value) {
-    return in_array($value, ['late_arrival', 'early_departure'], true) ? $value : '';
+    return in_array($value, ['late_arrival', 'early_departure', 'overtime_after_work'], true) ? $value : '';
 }
 
 function timeRequestTypeName($type) {
+    if ($type === 'overtime_after_work') {
+        return 'OT หลังเลิกงาน';
+    }
     return $type === 'early_departure' ? 'ขอออกก่อน' : 'ขอมาสาย';
 }
 
@@ -84,13 +90,16 @@ function submitTimeRequest(mysqli $mysqli) {
     $type = normalizeTimeRequestType($_POST['time_request_type'] ?? '');
     $workDate = trim((string)($_POST['work_date'] ?? ''));
     $requestTime = trim((string)($_POST['request_time'] ?? ''));
+    $overtimeMinutes = (int)($_POST['overtime_minutes'] ?? 0);
     $reason = trim((string)($_POST['reason'] ?? ''));
 
-    if ($type === '' || $workDate === '' || $requestTime === '' || $reason === '') {
+    if ($type === '' || $workDate === '' || $reason === '' || ($type !== 'overtime_after_work' && $requestTime === '')) {
         sendJsonError('กรุณากรอกข้อมูลให้ครบถ้วน');
     }
 
-    $calculation = calculateMyTimeRequest($mysqli, $type, $workDate, $requestTime);
+    $calculation = $type === 'overtime_after_work'
+        ? calculateMyOvertimeRequest($mysqli, $workDate, $overtimeMinutes)
+        : calculateMyTimeRequest($mysqli, $type, $workDate, $requestTime);
     if (!$calculation['valid']) {
         sendJsonError($calculation['message']);
     }
@@ -147,6 +156,32 @@ function calculateMyTimeRequest(mysqli $mysqli, $type, $workDate, $requestTime) 
     $calculation['shift_start_time'] = $shift['start_time'] ?? null;
     $calculation['shift_end_time'] = $shift['end_time'] ?? null;
     return $calculation;
+}
+
+function calculateMyOvertimeRequest(mysqli $mysqli, $workDate, $requestedMinutes) {
+    $employeeId = (int)($_SESSION['employee_id'] ?? 0);
+    $shift = fetchEffectiveShiftForTimeRequest($mysqli, $employeeId, $workDate);
+    if (!$shift) {
+        return ['valid' => false, 'message' => 'ไม่พบข้อมูลกะของพนักงาน', 'request_minutes' => 0];
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
+        return ['valid' => false, 'message' => 'รูปแบบวันที่ไม่ถูกต้อง', 'request_minutes' => 0];
+    }
+    $workDays = array_filter(array_map('trim', explode(',', (string)($shift['work_days'] ?? ''))));
+    if (!empty($workDays) && !in_array(attendanceDayName($workDate), $workDays, true)) {
+        return ['valid' => false, 'message' => 'วันที่เลือกไม่ใช่วันทำงานตามกะ', 'request_minutes' => 0];
+    }
+    $minutes = (int)$requestedMinutes;
+    if ($minutes < 1 || $minutes > 480) {
+        return ['valid' => false, 'message' => 'จำนวนเวลาโอทีต้องอยู่ระหว่าง 1-480 นาที', 'request_minutes' => $minutes];
+    }
+    return [
+        'valid' => true,
+        'message' => '',
+        'request_minutes' => $minutes,
+        'shift_start_time' => $shift['start_time'] ?? null,
+        'shift_end_time' => $shift['end_time'] ?? null,
+    ];
 }
 
 function fetchEffectiveShiftForTimeRequest(mysqli $mysqli, $employeeId, $workDate) {

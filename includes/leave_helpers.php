@@ -55,6 +55,10 @@ function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
             'type_name' => 'ขอออกก่อน',
             'description' => 'ขออนุญาตออกก่อนเวลาตามนาทีจริง สูงสุดไม่เกิน 1 ชม. โดยอิงเวลาเลิกกะของวันนั้น',
         ],
+        [
+            'type_name' => 'OT หลังเลิกงาน',
+            'description' => 'ขออนุมัติทำงานล่วงเวลาหลังเลิกงาน โดย HR อนุมัติจากผลสแกนออกจริง',
+        ],
     ];
 
     foreach ($defaults as $default) {
@@ -141,14 +145,15 @@ function leaveNormalizeLeaveTypeCalculation(array $input) {
 }
 
 function leaveBuildHourlyRequestPayload($timeRequestType, $requestMinutes = 60) {
-    $timeRequestType = in_array($timeRequestType, ['late_arrival', 'early_departure'], true)
+    $timeRequestType = in_array($timeRequestType, ['late_arrival', 'early_departure', 'overtime_after_work'], true)
         ? $timeRequestType
         : null;
     if ($timeRequestType === null) {
         throw new InvalidArgumentException('Invalid hourly request type');
     }
     $requestMinutes = (int)$requestMinutes;
-    if ($requestMinutes < 1 || $requestMinutes > 60) {
+    $maxMinutes = $timeRequestType === 'overtime_after_work' ? 480 : 60;
+    if ($requestMinutes < 1 || $requestMinutes > $maxMinutes) {
         throw new InvalidArgumentException('Invalid hourly request minutes');
     }
 
@@ -207,9 +212,27 @@ function leaveFormatRequestDuration(array $row) {
         $daysText = (floor($days) == $days ? (string)(int)$days : rtrim(rtrim(number_format($days, 2), '0'), '.'));
         return $hoursText . ' ชม. (' . $daysText . ' วัน)';
     }
+    if ($type === 'overtime_after_work') {
+        $minutes = max(1, (int)($row['approved_request_minutes'] ?? $row['request_minutes'] ?? 0));
+        return 'OT หลังเลิกงาน ' . leaveFormatHourMinuteDuration($minutes);
+    }
     $minutes = max(1, min(60, (int)($row['request_minutes'] ?? 60)));
     $label = $type === 'early_departure' ? 'ขอออกก่อน' : 'ขอมาสาย';
     return $label . ' ' . $minutes . ' นาที';
+}
+
+function leaveFormatHourMinuteDuration($minutes) {
+    $minutes = max(0, (int)$minutes);
+    $hours = intdiv($minutes, 60);
+    $remaining = $minutes % 60;
+    $parts = [];
+    if ($hours > 0) {
+        $parts[] = $hours . ' ชม.';
+    }
+    if ($remaining > 0 || !$parts) {
+        $parts[] = $remaining . ' นาที';
+    }
+    return implode(' ', $parts);
 }
 
 function leaveEnsureSettingsTable(mysqli $mysqli) {
@@ -1016,11 +1039,17 @@ function leaveEnsureRequestPartColumns(mysqli $mysqli) {
     }
 
     if (!isset($columns['time_request_type'])) {
-        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN time_request_type ENUM('late_arrival','early_departure') NULL AFTER request_unit");
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN time_request_type ENUM('late_arrival','early_departure','overtime_after_work') NULL AFTER request_unit");
+    } else {
+        $mysqli->query("ALTER TABLE leave_requests MODIFY time_request_type ENUM('late_arrival','early_departure','overtime_after_work') NULL");
     }
 
     if (!isset($columns['request_minutes'])) {
         $mysqli->query("ALTER TABLE leave_requests ADD COLUMN request_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER time_request_type");
+    }
+
+    if (!isset($columns['approved_request_minutes'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN approved_request_minutes SMALLINT UNSIGNED NULL AFTER request_minutes");
     }
 }
 
