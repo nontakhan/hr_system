@@ -131,9 +131,10 @@ const hourlyRequestEvent = buildAttendanceCalendarEvent({
     work_date: '2026-01-08',
     status: 'present',
     status_label: 'ปกติ',
-    hourly_requests: ['ขอมาสาย 35 นาที'],
+    hourly_requests: ['ขอมาสาย 35 นาที', 'OT หลังเลิกงาน 1 ชม. 30 นาที'],
 });
 assertIncludes(hourlyRequestEvent.title, 'ขอมาสาย 35 นาที', 'Calendar event title should mention approved hourly requests.');
+assertIncludes(hourlyRequestEvent.title, 'OT หลังเลิกงาน 1 ชม. 30 นาที', 'Calendar event title should mention approved OT requests.');
 
 const hourlyRequestDetails = buildAttendanceCalendarDetails({
     work_date: '2026-01-08',
