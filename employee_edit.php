@@ -518,8 +518,8 @@ require_once 'includes/header.php';
                         <div class="col-md-4">
                             <label class="form-label">Username</label>
                             <?php if (!empty($emp['username'])): ?>
-                                <input type="text" class="form-control" name="username" value="<?php echo $emp['username']; ?>" readonly style="background-color: #e9ecef;">
-                                <small class="text-muted">Username แก้ไขไม่ได้</small>
+                                <input type="text" class="form-control" name="username" value="<?php echo htmlspecialchars($emp['username']); ?>">
+                                <small class="text-muted">สามารถแก้ไข Username ได้</small>
                             <?php else: ?>
                                 <input type="text" class="form-control" name="username" placeholder="กำหนด Username ใหม่">
                                 <small class="text-success">ยังไม่มีบัญชี สามารถกำหนดใหม่ได้</small>

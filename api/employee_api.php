@@ -451,21 +451,29 @@ function updateEmployee($mysqli, $data, $files) {
         $role     = getVal($data, 'role', 'employee');
 
         // Check existing user
-        $chk = $mysqli->prepare("SELECT id FROM users WHERE employee_id = ?");
+        $chk = $mysqli->prepare("SELECT id, username FROM users WHERE employee_id = ?");
         $chk->bind_param('i', $id);
         $chk->execute();
         $user_exists = $chk->get_result()->fetch_assoc();
 
         if ($user_exists) {
+            $usernameToSave = $username ?: $user_exists['username'];
+            if ($usernameToSave !== $user_exists['username']) {
+                $dup = $mysqli->prepare("SELECT id FROM users WHERE username = ? AND employee_id <> ?");
+                $dup->bind_param('si', $usernameToSave, $id);
+                $dup->execute();
+                if ($dup->get_result()->num_rows > 0) throw new Exception("Username '$usernameToSave' ถูกใช้แล้ว");
+            }
+
             // UPDATE
             if ($password) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $u_stmt = $mysqli->prepare("UPDATE users SET password=?, role=? WHERE employee_id=?");
-                $u_stmt->bind_param('ssi', $hash, $role, $id);
+                $u_stmt = $mysqli->prepare("UPDATE users SET username=?, password=?, role=? WHERE employee_id=?");
+                $u_stmt->bind_param('sssi', $usernameToSave, $hash, $role, $id);
                 if (!$u_stmt->execute()) throw new Exception("User update failed: " . $u_stmt->error);
             } else {
-                $u_stmt = $mysqli->prepare("UPDATE users SET role=? WHERE employee_id=?");
-                $u_stmt->bind_param('si', $role, $id);
+                $u_stmt = $mysqli->prepare("UPDATE users SET username=?, role=? WHERE employee_id=?");
+                $u_stmt->bind_param('ssi', $usernameToSave, $role, $id);
                 if (!$u_stmt->execute()) throw new Exception("User role update failed: " . $u_stmt->error);
             }
             syncUserHrScopes($mysqli, (int)$user_exists['id'], $role, $data);
