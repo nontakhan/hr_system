@@ -18,6 +18,8 @@ function assertNotIncludes(text, expected, message) {
 
 const page = fs.readFileSync('leave_request.php', 'utf8');
 const timeRequestPage = fs.readFileSync('late_early_request.php', 'utf8');
+const overtimeRequestPage = fs.readFileSync('overtime_request.php', 'utf8');
+const overtimeHistoryPage = fs.readFileSync('overtime_history.php', 'utf8');
 const leaveTypesPage = fs.readFileSync('leave_types.php', 'utf8');
 const script = fs.readFileSync('assets/js/leave_request.js', 'utf8');
 const myLeavesScript = fs.readFileSync('assets/js/my_leaves.js', 'utf8');
@@ -34,8 +36,11 @@ assertIncludes(timeRequestPage, 'type="radio" name="time_request_type"', 'Late/e
 assertIncludes(timeRequestPage, 'class="btn-check time-request-type-option"', 'Late/early request type radios should use Bootstrap button styling.');
 assertNotIncludes(timeRequestPage, '<select name="time_request_type"', 'Late/early request page should not use a dropdown for request type.');
 assertIncludes(timeRequestPage, 'name="request_time"', 'Late/early request page should collect the requested time.');
-assertIncludes(timeRequestPage, 'value="overtime_after_work"', 'Time request page should offer after-work OT.');
-assertIncludes(timeRequestPage, 'name="overtime_minutes"', 'Time request page should collect requested OT duration.');
+assertNotIncludes(timeRequestPage, 'value="overtime_after_work"', 'Late/early request page should not show after-work OT.');
+assertIncludes(overtimeRequestPage, 'value="overtime_after_work"', 'Overtime request page should submit after-work OT.');
+assertIncludes(overtimeRequestPage, 'name="overtime_minutes"', 'Overtime request page should collect requested OT duration.');
+assertIncludes(overtimeRequestPage, "window.timeRequestFixedType = 'overtime_after_work';", 'Overtime request page should force OT type.');
+assertIncludes(overtimeHistoryPage, "window.timeRequestHistoryType = 'overtime_after_work';", 'Overtime history page should load only OT history.');
 assertIncludes(timeRequestScript, 'overtime_after_work', 'Time request script should handle after-work OT.');
 assertIncludes(leaveTypesPage, 'id="leavePolicyTable"', 'Leave settings should list saved policy records.');
 assertIncludes(leaveTypesPage, 'name="leave_max_requests_per_year"', 'Leave policy form should include a fiscal-year request limit input.');

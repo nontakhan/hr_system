@@ -18,22 +18,31 @@ function assertNotIncludes(text, unexpected, message) {
 
 const header = fs.readFileSync('includes/header.php', 'utf8');
 const timeApprovalsPage = fs.readFileSync('late_early_approvals.php', 'utf8');
+const overtimeApprovalsPage = fs.readFileSync('overtime_approvals.php', 'utf8');
 const leaveApprovalsPage = fs.readFileSync('leave_approvals.php', 'utf8');
 const script = fs.readFileSync('assets/js/leave_approval.js', 'utf8');
 const api = fs.readFileSync('api/leave_approval_api.php', 'utf8');
 
 assertIncludes(header, 'href="late_early_approvals.php"', 'Time request approval menu should link to the time approval page.');
+assertIncludes(header, 'href="overtime_approvals.php"', 'Overtime approval menu should link to its own approval page.');
 assertNotIncludes(header, 'href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive(\'leave_approvals.php\'); ?>">\n                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts[\'time_request\']); ?>\n                    <small>อนุมัติคำขอเวลา</small>', 'Time request approval menu should not link to leave approvals.');
 assertIncludes(header, 'isActive(\'late_early_approvals.php\')', 'Time request approval page should open the time request menu group.');
+assertIncludes(header, 'isActive(\'overtime_approvals.php\')', 'Overtime approval page should open the overtime menu group.');
 
 assertIncludes(timeApprovalsPage, "window.leaveApprovalRequestUnit = 'hour';", 'Time request approval page should request only hourly time requests.');
+assertIncludes(timeApprovalsPage, "window.leaveApprovalTimeRequestType = 'late_early';", 'Time request approval page should exclude OT rows.');
+assertIncludes(overtimeApprovalsPage, "window.leaveApprovalTimeRequestType = 'overtime_after_work';", 'Overtime approval page should request only OT rows.');
 assertIncludes(leaveApprovalsPage, "window.leaveApprovalRequestUnit = 'day';", 'Leave approval page should request only day-based leave.');
 assertIncludes(timeApprovalsPage, 'อนุมัติคำขอเวลา', 'Time request approval page should have time request wording.');
+assertIncludes(overtimeApprovalsPage, 'อนุมัติ OT หลังเลิกงาน', 'Overtime approval page should have OT wording.');
 
 assertIncludes(script, 'getLeaveApprovalRequestUnit', 'Approval JS should read page-level approval scope.');
 assertIncludes(script, 'getLeaveApprovalRequestLabel', 'Approval JS should use time request wording on the time approval page.');
+assertIncludes(script, 'getLeaveApprovalTimeRequestType', 'Approval JS should read page-level hourly request type scope.');
 assertIncludes(script, 'request_unit', 'Approval JS should send request_unit to the API.');
+assertIncludes(script, 'time_request_type', 'Approval JS should send time_request_type to the API.');
 assertIncludes(api, "request_unit = 'hour'", 'Approval API should support filtering hourly time requests.');
+assertIncludes(api, "time_request_type = 'overtime_after_work'", 'Approval API should support filtering OT hourly requests.');
 assertIncludes(api, "request_unit <> 'hour'", 'Approval API should support excluding hourly rows for leave approvals.');
 
 console.log('time_request_approval_menu_test passed');
