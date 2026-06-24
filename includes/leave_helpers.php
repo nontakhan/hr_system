@@ -45,6 +45,7 @@ function leaveDetectHourlyRequestType($typeName) {
 }
 
 function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
+    leaveEnsureLeaveTypeCalculationColumns($mysqli);
     $defaults = [
         [
             'type_name' => 'ขอมาสาย',
@@ -67,12 +68,21 @@ function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
         $stmt->close();
 
         if ($exists) {
+            $hoursPerDay = 1.0;
+            $threshold = 0.0;
+            $update = $mysqli->prepare("UPDATE leave_types SET calculation_unit = 'hour', hours_per_day = ?, hour_full_day_threshold = ? WHERE id = ?");
+            if ($update) {
+                $typeId = (int)$exists['id'];
+                $update->bind_param('ddi', $hoursPerDay, $threshold, $typeId);
+                $update->execute();
+                $update->close();
+            }
             continue;
         }
 
         $daysPerYear = 0;
         $requiresFile = 0;
-        $insert = $mysqli->prepare("INSERT INTO leave_types (type_name, days_per_year, description, requires_file) VALUES (?, ?, ?, ?)");
+        $insert = $mysqli->prepare("INSERT INTO leave_types (type_name, days_per_year, description, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold) VALUES (?, ?, ?, ?, 'hour', 1.00, 0.00)");
         if (!$insert) {
             throw new RuntimeException('Cannot prepare hourly leave type insert');
         }
@@ -82,6 +92,52 @@ function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
         }
         $insert->close();
     }
+}
+
+function leaveEnsureLeaveTypeCalculationColumns(mysqli $mysqli) {
+    $columns = [];
+    $result = $mysqli->query("SHOW COLUMNS FROM leave_types");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $columns[$row['Field']] = $row;
+        }
+    }
+
+    if (!isset($columns['calculation_unit'])) {
+        $mysqli->query("ALTER TABLE leave_types ADD COLUMN calculation_unit ENUM('day','hour') NOT NULL DEFAULT 'day' AFTER requires_file");
+    }
+
+    if (!isset($columns['hours_per_day'])) {
+        $mysqli->query("ALTER TABLE leave_types ADD COLUMN hours_per_day DECIMAL(5,2) NOT NULL DEFAULT 8.00 AFTER calculation_unit");
+    }
+
+    if (!isset($columns['hour_full_day_threshold'])) {
+        $mysqli->query("ALTER TABLE leave_types ADD COLUMN hour_full_day_threshold DECIMAL(5,2) NOT NULL DEFAULT 0.00 AFTER hours_per_day");
+    }
+}
+
+function leaveNormalizeLeaveTypeCalculation(array $input) {
+    $unit = ($input['calculation_unit'] ?? 'day') === 'hour' ? 'hour' : 'day';
+    $hoursPerDay = (float)($input['hours_per_day'] ?? 8);
+    $threshold = (float)($input['hour_full_day_threshold'] ?? 0);
+
+    if ($unit === 'day') {
+        $hoursPerDay = 8.0;
+        $threshold = 0.0;
+    }
+
+    if ($hoursPerDay <= 0) {
+        $hoursPerDay = 8.0;
+    }
+    if ($threshold < 0) {
+        $threshold = 0.0;
+    }
+
+    return [
+        'calculation_unit' => $unit,
+        'hours_per_day' => round($hoursPerDay, 2),
+        'hour_full_day_threshold' => round($threshold, 2),
+    ];
 }
 
 function leaveBuildHourlyRequestPayload($timeRequestType, $requestMinutes = 60) {
@@ -104,6 +160,37 @@ function leaveBuildHourlyRequestPayload($timeRequestType, $requestMinutes = 60) 
     ];
 }
 
+function leaveBuildHourlyLeavePayload($requestHours, $hoursPerDay = 8, $fullDayThreshold = 0) {
+    $requestHours = round((float)$requestHours, 2);
+    $hoursPerDay = round((float)$hoursPerDay, 2);
+    $fullDayThreshold = round((float)$fullDayThreshold, 2);
+
+    if ($requestHours <= 0) {
+        throw new InvalidArgumentException('Invalid hourly leave hours');
+    }
+    if ($hoursPerDay <= 0) {
+        throw new InvalidArgumentException('Invalid hours per day');
+    }
+    if ($fullDayThreshold < 0) {
+        throw new InvalidArgumentException('Invalid full day threshold');
+    }
+
+    $totalDays = $requestHours / $hoursPerDay;
+    if ($fullDayThreshold > 0 && $requestHours > $fullDayThreshold) {
+        $totalDays = 1.0;
+    }
+
+    return [
+        'request_unit' => 'hour',
+        'time_request_type' => null,
+        'request_minutes' => (int)round($requestHours * 60),
+        'request_hours' => $requestHours,
+        'hours_per_day' => $hoursPerDay,
+        'hour_full_day_threshold' => $fullDayThreshold,
+        'total_days' => round($totalDays, 2),
+    ];
+}
+
 function leaveFormatRequestDuration(array $row) {
     $unit = $row['request_unit'] ?? 'day';
     if ($unit !== 'hour') {
@@ -112,6 +199,14 @@ function leaveFormatRequestDuration(array $row) {
     }
 
     $type = $row['time_request_type'] ?? '';
+    if ($type === null || $type === '') {
+        $minutes = max(1, (int)($row['request_minutes'] ?? 0));
+        $hours = $minutes / 60;
+        $hoursText = (floor($hours) == $hours ? (string)(int)$hours : rtrim(rtrim(number_format($hours, 2), '0'), '.'));
+        $days = (float)($row['days'] ?? $row['total_days'] ?? 0);
+        $daysText = (floor($days) == $days ? (string)(int)$days : rtrim(rtrim(number_format($days, 2), '0'), '.'));
+        return $hoursText . ' ชม. (' . $daysText . ' วัน)';
+    }
     $minutes = max(1, min(60, (int)($row['request_minutes'] ?? 60)));
     $label = $type === 'early_departure' ? 'ขอออกก่อน' : 'ขอมาสาย';
     return $label . ' ' . $minutes . ' นาที';
@@ -476,8 +571,9 @@ function leaveApplyUsageLimitFields(array &$item, $usedDays, $limitDays, $remain
 }
 
 function leaveFetchLeaveTypeLimits(mysqli $mysqli) {
+    leaveEnsureLeaveTypeCalculationColumns($mysqli);
     $types = [];
-    $result = $mysqli->query("SELECT id, type_name, days_per_year FROM leave_types ORDER BY id ASC");
+    $result = $mysqli->query("SELECT id, type_name, days_per_year, calculation_unit, hours_per_day, hour_full_day_threshold FROM leave_types ORDER BY id ASC");
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             if (leaveDetectHourlyRequestType($row['type_name']) !== null) {
@@ -488,6 +584,9 @@ function leaveFetchLeaveTypeLimits(mysqli $mysqli) {
                 'id' => (int)$row['id'],
                 'type_name' => $row['type_name'],
                 'days_per_year' => (float)$row['days_per_year'],
+                'calculation_unit' => $row['calculation_unit'] ?? 'day',
+                'hours_per_day' => (float)($row['hours_per_day'] ?? 8),
+                'hour_full_day_threshold' => (float)($row['hour_full_day_threshold'] ?? 0),
             ];
         }
     }
@@ -630,7 +729,7 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
             JOIN leave_types lt ON lr.leave_type_id = lt.id
             WHERE lr.employee_id = ?
               AND lr.status IN ('approved', 'pending_cancel_hr', 'pending', 'pending_manager', 'pending_hr')
-              AND lr.request_unit = 'day'
+              AND (lr.request_unit = 'day' OR (lr.request_unit = 'hour' AND lr.time_request_type IS NULL))
               AND lr.start_date <= ?
               AND lr.end_date >= ?
             ORDER BY lr.start_date ASC, lr.id ASC";
@@ -640,8 +739,8 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
-            $isHourlyRequest = ($row['request_unit'] ?? 'day') === 'hour';
-            $countedDays = $isHourlyRequest ? 0.0 : (float)$row['total_days'];
+            $isTimeRequest = ($row['request_unit'] ?? 'day') === 'hour' && !empty($row['time_request_type']);
+            $countedDays = $isTimeRequest ? 0.0 : (float)$row['total_days'];
             if ($row['start_date'] < $fiscal['start_date'] || $row['end_date'] > $fiscal['end_date']) {
                 $clippedStart = max($row['start_date'], $fiscal['start_date']);
                 $clippedEnd = min($row['end_date'], $fiscal['end_date']);

@@ -50,14 +50,14 @@ require_once 'includes/header.php';
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">วันที่เริ่มลา <span class="text-danger">*</span></label>
+                            <label class="form-label" id="startDateLabel">วันที่เริ่มลา <span class="text-danger">*</span></label>
                             <input type="date" name="start_date" id="startDate" class="form-control leave-date-picker" data-native-date-picker="true" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 day-leave-field">
                             <label class="form-label">ถึงวันที่ <span class="text-danger">*</span></label>
                             <input type="date" name="end_date" id="endDate" class="form-control leave-date-picker" data-native-date-picker="true" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 day-leave-field">
                             <label class="form-label">ช่วงเวลาเริ่มลา <span class="text-danger">*</span></label>
                             <select name="start_day_part" id="startDayPart" class="form-select" required>
                                 <option value="full">เต็มวัน</option>
@@ -65,13 +65,18 @@ require_once 'includes/header.php';
                                 <option value="afternoon">ครึ่งวันบ่าย</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 day-leave-field">
                             <label class="form-label">ช่วงเวลาสิ้นสุดลา <span class="text-danger">*</span></label>
                             <select name="end_day_part" id="endDayPart" class="form-select" required>
                                 <option value="full">เต็มวัน</option>
                                 <option value="morning">ครึ่งวันเช้า</option>
                                 <option value="afternoon">ครึ่งวันบ่าย</option>
                             </select>
+                        </div>
+                        <div class="col-md-6 d-none" id="hourlyLeaveFields">
+                            <label class="form-label">จำนวนชั่วโมงที่ลา <span class="text-danger">*</span></label>
+                            <input type="number" name="request_hours" id="requestHours" class="form-control" min="0.25" step="0.25" placeholder="เช่น 2.5">
+                            <div class="form-text" id="hourlyLeaveRuleText"></div>
                         </div>
                     </div>
 

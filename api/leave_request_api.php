@@ -26,7 +26,8 @@ try {
 
         if ($action === 'get_leave_types') {
             leaveEnsureHourlyRequestTypes($mysqli);
-            $sql = "SELECT id, type_name, days_per_year, requires_file FROM leave_types ORDER BY id ASC";
+            leaveEnsureLeaveTypeCalculationColumns($mysqli);
+            $sql = "SELECT id, type_name, days_per_year, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
             $types = array_values(array_filter($result->fetch_all(MYSQLI_ASSOC), function ($row) {
                 return leaveDetectHourlyRequestType($row['type_name'] ?? '') === null;
@@ -85,10 +86,11 @@ function submitLeaveRequest($mysqli, $data, $files) {
         $end_part = leaveNormalizeDayPart($data['end_day_part'] ?? 'full');
         $reason = trim((string)($data['reason'] ?? ''));
 
-        if ($type_id <= 0 || $start === '' || $end === '' || $reason === '') {
+        if ($type_id <= 0 || $start === '' || $reason === '') {
             throw new Exception('กรุณากรอกข้อมูลให้ครบถ้วน');
         }
-        $stmt_type = $mysqli->prepare("SELECT type_name, requires_file FROM leave_types WHERE id = ?");
+        leaveEnsureLeaveTypeCalculationColumns($mysqli);
+        $stmt_type = $mysqli->prepare("SELECT type_name, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold FROM leave_types WHERE id = ?");
         $stmt_type->bind_param('i', $type_id);
         $stmt_type->execute();
         $type_info = $stmt_type->get_result()->fetch_assoc();
@@ -101,6 +103,20 @@ function submitLeaveRequest($mysqli, $data, $files) {
         $hourlyPayload = null;
         if ($timeRequestType !== null) {
             throw new Exception('กรุณาส่งคำขอมาสาย/ออกก่อนเวลาจากเมนูคำขอเวลา');
+        }
+        $isHourlyLeaveType = ($type_info['calculation_unit'] ?? 'day') === 'hour';
+        if ($isHourlyLeaveType) {
+            $end = $start;
+            $start_part = 'full';
+            $end_part = 'full';
+            $hourlyPayload = leaveBuildHourlyLeavePayload(
+                $data['request_hours'] ?? 0,
+                $type_info['hours_per_day'] ?? 8,
+                $type_info['hour_full_day_threshold'] ?? 0
+            );
+        }
+        if (!$isHourlyLeaveType && $end === '') {
+            throw new Exception('กรุณากรอกข้อมูลให้ครบถ้วน');
         }
 
         if ($end < $start) {
@@ -128,9 +144,11 @@ function submitLeaveRequest($mysqli, $data, $files) {
         }
 
         $requestedLeaveDates = array_column($summary['included_dates'] ?? [], 'date');
-        $conflictingLeaveDates = leaveFetchConflictingLeaveDates($mysqli, $emp_id, $start, $end, $requestedLeaveDates);
-        if (!empty($conflictingLeaveDates)) {
-            throw new Exception('มีใบลาในวันที่เลือกอยู่แล้ว: ' . implode(', ', $conflictingLeaveDates));
+        if (!$isHourlyLeaveType) {
+            $conflictingLeaveDates = leaveFetchConflictingLeaveDates($mysqli, $emp_id, $start, $end, $requestedLeaveDates);
+            if (!empty($conflictingLeaveDates)) {
+                throw new Exception('มีใบลาในวันที่เลือกอยู่แล้ว: ' . implode(', ', $conflictingLeaveDates));
+            }
         }
 
         leaveEnsureRequestPartColumns($mysqli);

@@ -142,6 +142,23 @@ require_once 'includes/header.php';
                         <div class="form-text">ใส่ 0 หากไม่จำกัดจำนวนวัน</div>
                     </div>
 
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="calculation_unit" id="calculationUnitHour" value="hour">
+                        <label class="form-check-label" for="calculationUnitHour">คิดการลาประเภทนี้เป็นรายชั่วโมง</label>
+                    </div>
+
+                    <div class="row g-3 mb-3 d-none" id="hourlyCalculationSettings">
+                        <div class="col-md-6">
+                            <label class="form-label">จำนวนชั่วโมงเท่ากับ 1 วัน</label>
+                            <input type="number" name="hours_per_day" id="hoursPerDay" class="form-control" value="8" min="0.25" step="0.25">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">ถ้าลาเกินกี่ชั่วโมง ให้นับ 1 วัน</label>
+                            <input type="number" name="hour_full_day_threshold" id="hourFullDayThreshold" class="form-control" value="0" min="0" step="0.25">
+                            <div class="form-text">ใส่ 0 หากไม่ต้องการใช้เงื่อนไขนี้</div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label">คำอธิบายเพิ่มเติม</label>
                         <textarea name="description" class="form-control" rows="2"></textarea>

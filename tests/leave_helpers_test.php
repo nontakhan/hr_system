@@ -219,6 +219,15 @@ $earlyHourlyPayload = leaveBuildHourlyRequestPayload('early_departure', 40);
 assertLeaveSame(40, $earlyHourlyPayload['request_minutes'], 'Early departure payload should store the requested minutes.');
 assertLeaveSame('ขอออกก่อน 40 นาที', leaveFormatRequestDuration($earlyHourlyPayload), 'Early departure duration should show the requested minutes.');
 
+$hourlyLeavePayload = leaveBuildHourlyLeavePayload(2.5, 8, 0);
+assertLeaveSame('hour', $hourlyLeavePayload['request_unit'], 'Admin-configured hourly leave should still store hour request unit.');
+assertLeaveSame(150, $hourlyLeavePayload['request_minutes'], 'Admin-configured hourly leave should store requested hours as minutes.');
+assertLeaveSame(0.31, $hourlyLeavePayload['total_days'], 'Hourly leave should convert requested hours into quota days.');
+assertLeaveSame('2.5 ชม. (0.31 วัน)', leaveFormatRequestDuration($hourlyLeavePayload), 'Hourly leave duration should show both hours and quota days.');
+
+$thresholdHourlyLeavePayload = leaveBuildHourlyLeavePayload(4.5, 8, 4);
+assertLeaveSame(1.0, $thresholdHourlyLeavePayload['total_days'], 'Hourly leave over the configured threshold should count as one full day.');
+
 try {
     leaveBuildHourlyRequestPayload('late_arrival', 61);
     assertLeaveSame(true, false, 'Hourly requests over 60 minutes should be rejected.');

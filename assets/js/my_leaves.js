@@ -207,7 +207,7 @@ function getLeaveTypePresentation(typeName) {
 
 function formatLeaveDayNumber(value) {
     const number = Number.parseFloat(value) || 0;
-    return Number.isInteger(number) ? String(number) : number.toFixed(1);
+    return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function formatUsageBalanceText(item, remainingKey) {
@@ -227,7 +227,12 @@ function formatUsageBalanceText(item, remainingKey) {
 
 function formatLeaveDuration(item) {
     if (item.request_unit === 'hour') {
-        const minutes = Math.max(1, Math.min(60, Number.parseInt(item.request_minutes || 0, 10) || 60));
+        const rawMinutes = Number.parseInt(item.request_minutes || 0, 10) || 0;
+        if (!item.time_request_type) {
+            const hours = rawMinutes / 60;
+            return `${formatLeaveDayNumber(hours)} ชม. (${formatLeaveDayNumber(item.total_days || 0)} วัน)`;
+        }
+        const minutes = Math.max(1, Math.min(60, rawMinutes || 60));
         return item.time_request_type === 'early_departure'
             ? `ขอออกก่อน ${minutes} นาที`
             : `ขอมาสาย ${minutes} นาที`;

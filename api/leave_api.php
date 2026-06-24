@@ -27,6 +27,7 @@ try {
         
         if ($action === 'get_types') {
             leaveEnsureHourlyRequestTypes($mysqli);
+            leaveEnsureLeaveTypeCalculationColumns($mysqli);
             $sql = "SELECT * FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
             echo json_encode(['status' => 'success', 'data' => $result->fetch_all(MYSQLI_ASSOC)]);
@@ -59,10 +60,12 @@ try {
         $action = $input['action'] ?? '';
 
         if ($action === 'create_type') {
-            $sql = "INSERT INTO leave_types (type_name, days_per_year, description, requires_file) VALUES (?, ?, ?, ?)";
+            leaveEnsureLeaveTypeCalculationColumns($mysqli);
+            $calculation = leaveNormalizeLeaveTypeCalculation($input);
+            $sql = "INSERT INTO leave_types (type_name, days_per_year, description, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold) VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $mysqli->prepare($sql);
             $req_file = !empty($input['requires_file']) ? 1 : 0;
-            $stmt->bind_param('sisi', $input['type_name'], $input['days_per_year'], $input['description'], $req_file);
+            $stmt->bind_param('sisisdd', $input['type_name'], $input['days_per_year'], $input['description'], $req_file, $calculation['calculation_unit'], $calculation['hours_per_day'], $calculation['hour_full_day_threshold']);
             
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'เพิ่มประเภทการลาสำเร็จ']);
@@ -71,10 +74,12 @@ try {
             }
         }
         elseif ($action === 'update_type') {
-            $sql = "UPDATE leave_types SET type_name=?, days_per_year=?, description=?, requires_file=? WHERE id=?";
+            leaveEnsureLeaveTypeCalculationColumns($mysqli);
+            $calculation = leaveNormalizeLeaveTypeCalculation($input);
+            $sql = "UPDATE leave_types SET type_name=?, days_per_year=?, description=?, requires_file=?, calculation_unit=?, hours_per_day=?, hour_full_day_threshold=? WHERE id=?";
             $stmt = $mysqli->prepare($sql);
             $req_file = !empty($input['requires_file']) ? 1 : 0;
-            $stmt->bind_param('sisii', $input['type_name'], $input['days_per_year'], $input['description'], $req_file, $input['id']);
+            $stmt->bind_param('sisisddi', $input['type_name'], $input['days_per_year'], $input['description'], $req_file, $calculation['calculation_unit'], $calculation['hours_per_day'], $calculation['hour_full_day_threshold'], $input['id']);
             
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'แก้ไขข้อมูลสำเร็จ']);

@@ -28,7 +28,7 @@ try {
                 FROM leave_requests lr
                 JOIN leave_types lt ON lr.leave_type_id = lt.id
                 WHERE lr.employee_id = ?
-                  AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour')
+                  AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL)
                 ORDER BY lr.created_at DESC";
         
         $stmt = $mysqli->prepare($sql);
@@ -58,7 +58,7 @@ try {
             }
 
             // ตรวจสอบว่าเป็นใบลาของตัวเอง และสถานะยังเป็น pending
-            $check = $mysqli->prepare("SELECT id, status FROM leave_requests WHERE id = ? AND employee_id = ? AND (request_unit IS NULL OR request_unit <> 'hour') AND status IN ('pending','pending_manager','approved')");
+            $check = $mysqli->prepare("SELECT id, status FROM leave_requests WHERE id = ? AND employee_id = ? AND (request_unit IS NULL OR request_unit <> 'hour' OR time_request_type IS NULL) AND status IN ('pending','pending_manager','approved')");
             $check->bind_param('ii', $id, $emp_id);
             $check->execute();
             $request = $check->get_result()->fetch_assoc();

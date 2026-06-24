@@ -49,9 +49,9 @@ try {
         $params = [];
 
         if ($requestUnitFilter === 'hour') {
-            $sql .= " AND lr.request_unit = 'hour' ";
+            $sql .= " AND lr.request_unit = 'hour' AND lr.time_request_type IS NOT NULL ";
         } else {
-            $sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour') ";
+            $sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL) ";
         }
 
         if ($my_role === 'admin') {
@@ -111,9 +111,9 @@ try {
         $params = [$req_id];
 
         if ($requestUnitFilter === 'hour') {
-            $auth_sql .= " AND lr.request_unit = 'hour'";
+            $auth_sql .= " AND lr.request_unit = 'hour' AND lr.time_request_type IS NOT NULL";
         } else {
-            $auth_sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour')";
+            $auth_sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL)";
         }
 
         if ($my_role === 'admin') {

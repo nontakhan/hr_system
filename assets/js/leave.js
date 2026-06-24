@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const settingsForm = document.getElementById('leaveSettingsForm');
         const settingsResetBtn = document.getElementById('leavePolicyResetBtn');
         const policyTable = document.getElementById('leavePolicyTable');
+        const calculationUnitHour = document.getElementById('calculationUnitHour');
 
         if (settingsForm) {
             settingsForm.addEventListener('submit', handleSaveLeaveSettings);
@@ -26,6 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (policyTable) {
             policyTable.addEventListener('click', handleLeavePolicyTableClick);
+        }
+        if (calculationUnitHour) {
+            calculationUnitHour.addEventListener('change', toggleLeaveTypeCalculationFields);
         }
 
         // เมื่อเปิด Modal
@@ -37,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.reset();
                 document.getElementById('type_id').value = '';
                 modalTitle.innerText = 'เพิ่มประเภทการลา';
+                if (form.hours_per_day) form.hours_per_day.value = '8';
+                if (form.hour_full_day_threshold) form.hour_full_day_threshold.value = '0';
+                toggleLeaveTypeCalculationFields();
             } else if (action === 'edit') {
                 modalTitle.innerText = 'แก้ไขประเภทการลา';
                 // ดึงข้อมูลจากปุ่มมาใส่ฟอร์ม (ใช้ Dataset ที่ฝังไว้ในปุ่ม)
@@ -45,7 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.days_per_year.value = data.days_per_year;
                 form.description.value = data.description || '';
                 form.requires_file.checked = data.requires_file == 1;
+                form.calculation_unit.checked = data.calculation_unit === 'hour';
+                form.hours_per_day.value = data.hours_per_day || 8;
+                form.hour_full_day_threshold.value = data.hour_full_day_threshold || 0;
                 document.getElementById('type_id').value = data.id;
+                toggleLeaveTypeCalculationFields();
             }
         });
 
@@ -58,6 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // เพิ่ม checkbox ถ้าไม่ได้ติ๊ก (เพราะ FormData จะไม่ส่งค่าถ้าไม่ติ๊ก)
             data.requires_file = form.requires_file.checked ? 1 : 0;
+            data.calculation_unit = form.calculation_unit.checked ? 'hour' : 'day';
+            data.hours_per_day = form.hours_per_day?.value || 8;
+            data.hour_full_day_threshold = form.hour_full_day_threshold?.value || 0;
             data.action = id ? 'update_type' : 'create_type';
 
             try {
@@ -87,6 +101,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function toggleLeaveTypeCalculationFields() {
+    const calculationUnitHour = document.getElementById('calculationUnitHour');
+    const settings = document.getElementById('hourlyCalculationSettings');
+    if (!calculationUnitHour || !settings) return;
+
+    const isHourly = calculationUnitHour.checked;
+    settings.classList.toggle('d-none', !isHourly);
+    settings.querySelectorAll('input').forEach(input => {
+        input.disabled = !isHourly;
+    });
+}
+
+function formatLeaveNumber(value) {
+    const number = Number.parseFloat(value) || 0;
+    return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
 
 function getThaiMonthName(month) {
     return [
@@ -346,6 +377,13 @@ async function loadLeaveTypes() {
                 const typeName = escapeHtml(item.type_name);
                 const description = escapeHtml(item.description || '-');
                 const daysPerYear = Number.parseFloat(item.days_per_year) || 0;
+                const isHourly = item.calculation_unit === 'hour';
+                const hourlyBadge = isHourly
+                    ? `<span class="badge bg-info text-dark"><i class="fas fa-clock"></i> รายชั่วโมง (${formatLeaveNumber(item.hours_per_day || 8)} ชม. = 1 วัน)</span>`
+                    : '';
+                const thresholdBadge = isHourly && Number.parseFloat(item.hour_full_day_threshold || 0) > 0
+                    ? `<span class="badge bg-light text-dark border">เกิน ${formatLeaveNumber(item.hour_full_day_threshold)} ชม. = 1 วัน</span>`
+                    : '';
                 
                 tbody.innerHTML += `
                     <tr>
@@ -356,7 +394,12 @@ async function loadLeaveTypes() {
                         </td>
                         <td>${item.days_per_year} วัน</td>
                         <td>
-                            ${item.requires_file == 1 ? '<span class="badge bg-warning text-dark"><i class="fas fa-file-medical"></i> ต้องมีใบรับรอง</span>' : '-'}
+                            <div class="d-flex flex-wrap gap-1">
+                                ${item.requires_file == 1 ? '<span class="badge bg-warning text-dark"><i class="fas fa-file-medical"></i> ต้องมีใบรับรอง</span>' : ''}
+                                ${hourlyBadge}
+                                ${thresholdBadge}
+                                ${item.requires_file != 1 && !isHourly ? '-' : ''}
+                            </div>
                         </td>
                         <td>
                             <button class="btn btn-sm btn-warning me-1" 
