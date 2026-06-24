@@ -34,6 +34,9 @@ assertIncludes(timeRequestPage, 'type="radio" name="time_request_type"', 'Late/e
 assertIncludes(timeRequestPage, 'class="btn-check time-request-type-option"', 'Late/early request type radios should use Bootstrap button styling.');
 assertNotIncludes(timeRequestPage, '<select name="time_request_type"', 'Late/early request page should not use a dropdown for request type.');
 assertIncludes(timeRequestPage, 'name="request_time"', 'Late/early request page should collect the requested time.');
+assertIncludes(timeRequestPage, 'value="overtime_after_work"', 'Time request page should offer after-work OT.');
+assertIncludes(timeRequestPage, 'name="overtime_minutes"', 'Time request page should collect requested OT duration.');
+assertIncludes(timeRequestScript, 'overtime_after_work', 'Time request script should handle after-work OT.');
 assertIncludes(leaveTypesPage, 'id="leavePolicyTable"', 'Leave settings should list saved policy records.');
 assertIncludes(leaveTypesPage, 'name="leave_max_requests_per_year"', 'Leave policy form should include a fiscal-year request limit input.');
 assertIncludes(leaveTypesPage, 'name="calculation_unit"', 'Leave type form should let admin choose hourly leave calculation.');
