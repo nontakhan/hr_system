@@ -28,7 +28,8 @@ try {
 
     if ($method === 'GET') {
         if ($action === 'history') {
-            sendJson(['status' => 'success', 'data' => fetchMyTimeRequests($mysqli)]);
+            $typeFilter = normalizeTimeRequestHistoryFilter($_GET['time_request_type'] ?? 'late_early');
+            sendJson(['status' => 'success', 'data' => fetchMyTimeRequests($mysqli, $typeFilter)]);
         }
 
         if ($action === 'calculate') {
@@ -63,6 +64,10 @@ function normalizeTimeRequestType($value) {
     return in_array($value, ['late_arrival', 'early_departure', 'overtime_after_work'], true) ? $value : '';
 }
 
+function normalizeTimeRequestHistoryFilter($value) {
+    return $value === 'overtime_after_work' ? 'overtime_after_work' : 'late_early';
+}
+
 function timeRequestTypeName($type) {
     if ($type === 'overtime_after_work') {
         return 'OT หลังเลิกงาน';
@@ -70,14 +75,18 @@ function timeRequestTypeName($type) {
     return $type === 'early_departure' ? 'ขอออกก่อน' : 'ขอมาสาย';
 }
 
-function fetchMyTimeRequests(mysqli $mysqli) {
+function fetchMyTimeRequests(mysqli $mysqli, $typeFilter = 'late_early') {
     leaveEnsureTwoStepApprovalColumns($mysqli);
     $employeeId = (int)($_SESSION['employee_id'] ?? 0);
+    $typeSql = $typeFilter === 'overtime_after_work'
+        ? " AND lr.time_request_type = 'overtime_after_work'"
+        : " AND lr.time_request_type IN ('late_arrival','early_departure')";
     $stmt = $mysqli->prepare("SELECT lr.*, lt.type_name
                               FROM leave_requests lr
                               JOIN leave_types lt ON lr.leave_type_id = lt.id
                               WHERE lr.employee_id = ?
                                 AND lr.request_unit = 'hour'
+                                {$typeSql}
                               ORDER BY lr.created_at DESC
                               LIMIT 50");
     $stmt->bind_param('i', $employeeId);

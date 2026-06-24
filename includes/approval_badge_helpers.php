@@ -17,9 +17,10 @@ function approvalBadgeNormalizeCounts(array $counts) {
     $normalized = [
         'leave' => max(0, (int)($counts['leave'] ?? 0)),
         'time_request' => max(0, (int)($counts['time_request'] ?? 0)),
+        'overtime' => max(0, (int)($counts['overtime'] ?? 0)),
         'day_swap' => max(0, (int)($counts['day_swap'] ?? 0)),
     ];
-    $normalized['total'] = $normalized['leave'] + $normalized['time_request'] + $normalized['day_swap'];
+    $normalized['total'] = $normalized['leave'] + $normalized['time_request'] + $normalized['overtime'] + $normalized['day_swap'];
     return $normalized;
 }
 
@@ -38,12 +39,13 @@ function approvalBadgeFetchCounts(mysqli $mysqli, $role, $employeeId, array $sco
 
     return approvalBadgeNormalizeCounts([
         'leave' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'day', $stages),
-        'time_request' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'hour', $stages),
+        'time_request' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'hour', $stages, 'late_early'),
+        'overtime' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'hour', $stages, 'overtime_after_work'),
         'day_swap' => approvalBadgeCountDaySwapRequests($mysqli, $role, (int)$employeeId, $scopes, $stages),
     ]);
 }
 
-function approvalBadgeCountLeaveRequests(mysqli $mysqli, $role, $employeeId, array $scopes, $requestUnit, array $stages) {
+function approvalBadgeCountLeaveRequests(mysqli $mysqli, $role, $employeeId, array $scopes, $requestUnit, array $stages, $timeRequestType = '') {
     $stageList = approvalBadgeSqlStringList($stages);
     $sql = "SELECT COUNT(*) AS total
             FROM leave_requests lr
@@ -52,6 +54,11 @@ function approvalBadgeCountLeaveRequests(mysqli $mysqli, $role, $employeeId, arr
               AND lr.request_unit = ?";
     $types = 's';
     $params = [$requestUnit === 'hour' ? 'hour' : 'day'];
+    if ($requestUnit === 'hour' && $timeRequestType === 'overtime_after_work') {
+        $sql .= " AND lr.time_request_type = 'overtime_after_work'";
+    } elseif ($requestUnit === 'hour' && $timeRequestType === 'late_early') {
+        $sql .= " AND lr.time_request_type IN ('late_arrival','early_departure')";
+    }
 
     approvalBadgeAppendRoleScope($sql, $types, $params, $role, $employeeId, $scopes, 'e');
     return approvalBadgeFetchTotal($mysqli, $sql, $types, $params);

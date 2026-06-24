@@ -24,7 +24,7 @@ function renderSidebarApprovalBadge($count) {
 
 $displayName = trim($_SESSION['full_name'] ?? '') ?: ($_SESSION['username'] ?? '');
 $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['role'] ?? '');
-$approvalBadgeCounts = ['leave' => 0, 'time_request' => 0, 'day_swap' => 0, 'total' => 0];
+$approvalBadgeCounts = ['leave' => 0, 'time_request' => 0, 'overtime' => 0, 'day_swap' => 0, 'total' => 0];
 
 if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager', 'hr', 'admin'], true)) {
     require_once __DIR__ . '/db_connect.php';
@@ -119,6 +119,26 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <a href="late_early_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('late_early_approvals.php'); ?>">
                     <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
                     <small>อนุมัติคำขอเวลา</small>
+                </a>
+                <?php endif; ?>
+            </div>
+
+            <!-- Overtime Request System -->
+            <a href="#overtimeSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['overtime']); ?>
+                <i class="fas fa-business-time me-2"></i> OT หลังเลิกงาน
+            </a>
+            <div class="collapse sidebar-submenu <?php echo (isActive('overtime_request.php') || isActive('overtime_history.php') || isActive('overtime_approvals.php')) ? 'show' : ''; ?>" id="overtimeSubmenu" data-bs-parent="#sidebarMenu">
+                <a href="overtime_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('overtime_request.php'); ?>">
+                    <small>ส่งคำขอ OT</small>
+                </a>
+                <a href="overtime_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('overtime_history.php'); ?>">
+                    <small>ประวัติคำขอ OT</small>
+                </a>
+                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
+                <a href="overtime_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('overtime_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['overtime']); ?>
+                    <small>อนุมัติ OT</small>
                 </a>
                 <?php endif; ?>
             </div>

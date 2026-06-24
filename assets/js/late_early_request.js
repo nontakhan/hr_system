@@ -80,7 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getSelectedTimeRequestType() {
-        return form?.querySelector('input[name="time_request_type"]:checked')?.value || '';
+        if (window.timeRequestFixedType) {
+            return window.timeRequestFixedType;
+        }
+        return form?.querySelector('input[name="time_request_type"]:checked')?.value
+            || form?.querySelector('input[name="time_request_type"]')?.value
+            || '';
     }
 
     function isOvertimeRequest() {
@@ -124,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.status === 'success') {
                 await Swal.fire('ส่งคำขอแล้ว', result.message, 'success');
                 form.reset();
+                syncTimeRequestFields();
                 latestCalculation = null;
                 document.getElementById('timeRequestCalculation')?.classList.add('d-none');
                 loadTimeRequestHistory();
@@ -145,7 +151,9 @@ async function loadTimeRequestHistory() {
     tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">กำลังโหลดข้อมูล...</td></tr>';
 
     try {
-        const response = await fetch('api/late_early_request_api.php?action=history');
+        const params = new URLSearchParams({ action: 'history' });
+        params.set('time_request_type', window.timeRequestHistoryType || 'late_early');
+        const response = await fetch(`api/late_early_request_api.php?${params.toString()}`);
         const result = await response.json();
         if (result.status !== 'success') {
             tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${escapeHtml(result.message || 'โหลดข้อมูลไม่สำเร็จ')}</td></tr>`;

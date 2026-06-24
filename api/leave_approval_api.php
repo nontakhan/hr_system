@@ -31,6 +31,7 @@ try {
     if ($method === 'GET') {
         $type = $_GET['type'] ?? 'pending';
         $requestUnitFilter = $_GET['request_unit'] ?? 'day';
+        $timeRequestTypeFilter = leaveApprovalNormalizeTimeRequestTypeFilter($_GET['time_request_type'] ?? '');
         $scopeClause = hrScopeBuildEmployeeWhereClause($my_role, hrScopeCurrentSessionScopes(), 'e');
 
                 $sql = "SELECT lr.*,
@@ -55,6 +56,11 @@ try {
 
         if ($requestUnitFilter === 'hour') {
             $sql .= " AND lr.request_unit = 'hour' AND lr.time_request_type IS NOT NULL ";
+            if ($timeRequestTypeFilter === 'overtime_after_work') {
+                $sql .= " AND lr.time_request_type = 'overtime_after_work' ";
+            } elseif ($timeRequestTypeFilter === 'late_early') {
+                $sql .= " AND lr.time_request_type IN ('late_arrival','early_departure') ";
+            }
         } else {
             $sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL) ";
         }
@@ -101,6 +107,7 @@ try {
         $input = json_decode(file_get_contents('php://input'), true);
         $action = $input['action'] ?? '';
         $requestUnitFilter = $input['request_unit'] ?? 'day';
+        $timeRequestTypeFilter = leaveApprovalNormalizeTimeRequestTypeFilter($input['time_request_type'] ?? '');
         $req_id = (int)($input['request_id'] ?? 0);
         $reason = trim((string)($input['reason'] ?? ''));
 
@@ -121,6 +128,11 @@ try {
 
         if ($requestUnitFilter === 'hour') {
             $auth_sql .= " AND lr.request_unit = 'hour' AND lr.time_request_type IS NOT NULL";
+            if ($timeRequestTypeFilter === 'overtime_after_work') {
+                $auth_sql .= " AND lr.time_request_type = 'overtime_after_work'";
+            } elseif ($timeRequestTypeFilter === 'late_early') {
+                $auth_sql .= " AND lr.time_request_type IN ('late_arrival','early_departure')";
+            }
         } else {
             $auth_sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL)";
         }
@@ -272,6 +284,16 @@ function leaveApprovalAttachOvertimeScanDetails(mysqli $mysqli, array $rows) {
     }
     unset($row);
     return $rows;
+}
+
+function leaveApprovalNormalizeTimeRequestTypeFilter($value) {
+    if ($value === 'overtime_after_work') {
+        return 'overtime_after_work';
+    }
+    if ($value === 'late_early') {
+        return 'late_early';
+    }
+    return '';
 }
 
 function leaveApprovalFetchAttendanceCheckOut(mysqli $mysqli, $employeeId, $workDate) {

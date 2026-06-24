@@ -26,7 +26,17 @@ function getLeaveApprovalRequestUnit() {
     return window.leaveApprovalRequestUnit === 'hour' ? 'hour' : 'day';
 }
 
+function getLeaveApprovalTimeRequestType() {
+    if (window.leaveApprovalTimeRequestType === 'overtime_after_work') {
+        return 'overtime_after_work';
+    }
+    return window.leaveApprovalTimeRequestType === 'late_early' ? 'late_early' : '';
+}
+
 function getLeaveApprovalRequestLabel() {
+    if (getLeaveApprovalTimeRequestType() === 'overtime_after_work') {
+        return 'คำขอ OT';
+    }
     return getLeaveApprovalRequestUnit() === 'hour' ? 'คำขอเวลา' : 'การลา';
 }
 
@@ -54,6 +64,8 @@ async function loadPendingLeaves() {
             type: 'pending',
             request_unit: getLeaveApprovalRequestUnit(),
         });
+        const timeRequestType = getLeaveApprovalTimeRequestType();
+        if (timeRequestType) params.set('time_request_type', timeRequestType);
         const response = await fetch(`api/leave_approval_api.php?${params.toString()}`);
         const res = await response.json();
 
@@ -151,6 +163,8 @@ async function loadHistoryLeaves() {
             type: 'history',
             request_unit: getLeaveApprovalRequestUnit(),
         });
+        const timeRequestType = getLeaveApprovalTimeRequestType();
+        if (timeRequestType) params.set('time_request_type', timeRequestType);
         const response = await fetch(`api/leave_approval_api.php?${params.toString()}`);
         const res = await response.json();
 
@@ -308,6 +322,7 @@ async function handleSubmitApproval(e) {
     const action = formData.get('action_type'); // approve / reject
     const data = Object.fromEntries(formData.entries());
     data.request_unit = getLeaveApprovalRequestUnit();
+    data.time_request_type = getLeaveApprovalTimeRequestType();
     
     // เปลี่ยน key ให้ตรงกับ API ที่คาดหวัง
     data.action = action; 

@@ -1,7 +1,4 @@
 <?php
-/*
- * หน้าอนุมัติคำขอเวลา (มาสาย/ออกก่อนเวลา)
- */
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php';
 
@@ -10,18 +7,18 @@ if (!in_array($_SESSION['role'], ['manager', 'hr', 'admin'])) {
     exit();
 }
 
-$page_title = "อนุมัติคำขอเวลา";
+$page_title = "อนุมัติ OT หลังเลิกงาน";
 require_once 'includes/header.php';
 ?>
 <script>
 window.leaveApprovalRequestUnit = 'hour';
-window.leaveApprovalTimeRequestType = 'late_early';
+window.leaveApprovalTimeRequestType = 'overtime_after_work';
 </script>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800">อนุมัติคำขอเวลา</h1>
-        <p class="text-muted small">รายการขอมาสาย/ออกก่อนเวลาจากพนักงานในสังกัดของคุณ</p>
+        <h1 class="h3 mb-0 text-gray-800">อนุมัติ OT หลังเลิกงาน</h1>
+        <p class="text-muted small">รายการขอ OT หลังเลิกงานจากพนักงาน พร้อมผลสแกนออกสำหรับ HR ตรวจสอบ</p>
     </div>
 </div>
 
@@ -50,7 +47,7 @@ window.leaveApprovalTimeRequestType = 'late_early';
                                 <th>ประเภทคำขอ</th>
                                 <th>วันที่ขอ</th>
                                 <th>จำนวนเวลา</th>
-                                <th>เหตุผล/เอกสาร</th>
+                                <th>เหตุผล/ผลสแกน</th>
                                 <th style="width: 180px;">จัดการ</th>
                             </tr>
                         </thead>
