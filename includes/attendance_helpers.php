@@ -360,6 +360,20 @@ function attendanceBuildApprovedLeaveMap(array $leaveRows, $month) {
     return $leaves;
 }
 
+function attendanceFormatHourMinuteDuration($minutes) {
+    $minutes = max(0, (int)$minutes);
+    $hours = intdiv($minutes, 60);
+    $remaining = $minutes % 60;
+    $parts = [];
+    if ($hours > 0) {
+        $parts[] = $hours . ' ชม.';
+    }
+    if ($remaining > 0 || !$parts) {
+        $parts[] = $remaining . ' นาที';
+    }
+    return implode(' ', $parts);
+}
+
 function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
     $start = new DateTimeImmutable($month . '-01');
     $end = $start->modify('last day of this month');
@@ -377,10 +391,20 @@ function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
 
         $workDate = $requestDate->format('Y-m-d');
         $type = $row['time_request_type'] ?? '';
-        $minutes = max(1, min(60, (int)($row['request_minutes'] ?? 60)));
-        $label = $type === 'early_departure'
-            ? 'ขอออกก่อน ' . $minutes . ' นาที'
-            : 'ขอมาสาย ' . $minutes . ' นาที';
+        $rawApproved = isset($row['approved_request_minutes']) && $row['approved_request_minutes'] !== null
+            ? (int)$row['approved_request_minutes']
+            : 0;
+        $minutes = $rawApproved > 0 ? $rawApproved : (int)($row['request_minutes'] ?? 0);
+
+        if ($type === 'overtime_after_work') {
+            $minutes = max(1, $minutes);
+            $label = 'OT หลังเลิกงาน ' . attendanceFormatHourMinuteDuration($minutes);
+        } else {
+            $minutes = max(1, min(60, $minutes ?: 60));
+            $label = $type === 'early_departure'
+                ? 'ขอออกก่อน ' . $minutes . ' นาที'
+                : 'ขอมาสาย ' . $minutes . ' นาที';
+        }
 
         if (!isset($requests[$workDate])) {
             $requests[$workDate] = [];
@@ -389,6 +413,41 @@ function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
     }
 
     return $requests;
+}
+
+function attendanceCalculateOvertimeAfterWorkMinutes($workDate, $shiftEndTime, $checkOutTime, $requestedMinutes) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
+        return ['valid' => false, 'message' => 'รูปแบบวันที่ไม่ถูกต้อง', 'eligible_minutes' => 0, 'approved_minutes' => 0];
+    }
+
+    $shiftEnd = attendanceNormalizeTime($shiftEndTime ?? '');
+    if ($shiftEnd === null) {
+        return ['valid' => false, 'message' => 'ยังไม่ได้ตั้งค่าเวลาเลิกกะ', 'eligible_minutes' => 0, 'approved_minutes' => 0];
+    }
+
+    $checkOut = attendanceNormalizeTime($checkOutTime ?? '');
+    if ($checkOut === null) {
+        return ['valid' => false, 'message' => 'ต้องมีผลสแกนออกก่อนอนุมัติโอที', 'eligible_minutes' => 0, 'approved_minutes' => 0];
+    }
+
+    $requested = (int)$requestedMinutes;
+    if ($requested < 1) {
+        return ['valid' => false, 'message' => 'จำนวนเวลาที่ขอโอทีไม่ถูกต้อง', 'eligible_minutes' => 0, 'approved_minutes' => 0];
+    }
+
+    $endTs = strtotime($workDate . ' ' . $shiftEnd);
+    $outTs = strtotime($workDate . ' ' . $checkOut);
+    $eligible = (int)ceil(($outTs - $endTs) / 60);
+    if ($eligible < 1) {
+        return ['valid' => false, 'message' => 'ผลสแกนออกไม่เกินเวลาเลิกงาน จึงอนุมัติโอทีไม่ได้', 'eligible_minutes' => 0, 'approved_minutes' => 0];
+    }
+
+    return [
+        'valid' => true,
+        'message' => '',
+        'eligible_minutes' => $eligible,
+        'approved_minutes' => min($requested, $eligible),
+    ];
 }
 
 function attendanceCalculateTimeRequestMinutes($timeRequestType, $workDate, $requestedTime, array $shift) {
