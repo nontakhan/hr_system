@@ -1,0 +1,68 @@
+<?php
+$root = dirname(__DIR__);
+
+function assert_contains_text(string $haystack, string $needle, string $message): void {
+    if (strpos($haystack, $needle) === false) {
+        fwrite(STDERR, "FAIL: {$message}\nMissing: {$needle}\n");
+        exit(1);
+    }
+}
+
+function assert_not_contains_text(string $haystack, string $needle, string $message): void {
+    if (strpos($haystack, $needle) !== false) {
+        fwrite(STDERR, "FAIL: {$message}\nUnexpected: {$needle}\n");
+        exit(1);
+    }
+}
+
+function read_required(string $path): string {
+    if (!is_file($path)) {
+        fwrite(STDERR, "FAIL: Missing file {$path}\n");
+        exit(1);
+    }
+    return file_get_contents($path);
+}
+
+$api = read_required($root . '/api/employee_warning_api.php');
+$helper = read_required($root . '/includes/employee_warning_helpers.php');
+$hrPage = read_required($root . '/employee_warnings.php');
+$myPage = read_required($root . '/my_warnings.php');
+$js = read_required($root . '/assets/js/employee_warnings.js');
+$header = read_required($root . '/includes/header.php');
+
+assert_contains_text($hrPage, "in_array(\$_SESSION['role'], ['admin', 'hr']", 'HR page must restrict access to admin/hr');
+assert_contains_text($hrPage, 'employeeWarningMonth', 'HR page must expose a month selector');
+assert_contains_text($hrPage, 'employeeWarningForm', 'HR page must expose create warning form');
+assert_contains_text($hrPage, 'warningTypeForm', 'HR page must expose warning type management form');
+
+assert_contains_text($myPage, "\$_SESSION['employee_id']", 'Employee page must use the session employee id');
+assert_not_contains_text($myPage, "\$_GET['employee_id']", 'Employee page must not read employee id from URL');
+assert_not_contains_text($myPage, "\$_GET['id']", 'Employee page must not read id from URL');
+assert_contains_text($myPage, 'myWarningMonth', 'Employee page must expose a month selector');
+
+foreach ([
+    'monthly_summary',
+    'employee_month_details',
+    'create_warning',
+    'get_warning_types',
+    'create_warning_type',
+    'update_warning_type',
+    'delete_warning_type',
+    'my_monthly_warnings',
+] as $action) {
+    assert_contains_text($api, $action, "API must expose {$action}");
+}
+
+assert_contains_text($api, "in_array(\$role, ['admin', 'hr']", 'API must gate HR/admin actions');
+assert_contains_text($api, "\$_SESSION['employee_id']", 'API self-service action must use session employee id');
+assert_contains_text($helper, 'CREATE TABLE IF NOT EXISTS warning_types', 'Helper must create warning_types table');
+assert_contains_text($helper, 'CREATE TABLE IF NOT EXISTS employee_warnings', 'Helper must create employee_warnings table');
+assert_contains_text($helper, 'employeeWarningDeleteType', 'Helper must include protected delete function');
+assert_contains_text($helper, 'SELECT id FROM employee_warnings WHERE warning_type_id = ?', 'Delete must check existing warning history');
+
+assert_contains_text($js, 'initEmployeeWarningsAdminPage', 'JS must initialize HR/admin page');
+assert_contains_text($js, 'initMyWarningsPage', 'JS must initialize employee page');
+assert_contains_text($header, 'employee_warnings.php', 'Sidebar must link HR/admin warning page');
+assert_contains_text($header, 'my_warnings.php', 'Sidebar must link employee warning page');
+
+echo "employee warnings contract ok\n";
