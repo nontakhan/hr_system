@@ -19,8 +19,9 @@ function approvalBadgeNormalizeCounts(array $counts) {
         'time_request' => max(0, (int)($counts['time_request'] ?? 0)),
         'overtime' => max(0, (int)($counts['overtime'] ?? 0)),
         'day_swap' => max(0, (int)($counts['day_swap'] ?? 0)),
+        'training' => max(0, (int)($counts['training'] ?? 0)),
     ];
-    $normalized['total'] = $normalized['leave'] + $normalized['time_request'] + $normalized['overtime'] + $normalized['day_swap'];
+    $normalized['total'] = $normalized['leave'] + $normalized['time_request'] + $normalized['overtime'] + $normalized['day_swap'] + $normalized['training'];
     return $normalized;
 }
 
@@ -36,12 +37,16 @@ function approvalBadgeFetchCounts(mysqli $mysqli, $role, $employeeId, array $sco
     if (function_exists('daySwapEnsureTable')) {
         daySwapEnsureTable($mysqli);
     }
+    if (function_exists('trainingRequestEnsureTable')) {
+        trainingRequestEnsureTable($mysqli);
+    }
 
     return approvalBadgeNormalizeCounts([
         'leave' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'day', $stages),
         'time_request' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'hour', $stages, 'late_early'),
         'overtime' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'hour', $stages, 'overtime_after_work'),
         'day_swap' => approvalBadgeCountDaySwapRequests($mysqli, $role, (int)$employeeId, $scopes, $stages),
+        'training' => approvalBadgeCountTrainingRequests($mysqli, $role, (int)$employeeId, $scopes, $stages),
     ]);
 }
 
@@ -74,6 +79,19 @@ function approvalBadgeCountDaySwapRequests(mysqli $mysqli, $role, $employeeId, a
     $params = [];
 
     approvalBadgeAppendRoleScope($sql, $types, $params, $role, $employeeId, $scopes, 're');
+    return approvalBadgeFetchTotal($mysqli, $sql, $types, $params);
+}
+
+function approvalBadgeCountTrainingRequests(mysqli $mysqli, $role, $employeeId, array $scopes, array $stages) {
+    $stageList = approvalBadgeSqlStringList($stages);
+    $sql = "SELECT COUNT(*) AS total
+            FROM training_requests tr
+            JOIN employees e ON tr.employee_id = e.id
+            WHERE tr.status IN ($stageList)";
+    $types = '';
+    $params = [];
+
+    approvalBadgeAppendRoleScope($sql, $types, $params, $role, $employeeId, $scopes, 'e');
     return approvalBadgeFetchTotal($mysqli, $sql, $types, $params);
 }
 

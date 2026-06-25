@@ -24,12 +24,13 @@ function renderSidebarApprovalBadge($count) {
 
 $displayName = trim($_SESSION['full_name'] ?? '') ?: ($_SESSION['username'] ?? '');
 $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['role'] ?? '');
-$approvalBadgeCounts = ['leave' => 0, 'time_request' => 0, 'overtime' => 0, 'day_swap' => 0, 'total' => 0];
+$approvalBadgeCounts = ['leave' => 0, 'time_request' => 0, 'overtime' => 0, 'day_swap' => 0, 'training' => 0, 'total' => 0];
 
 if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager', 'hr', 'admin'], true)) {
     require_once __DIR__ . '/db_connect.php';
     require_once __DIR__ . '/leave_helpers.php';
     require_once __DIR__ . '/day_swap_helpers.php';
+    require_once __DIR__ . '/training_request_helpers.php';
     require_once __DIR__ . '/hr_scope_helpers.php';
     require_once __DIR__ . '/approval_badge_helpers.php';
 
@@ -159,6 +160,26 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <a href="day_swap_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('day_swap_approvals.php'); ?>">
                     <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
                     <small>อนุมัติสลับวันหยุด</small>
+                </a>
+                <?php endif; ?>
+            </div>
+
+            <!-- Training Request System (Dropdown) -->
+            <a href="#trainingSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
+                <i class="fas fa-graduation-cap me-2"></i> อบรม
+            </a>
+            <div class="collapse sidebar-submenu <?php echo (isActive('training_request.php') || isActive('training_history.php') || isActive('training_approvals.php')) ? 'show' : ''; ?>" id="trainingSubmenu" data-bs-parent="#sidebarMenu">
+                <a href="training_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('training_request.php'); ?>">
+                    <small>ขอไปอบรม</small>
+                </a>
+                <a href="training_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('training_history.php'); ?>">
+                    <small>ประวัติคำขออบรม</small>
+                </a>
+                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
+                <a href="training_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('training_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
+                    <small>อนุมัติคำขออบรม</small>
                 </a>
                 <?php endif; ?>
             </div>

@@ -252,6 +252,22 @@ assertSameValue('Annual leave', $leaveMap['2026-01-05'], 'Approved leave map sho
 assertSameValue('Annual leave', $leaveMap['2026-01-06'], 'Approved leave map should include the last day of a leave range.');
 assertSameValue(false, isset($leaveMap['2026-02-01']), 'Approved leave map should not include dates outside the report month.');
 
+$trainingMap = attendanceBuildApprovedTrainingMap([
+    [
+        'start_date' => '2026-01-12',
+        'end_date' => '2026-01-13',
+        'course_name' => 'Safety Training',
+    ],
+    [
+        'start_date' => '2026-02-01',
+        'end_date' => '2026-02-01',
+        'course_name' => 'Next month training',
+    ],
+], '2026-01');
+assertSameValue('Safety Training', $trainingMap['2026-01-12'], 'Approved training map should include the first day of a training request.');
+assertSameValue('Safety Training', $trainingMap['2026-01-13'], 'Approved training map should include the last day of a training request.');
+assertSameValue(false, isset($trainingMap['2026-02-01']), 'Approved training map should not include dates outside the report month.');
+
 $hourlyRequestMap = attendanceBuildApprovedHourlyRequestMap([
     [
         'start_date' => '2026-01-07',
@@ -357,6 +373,23 @@ $approvedLeave = attendanceEvaluateStatus(
 );
 assertSameValue('leave', $approvedLeave['status'], 'Approved leave should be shown instead of absent.');
 assertSameValue('Annual leave', $approvedLeave['leave_name'], 'Approved leave type should be returned for reports.');
+
+$approvedTraining = attendanceEvaluateStatus(
+    '2026-01-12',
+    null,
+    null,
+    [
+        'start_time' => '07:30:00',
+        'end_time' => '17:00:00',
+        'late_tolerance_mins' => 15,
+        'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+    ],
+    [],
+    [],
+    $trainingMap
+);
+assertSameValue('training', $approvedTraining['status'], 'Approved training should be shown instead of absent.');
+assertSameValue('Safety Training', $approvedTraining['training_name'], 'Approved training course should be returned for reports.');
 
 $specialHoliday = attendanceEvaluateStatus(
     '2026-01-05',

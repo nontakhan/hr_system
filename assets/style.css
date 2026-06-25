@@ -974,6 +974,7 @@ canvas#deptChart {
 .attendance-legend-dot.status-late { background: #fed7aa; }
 .attendance-legend-dot.status-absent { background: #dc3545; }
 .attendance-legend-dot.status-leave { background: #0dcaf0; }
+.attendance-legend-dot.status-training { background: #8b5cf6; }
 .attendance-legend-dot.status-holiday {
     background: #e5e7eb;
     border-color: #9ca3af;
@@ -1159,6 +1160,10 @@ canvas#deptChart {
     background: #a5f3fc;
 }
 
+#attendanceCalendar .attendance-day-training {
+    background: #ddd6fe;
+}
+
 #attendanceCalendar .attendance-day-present.fc-day-today,
 #attendanceCalendar .attendance-day-late.fc-day-today,
 #attendanceCalendar .attendance-day-absent.fc-day-today,
@@ -1166,7 +1171,8 @@ canvas#deptChart {
 #attendanceCalendar .attendance-day-missing_out.fc-day-today,
 #attendanceCalendar .attendance-day-holiday.fc-day-today,
 #attendanceCalendar .attendance-day-company_holiday.fc-day-today,
-#attendanceCalendar .attendance-day-leave.fc-day-today {
+#attendanceCalendar .attendance-day-leave.fc-day-today,
+#attendanceCalendar .attendance-day-training.fc-day-today {
     box-shadow: inset 0 0 0 2px rgba(17, 24, 39, 0.08);
 }
 
@@ -1348,6 +1354,12 @@ canvas#deptChart {
     background: #bfdbfe;
     color: #1e3a8a;
     border: 1px solid #60a5fa;
+}
+
+.attendance-summary-card-training {
+    background: #ddd6fe;
+    color: #4c1d95;
+    border: 1px solid #8b5cf6;
 }
 
 .attendance-import-summary-card {

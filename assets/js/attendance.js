@@ -958,6 +958,7 @@ function renderAttendanceReport(res) {
             ${attendanceSummaryCard('ขาด', counts.absent || 0, 'danger', 'fa-circle-xmark')}
             ${attendanceSummaryCard('สแกนไม่ครบ', incompleteTotal, 'attendance-incomplete', 'fa-triangle-exclamation')}
             ${attendanceSummaryCard('ลา', counts.leave || 0, 'info', 'fa-file-signature')}
+            ${attendanceSummaryCard('อบรม', counts.training || 0, 'attendance-training', 'fa-graduation-cap')}
             ${attendanceSummaryCard('วันหยุดปกติ', counts.regular_holiday || 0, 'attendance-holiday', 'fa-calendar-day')}
             ${attendanceSummaryCard('วันหยุดบริษัท', counts.company_holiday || 0, 'attendance-company-holiday', 'fa-building-circle-check')}
         </div>`;
@@ -966,7 +967,7 @@ function renderAttendanceReport(res) {
 }
 
 function countAttendanceReportStatuses(rows) {
-    const counts = { present: 0, late: 0, absent: 0, missing_in: 0, missing_out: 0, holiday: 0, regular_holiday: 0, company_holiday: 0, leave: 0 };
+    const counts = { present: 0, late: 0, absent: 0, missing_in: 0, missing_out: 0, holiday: 0, regular_holiday: 0, company_holiday: 0, leave: 0, training: 0 };
 
     rows.forEach(row => {
         counts[row.status] = (counts[row.status] || 0) + 1;
@@ -988,6 +989,7 @@ function attendanceSummaryCard(label, count, tone, icon) {
         'attendance-incomplete': ['attendance-summary-card-incomplete', ''],
         'attendance-holiday': ['attendance-summary-card-holiday', ''],
         'attendance-company-holiday': ['attendance-summary-card-company-holiday', ''],
+        'attendance-training': ['attendance-summary-card-training', ''],
     };
     if (customTones[tone]) {
         const [cardClass] = customTones[tone];
@@ -1032,6 +1034,7 @@ function attendanceStatusBadge(status, label) {
         missing_out: 'bg-secondary',
         holiday: 'bg-light text-dark border',
         leave: 'bg-info text-dark',
+        training: 'bg-primary',
     };
     return `<span class="badge ${classes[status] || 'bg-secondary'}">${label}</span>`;
 }
@@ -1159,12 +1162,13 @@ function attendanceCalendarStatusColor(status) {
         holiday: { background: '#e5e7eb', border: '#9ca3af', text: '#374151' },
         company_holiday: { background: '#bfdbfe', border: '#60a5fa', text: '#1e3a8a' },
         leave: { background: '#a5f3fc', border: '#22d3ee', text: '#164e63' },
+        training: { background: '#ddd6fe', border: '#8b5cf6', text: '#4c1d95' },
     };
     return colors[status] || { background: '#f3f4f6', border: '#d1d5db', text: '#374151' };
 }
 
 function buildAttendanceCalendarDetails(row) {
-    const note = row.holiday_name || row.leave_name || '-';
+    const note = row.holiday_name || row.leave_name || row.training_name || '-';
     const hourly = attendanceHourlyRequestLabels(row);
     const hourlyHtml = hourly.length
         ? `<div class="attendance-hourly-requests mt-3">

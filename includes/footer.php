@@ -34,6 +34,7 @@
 <script src="assets/js/company_holidays.js"></script>
 <script src="assets/js/holiday_calendar.js"></script>
 <script src="assets/js/day_swap.js"></script>
+<script src="assets/js/training_request.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/training_request.js'); ?>"></script>
 
 <!-- (NEW) Script สำหรับ Toggle Sidebar -->
 <script>

@@ -20,6 +20,7 @@ try {
     require_once '../includes/day_swap_helpers.php';
     require_once '../includes/hr_scope_helpers.php';
     require_once '../includes/employee_shift_assignment_helpers.php';
+    require_once '../includes/training_request_helpers.php';
 
     if (!isset($_SESSION['user_id'])) sendJsonError('Login Required');
 
@@ -400,6 +401,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     $shiftOverrides = fetchEmployeeShiftOverridesForMonth($mysqli, (int)$employee['id'], $month);
     $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
     $leaves = fetchApprovedLeavesForMonth($mysqli, (int)$employee['id'], $month);
+    $trainings = fetchApprovedTrainingRequestsForMonth($mysqli, (int)$employee['id'], $month);
     $hourlyRequests = fetchApprovedHourlyRequestsForMonth($mysqli, (int)$employee['id'], $month);
     $daySwaps = attendanceBuildApprovedDaySwapMap(fetchApprovedDaySwapsForMonth($mysqli, (int)$employee['id'], $month), (int)$employee['id'], $month);
 
@@ -413,7 +415,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
         if (isset($daySwaps[$workDate])) {
             $effectiveShift = attendanceApplyDayTypeOverride($effectiveShift, $workDate, $daySwaps[$workDate]);
         }
-        $status = attendanceEvaluateStatus($workDate, $record['check_in'], $record['check_out'], $effectiveShift, $holidays, $leaves);
+        $status = attendanceEvaluateStatus($workDate, $record['check_in'], $record['check_out'], $effectiveShift, $holidays, $leaves, $trainings);
         $rows[] = [
             'work_date' => $workDate,
             'day_name' => $date->format('D'),
@@ -426,6 +428,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
             'is_late' => $status['is_late'],
             'holiday_name' => $status['holiday_name'],
             'leave_name' => $status['leave_name'],
+            'training_name' => $status['training_name'],
             'day_swap_type' => $daySwaps[$workDate] ?? null,
             'hourly_requests' => $hourlyRequests[$workDate] ?? [],
             'has_override' => $record['has_override'],
@@ -506,6 +509,23 @@ function fetchApprovedLeavesForMonth($mysqli, $employeeId, $month) {
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     return attendanceBuildApprovedLeaveMap($rows, $month);
+}
+
+function fetchApprovedTrainingRequestsForMonth($mysqli, $employeeId, $month) {
+    trainingRequestEnsureTable($mysqli);
+    $start = $month . '-01';
+    $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+    $stmt = $mysqli->prepare("SELECT start_date, end_date, course_name
+                              FROM training_requests
+                              WHERE employee_id = ?
+                                AND status = 'approved'
+                                AND start_date <= ?
+                                AND end_date >= ?
+                              ORDER BY start_date, id");
+    $stmt->bind_param('iss', $employeeId, $end, $start);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    return attendanceBuildApprovedTrainingMap($rows, $month);
 }
 
 function fetchApprovedHourlyRequestsForMonth($mysqli, $employeeId, $month) {
