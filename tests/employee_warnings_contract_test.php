@@ -64,5 +64,12 @@ assert_contains_text($js, 'initEmployeeWarningsAdminPage', 'JS must initialize H
 assert_contains_text($js, 'initMyWarningsPage', 'JS must initialize employee page');
 assert_contains_text($header, 'employee_warnings.php', 'Sidebar must link HR/admin warning page');
 assert_contains_text($header, 'my_warnings.php', 'Sidebar must link employee warning page');
+$adminWarningPos = strpos($header, 'employee_warnings.php');
+$employeeWarningPos = strpos($header, 'href="my_warnings.php"', $adminWarningPos);
+$warningElsePos = strpos($header, '<?php else : ?>', $adminWarningPos);
+if ($adminWarningPos === false || $employeeWarningPos === false || $warningElsePos === false || $employeeWarningPos > $warningElsePos) {
+    fwrite(STDERR, "FAIL: HR/admin warning menu must include my_warnings.php before the non-HR else branch\n");
+    exit(1);
+}
 
 echo "employee warnings contract ok\n";

@@ -189,6 +189,9 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             <a href="employee_warnings.php" class="list-group-item list-group-item-action bg-transparent <?php echo (isActive('employee_warnings.php') || isActive('my_warnings.php')) ? 'active' : ''; ?>">
                 <i class="fas fa-triangle-exclamation me-2"></i> ใบเตือนพนักงาน
             </a>
+            <a href="my_warnings.php" class="list-group-item list-group-item-action bg-transparent ps-5 <?php echo isActive('my_warnings.php'); ?>">
+                <small>ใบเตือนของฉัน</small>
+            </a>
             <?php else : ?>
             <a href="my_warnings.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('my_warnings.php'); ?>">
                 <i class="fas fa-triangle-exclamation me-2"></i> ใบเตือนของฉัน
