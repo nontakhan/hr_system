@@ -483,7 +483,7 @@ require_once 'includes/header.php';
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">วันที่อบรม <span class="text-danger">*</span></label>
-                            <input type="date" name="training_date" id="trainingDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+                            <input type="date" name="training_date" id="trainingDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>" data-native-date-picker="true">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">ชื่อหลักสูตร <span class="text-danger">*</span></label>
@@ -503,7 +503,7 @@ require_once 'includes/header.php';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">ใบรับรองหมดอายุ</label>
-                            <input type="date" name="certificate_expiry_date" id="trainingCertificateExpiryDate" class="form-control">
+                            <input type="date" name="certificate_expiry_date" id="trainingCertificateExpiryDate" class="form-control" data-native-date-picker="true">
                         </div>
                         <div class="col-12">
                             <label class="form-label">เอกสารแนบ/ใบประกาศ (ถ้ามี)</label>

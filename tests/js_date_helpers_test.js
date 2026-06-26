@@ -42,5 +42,7 @@ setupThaiDateInputs({
 });
 assertSame('date', nativeDateInput.type, 'Native date picker inputs should not be converted to text.');
 assertSame('text', thaiDateInput.type, 'Ordinary date inputs should still use Thai date text display.');
+setThaiDateInputValue(nativeDateInput, '03/01/2569');
+assertSame('2026-01-03', nativeDateInput.value, 'Native date picker inputs should receive Gregorian date values.');
 
 console.log('js_date_helpers_test passed');

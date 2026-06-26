@@ -118,7 +118,9 @@ function toGregorianDateInputValue(value) {
 function setThaiDateInputValue(input, value) {
     if (!input) return;
 
-    input.value = toThaiDateInputValue(value);
+    input.value = input.dataset?.nativeDatePicker === 'true'
+        ? toGregorianDateInputValue(value)
+        : toThaiDateInputValue(value);
 }
 
 function setupThaiDateInputs(root = document) {
