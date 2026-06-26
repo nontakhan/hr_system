@@ -71,5 +71,10 @@ if ($adminWarningPos === false || $employeeWarningPos === false || $warningElseP
     fwrite(STDERR, "FAIL: HR/admin warning menu must include my_warnings.php before the non-HR else branch\n");
     exit(1);
 }
+$adminWarningMenu = substr($header, $adminWarningPos, $warningElsePos - $adminWarningPos);
+assert_not_contains_text($adminWarningMenu, "isActive('employee_warnings.php') || isActive('my_warnings.php')", 'HR/admin warning parent must not become active on my_warnings.php');
+assert_not_contains_text($adminWarningMenu, 'href="my_warnings.php" class="list-group-item list-group-item-action bg-transparent ps-5', 'HR/admin my warnings menu must use normal sidebar sizing');
+assert_not_contains_text($adminWarningMenu, '<small>ใบเตือนของฉัน</small>', 'HR/admin my warnings menu label must not be smaller than other menu items');
+assert_contains_text($adminWarningMenu, '<i class="fas fa-user-shield me-2"></i> ใบเตือนของฉัน', 'HR/admin my warnings menu must include an icon');
 
 echo "employee warnings contract ok\n";
