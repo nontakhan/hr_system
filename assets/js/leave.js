@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalTitle.innerText = 'เพิ่มประเภทการลา';
                 if (form.hours_per_day) form.hours_per_day.value = '8';
                 if (form.hour_full_day_threshold) form.hour_full_day_threshold.value = '0';
+                if (form.vacation_min_months_before_leave) form.vacation_min_months_before_leave.value = '0';
+                if (form.is_actual_leave) form.is_actual_leave.checked = true;
                 toggleLeaveTypeCalculationFields();
             } else if (action === 'edit') {
                 modalTitle.innerText = 'แก้ไขประเภทการลา';
@@ -55,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.calculation_unit.checked = data.calculation_unit === 'hour';
                 form.hours_per_day.value = data.hours_per_day || 8;
                 form.hour_full_day_threshold.value = data.hour_full_day_threshold || 0;
+                form.vacation_min_months_before_leave.value = data.vacation_min_months_before_leave || 0;
+                form.is_actual_leave.checked = Number.parseInt(data.is_actual_leave ?? 1, 10) === 1;
                 document.getElementById('type_id').value = data.id;
                 toggleLeaveTypeCalculationFields();
             }
@@ -72,6 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
             data.calculation_unit = form.calculation_unit.checked ? 'hour' : 'day';
             data.hours_per_day = form.hours_per_day?.value || 8;
             data.hour_full_day_threshold = form.hour_full_day_threshold?.value || 0;
+            data.vacation_min_months_before_leave = form.vacation_min_months_before_leave?.value || 0;
+            data.is_actual_leave = form.is_actual_leave?.checked ? 1 : 0;
             data.action = id ? 'update_type' : 'create_type';
 
             try {
@@ -384,6 +390,14 @@ async function loadLeaveTypes() {
                 const thresholdBadge = isHourly && Number.parseFloat(item.hour_full_day_threshold || 0) > 0
                     ? `<span class="badge bg-light text-dark border">เกิน ${formatLeaveNumber(item.hour_full_day_threshold)} ชม. = 1 วัน</span>`
                     : '';
+                const minMonths = Number.parseInt(item.vacation_min_months_before_leave, 10) || 0;
+                const minMonthsBadge = minMonths > 0
+                    ? `<span class="badge bg-secondary">อายุงานครบ ${minMonths} เดือน</span>`
+                    : '';
+                const isActualLeave = Number.parseInt(item.is_actual_leave ?? 1, 10) === 1;
+                const actualLeaveBadge = isActualLeave
+                    ? '<span class="badge bg-success">แสดงในสรุปสิทธิ์ลา</span>'
+                    : '<span class="badge bg-secondary">ไม่ใช่การลา</span>';
                 
                 tbody.innerHTML += `
                     <tr>
@@ -398,7 +412,8 @@ async function loadLeaveTypes() {
                                 ${item.requires_file == 1 ? '<span class="badge bg-warning text-dark"><i class="fas fa-file-medical"></i> ต้องมีใบรับรอง</span>' : ''}
                                 ${hourlyBadge}
                                 ${thresholdBadge}
-                                ${item.requires_file != 1 && !isHourly ? '-' : ''}
+                                ${minMonthsBadge}
+                                ${actualLeaveBadge}
                             </div>
                         </td>
                         <td>

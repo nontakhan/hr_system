@@ -44,6 +44,8 @@ assertIncludes(overtimeHistoryPage, "window.timeRequestHistoryType = 'overtime_a
 assertIncludes(timeRequestScript, 'overtime_after_work', 'Time request script should handle after-work OT.');
 assertIncludes(leaveTypesPage, 'id="leavePolicyTable"', 'Leave settings should list saved policy records.');
 assertIncludes(leaveTypesPage, 'name="leave_max_requests_per_year"', 'Leave policy form should include a fiscal-year request limit input.');
+assertIncludes(leaveTypesPage, 'name="vacation_min_months_before_leave"', 'Leave policy form should include a vacation tenure threshold input.');
+assertIncludes(leaveTypesPage, 'name="is_actual_leave"', 'Leave type form should let admin mark which types are real leave for summary cards.');
 assertIncludes(leaveTypesPage, 'name="calculation_unit"', 'Leave type form should let admin choose hourly leave calculation.');
 assertIncludes(leaveTypesPage, 'name="hours_per_day"', 'Leave type form should configure how many hours equal one quota day.');
 assertIncludes(leaveTypesPage, 'name="hour_full_day_threshold"', 'Leave type form should configure when hourly leave counts as one full day.');
@@ -53,6 +55,8 @@ assertIncludes(leaveTypesPage, 'จำนวนวันลาที่ลาไ
 assertIncludes(leaveTypesPage, 'จำนวนวันลา/ปีงบ', 'Leave policy table should describe the annual quota as leave days.');
 assertIncludes(script, 'function renderLeaveTypeCards', 'Leave request JS should render leave type icon cards.');
 assertIncludes(leaveSettingsScript, 'function renderLeavePolicyRows', 'Leave settings JS should render saved policy rows.');
+assertIncludes(leaveSettingsScript, 'vacation_min_months_before_leave', 'Leave settings JS should save and render the vacation tenure threshold.');
+assertIncludes(leaveSettingsScript, 'is_actual_leave', 'Leave settings JS should save and render the real-leave summary flag.');
 assertIncludes(leaveSettingsScript, 'toggleLeaveTypeCalculationFields', 'Leave settings JS should toggle hourly calculation settings.');
 assertIncludes(script, 'function selectLeaveType', 'Leave request JS should select a leave type card and sync the hidden field.');
 assertIncludes(script, 'function isSelectedLeaveTypeHourly', 'Leave request JS should detect admin-configured hourly leave types.');
@@ -85,6 +89,8 @@ const historyApi = fs.readFileSync('api/leave_history_api.php', 'utf8');
 assertIncludes(requestApi, 'leaveDetectHourlyRequestType($row', 'Leave request API should filter late/early types out of leave options.');
 assertIncludes(requestApi, 'calculation_unit', 'Leave request API should expose leave type calculation unit.');
 assertIncludes(requestApi, 'leaveBuildHourlyLeavePayload', 'Leave request API should build quota-counting hourly leave payloads.');
+assertIncludes(requestApi, 'leaveBuildVacationEligibilityStatus', 'Leave request API should enforce the active vacation tenure threshold before saving vacation leave.');
+assertIncludes(requestApi, 'employees WHERE id = ?', 'Leave request API should check the employee start date for vacation eligibility.');
 assertIncludes(requestApi, 'เมนูคำขอเวลา', 'Leave request API should reject old late/early submissions.');
 assertNotIncludes(requestApi, "if ((int)$type_info['requires_file'] === 1)", 'Leave request API should not require an attachment just because the type is configured to show evidence upload.');
 assertIncludes(historyApi, "lr.request_unit <> 'hour'", 'Leave history API should exclude late/early hourly requests.');

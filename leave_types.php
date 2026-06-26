@@ -142,9 +142,21 @@ require_once 'includes/header.php';
                         <div class="form-text">ใส่ 0 หากไม่จำกัดจำนวนวัน</div>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">อายุงานขั้นต่ำก่อนลาประเภทนี้ได้ (เดือน)</label>
+                        <input type="number" name="vacation_min_months_before_leave" class="form-control" value="0" min="0">
+                        <div class="form-text">สำหรับลาพักผ่อน ใส่ 12 หากต้องการให้ลาได้เมื่อทำงานครบ 1 ปี หรือ 0 หากไม่จำกัด</div>
+                    </div>
+
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" name="calculation_unit" id="calculationUnitHour" value="hour">
                         <label class="form-check-label" for="calculationUnitHour">คิดการลาประเภทนี้เป็นรายชั่วโมง</label>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_actual_leave" id="isActualLeave" value="1" checked>
+                        <label class="form-check-label" for="isActualLeave">เป็นการลาจริง และแสดงใน summary card สิทธิ์ลา</label>
+                        <div class="form-text">เอาติ๊กออกสำหรับรายการที่ไม่ใช่ลา เช่น OT หลังเลิกงาน, ขอมาสาย, ขอออกก่อน</div>
                     </div>
 
                     <div class="row g-3 mb-3 d-none" id="hourlyCalculationSettings">

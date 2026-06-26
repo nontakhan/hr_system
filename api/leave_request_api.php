@@ -27,7 +27,7 @@ try {
         if ($action === 'get_leave_types') {
             leaveEnsureHourlyRequestTypes($mysqli);
             leaveEnsureLeaveTypeCalculationColumns($mysqli);
-            $sql = "SELECT id, type_name, days_per_year, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold FROM leave_types ORDER BY id ASC";
+            $sql = "SELECT id, type_name, days_per_year, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold, vacation_min_months_before_leave FROM leave_types ORDER BY id ASC";
             $result = $mysqli->query($sql);
             $types = array_values(array_filter($result->fetch_all(MYSQLI_ASSOC), function ($row) {
                 return leaveDetectHourlyRequestType($row['type_name'] ?? '') === null;
@@ -90,13 +90,35 @@ function submitLeaveRequest($mysqli, $data, $files) {
             throw new Exception('กรุณากรอกข้อมูลให้ครบถ้วน');
         }
         leaveEnsureLeaveTypeCalculationColumns($mysqli);
-        $stmt_type = $mysqli->prepare("SELECT type_name, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold FROM leave_types WHERE id = ?");
+        $stmt_type = $mysqli->prepare("SELECT type_name, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold, vacation_min_months_before_leave FROM leave_types WHERE id = ?");
         $stmt_type->bind_param('i', $type_id);
         $stmt_type->execute();
         $type_info = $stmt_type->get_result()->fetch_assoc();
         $stmt_type->close();
         if (!$type_info) {
             throw new Exception('Leave type not found');
+        }
+
+        if (leaveIsVacationLeaveType($type_info['type_name'] ?? '') && (int)($type_info['vacation_min_months_before_leave'] ?? 0) > 0) {
+            $stmt_employee = $mysqli->prepare("SELECT start_date FROM employees WHERE id = ? LIMIT 1");
+            if (!$stmt_employee) {
+                throw new Exception('Cannot prepare employee lookup');
+            }
+            $stmt_employee->bind_param('i', $emp_id);
+            $stmt_employee->execute();
+            $employee_info = $stmt_employee->get_result()->fetch_assoc();
+            $stmt_employee->close();
+
+            $eligibility = leaveBuildVacationEligibilityStatus(
+                $employee_info['start_date'] ?? null,
+                $start,
+                (int)$type_info['vacation_min_months_before_leave']
+            );
+            if (!$eligibility['eligible']) {
+                $requiredMonths = (int)$eligibility['required_months'];
+                $eligibleDate = $eligibility['eligible_date'] ? ' (เริ่มลาได้ตั้งแต่ ' . $eligibility['eligible_date'] . ')' : '';
+                throw new Exception('ลาพักผ่อนได้เมื่อทำงานครบ ' . $requiredMonths . ' เดือน' . $eligibleDate);
+            }
         }
 
         $timeRequestType = leaveDetectHourlyRequestType($type_info['type_name'] ?? '');

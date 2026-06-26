@@ -40,6 +40,7 @@ try {
                     'policies' => leaveFetchPolicies($mysqli),
                     'fiscal_year_start_month' => $activePolicy['fiscal_year_start_month'],
                     'leave_max_requests_per_year' => $activePolicy['leave_max_requests_per_year'],
+                    'vacation_min_months_before_leave' => $activePolicy['vacation_min_months_before_leave'],
                     'current_fiscal_year' => $activePolicy['current_fiscal_year'],
                 ],
             ]);
@@ -62,10 +63,10 @@ try {
         if ($action === 'create_type') {
             leaveEnsureLeaveTypeCalculationColumns($mysqli);
             $calculation = leaveNormalizeLeaveTypeCalculation($input);
-            $sql = "INSERT INTO leave_types (type_name, days_per_year, description, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO leave_types (type_name, days_per_year, description, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold, vacation_min_months_before_leave, is_actual_leave) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $mysqli->prepare($sql);
             $req_file = !empty($input['requires_file']) ? 1 : 0;
-            $stmt->bind_param('sisisdd', $input['type_name'], $input['days_per_year'], $input['description'], $req_file, $calculation['calculation_unit'], $calculation['hours_per_day'], $calculation['hour_full_day_threshold']);
+            $stmt->bind_param('sisisddii', $input['type_name'], $input['days_per_year'], $input['description'], $req_file, $calculation['calculation_unit'], $calculation['hours_per_day'], $calculation['hour_full_day_threshold'], $calculation['vacation_min_months_before_leave'], $calculation['is_actual_leave']);
             
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'เพิ่มประเภทการลาสำเร็จ']);
@@ -76,10 +77,10 @@ try {
         elseif ($action === 'update_type') {
             leaveEnsureLeaveTypeCalculationColumns($mysqli);
             $calculation = leaveNormalizeLeaveTypeCalculation($input);
-            $sql = "UPDATE leave_types SET type_name=?, days_per_year=?, description=?, requires_file=?, calculation_unit=?, hours_per_day=?, hour_full_day_threshold=? WHERE id=?";
+            $sql = "UPDATE leave_types SET type_name=?, days_per_year=?, description=?, requires_file=?, calculation_unit=?, hours_per_day=?, hour_full_day_threshold=?, vacation_min_months_before_leave=?, is_actual_leave=? WHERE id=?";
             $stmt = $mysqli->prepare($sql);
             $req_file = !empty($input['requires_file']) ? 1 : 0;
-            $stmt->bind_param('sisisddi', $input['type_name'], $input['days_per_year'], $input['description'], $req_file, $calculation['calculation_unit'], $calculation['hours_per_day'], $calculation['hour_full_day_threshold'], $input['id']);
+            $stmt->bind_param('sisisddiii', $input['type_name'], $input['days_per_year'], $input['description'], $req_file, $calculation['calculation_unit'], $calculation['hours_per_day'], $calculation['hour_full_day_threshold'], $calculation['vacation_min_months_before_leave'], $calculation['is_actual_leave'], $input['id']);
             
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'แก้ไขข้อมูลสำเร็จ']);
@@ -93,6 +94,7 @@ try {
                 'policy_name' => $input['policy_name'] ?? '',
                 'fiscal_year_start_month' => $input['fiscal_year_start_month'] ?? 10,
                 'leave_max_requests_per_year' => $input['leave_max_requests_per_year'] ?? 0,
+                'vacation_min_months_before_leave' => $input['vacation_min_months_before_leave'] ?? 0,
                 'is_active' => $input['is_active'] ?? 0,
             ]);
             echo json_encode([
@@ -103,6 +105,7 @@ try {
                     'policies' => leaveFetchPolicies($mysqli),
                     'fiscal_year_start_month' => $activePolicy['fiscal_year_start_month'],
                     'leave_max_requests_per_year' => $activePolicy['leave_max_requests_per_year'],
+                    'vacation_min_months_before_leave' => $activePolicy['vacation_min_months_before_leave'],
                     'current_fiscal_year' => $activePolicy['current_fiscal_year'],
                 ],
             ]);
@@ -118,6 +121,7 @@ try {
                     'policies' => leaveFetchPolicies($mysqli),
                     'fiscal_year_start_month' => $activePolicy['fiscal_year_start_month'],
                     'leave_max_requests_per_year' => $activePolicy['leave_max_requests_per_year'],
+                    'vacation_min_months_before_leave' => $activePolicy['vacation_min_months_before_leave'],
                     'current_fiscal_year' => $activePolicy['current_fiscal_year'],
                 ],
             ]);

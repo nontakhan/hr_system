@@ -86,7 +86,7 @@ function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
 
         $daysPerYear = 0;
         $requiresFile = 0;
-        $insert = $mysqli->prepare("INSERT INTO leave_types (type_name, days_per_year, description, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold) VALUES (?, ?, ?, ?, 'hour', 1.00, 0.00)");
+        $insert = $mysqli->prepare("INSERT INTO leave_types (type_name, days_per_year, description, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold, is_actual_leave) VALUES (?, ?, ?, ?, 'hour', 1.00, 0.00, 0)");
         if (!$insert) {
             throw new RuntimeException('Cannot prepare hourly leave type insert');
         }
@@ -118,6 +118,17 @@ function leaveEnsureLeaveTypeCalculationColumns(mysqli $mysqli) {
     if (!isset($columns['hour_full_day_threshold'])) {
         $mysqli->query("ALTER TABLE leave_types ADD COLUMN hour_full_day_threshold DECIMAL(5,2) NOT NULL DEFAULT 0.00 AFTER hours_per_day");
     }
+
+    if (!isset($columns['vacation_min_months_before_leave'])) {
+        $mysqli->query("ALTER TABLE leave_types ADD COLUMN vacation_min_months_before_leave INT UNSIGNED NOT NULL DEFAULT 0 AFTER hour_full_day_threshold");
+    }
+
+    if (!isset($columns['is_actual_leave'])) {
+        $mysqli->query("ALTER TABLE leave_types ADD COLUMN is_actual_leave TINYINT(1) NOT NULL DEFAULT 1 AFTER vacation_min_months_before_leave");
+        $mysqli->query("UPDATE leave_types
+                        SET is_actual_leave = 0
+                        WHERE type_name IN ('ขอมาสาย', 'ขอออกก่อน', 'OT หลังเลิกงาน')");
+    }
 }
 
 function leaveNormalizeLeaveTypeCalculation(array $input) {
@@ -141,6 +152,8 @@ function leaveNormalizeLeaveTypeCalculation(array $input) {
         'calculation_unit' => $unit,
         'hours_per_day' => round($hoursPerDay, 2),
         'hour_full_day_threshold' => round($threshold, 2),
+        'vacation_min_months_before_leave' => max(0, (int)($input['vacation_min_months_before_leave'] ?? 0)),
+        'is_actual_leave' => !empty($input['is_actual_leave']) ? 1 : 0,
     ];
 }
 
@@ -249,11 +262,23 @@ function leaveEnsurePoliciesTable(mysqli $mysqli) {
         policy_name VARCHAR(150) NOT NULL,
         fiscal_year_start_month TINYINT UNSIGNED NOT NULL DEFAULT 10,
         leave_max_requests_per_year INT UNSIGNED NOT NULL DEFAULT 0,
+        vacation_min_months_before_leave INT UNSIGNED NOT NULL DEFAULT 0,
         is_active TINYINT(1) NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_leave_policies_active (is_active)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $columns = [];
+    $result = $mysqli->query("SHOW COLUMNS FROM leave_policies");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $columns[$row['Field']] = true;
+        }
+    }
+    if (!isset($columns['vacation_min_months_before_leave'])) {
+        $mysqli->query("ALTER TABLE leave_policies ADD COLUMN vacation_min_months_before_leave INT UNSIGNED NOT NULL DEFAULT 0 AFTER leave_max_requests_per_year");
+    }
 
     $count = 0;
     $result = $mysqli->query("SELECT COUNT(*) AS total FROM leave_policies");
@@ -281,7 +306,7 @@ function leaveEnsurePoliciesTable(mysqli $mysqli) {
         }
         $requestLimit = max(0, (int)($settings['leave_max_requests_per_year'] ?? 0));
 
-        $stmt = $mysqli->prepare("INSERT INTO leave_policies (policy_name, fiscal_year_start_month, leave_max_requests_per_year, is_active) VALUES (?, ?, ?, 1)");
+        $stmt = $mysqli->prepare("INSERT INTO leave_policies (policy_name, fiscal_year_start_month, leave_max_requests_per_year, vacation_min_months_before_leave, is_active) VALUES (?, ?, ?, 0, 1)");
         if ($stmt) {
             $name = 'Default leave policy';
             $stmt->bind_param('sii', $name, $startMonth, $requestLimit);
@@ -295,6 +320,7 @@ function leaveNormalizePolicyPayload(array $input) {
     $name = trim((string)($input['policy_name'] ?? ''));
     $month = (int)($input['fiscal_year_start_month'] ?? 10);
     $limit = max(0, (int)($input['leave_max_requests_per_year'] ?? 0));
+    $vacationMinMonths = max(0, (int)($input['vacation_min_months_before_leave'] ?? 0));
 
     if ($name === '') {
         throw new InvalidArgumentException('Policy name is required');
@@ -307,13 +333,14 @@ function leaveNormalizePolicyPayload(array $input) {
         'policy_name' => $name,
         'fiscal_year_start_month' => $month,
         'leave_max_requests_per_year' => $limit,
+        'vacation_min_months_before_leave' => $vacationMinMonths,
     ];
 }
 
 function leaveFetchPolicies(mysqli $mysqli) {
     leaveEnsurePoliciesTable($mysqli);
 
-    $result = $mysqli->query("SELECT id, policy_name, fiscal_year_start_month, leave_max_requests_per_year, is_active, created_at, updated_at
+    $result = $mysqli->query("SELECT id, policy_name, fiscal_year_start_month, leave_max_requests_per_year, vacation_min_months_before_leave, is_active, created_at, updated_at
                               FROM leave_policies
                               ORDER BY is_active DESC, id DESC");
     $policies = [];
@@ -322,6 +349,7 @@ function leaveFetchPolicies(mysqli $mysqli) {
             $row['id'] = (int)$row['id'];
             $row['fiscal_year_start_month'] = (int)$row['fiscal_year_start_month'];
             $row['leave_max_requests_per_year'] = (int)$row['leave_max_requests_per_year'];
+            $row['vacation_min_months_before_leave'] = (int)$row['vacation_min_months_before_leave'];
             $row['is_active'] = (int)$row['is_active'];
             $row['current_fiscal_year'] = leaveBuildFiscalYearRange($row['fiscal_year_start_month']);
             $policies[] = $row;
@@ -334,7 +362,7 @@ function leaveFetchPolicies(mysqli $mysqli) {
 function leaveGetActivePolicy(mysqli $mysqli) {
     leaveEnsurePoliciesTable($mysqli);
 
-    $result = $mysqli->query("SELECT id, policy_name, fiscal_year_start_month, leave_max_requests_per_year, is_active
+    $result = $mysqli->query("SELECT id, policy_name, fiscal_year_start_month, leave_max_requests_per_year, vacation_min_months_before_leave, is_active
                               FROM leave_policies
                               WHERE is_active = 1
                               ORDER BY id DESC
@@ -342,7 +370,7 @@ function leaveGetActivePolicy(mysqli $mysqli) {
     $row = $result ? $result->fetch_assoc() : null;
 
     if (!$row) {
-        $result = $mysqli->query("SELECT id, policy_name, fiscal_year_start_month, leave_max_requests_per_year, is_active
+        $result = $mysqli->query("SELECT id, policy_name, fiscal_year_start_month, leave_max_requests_per_year, vacation_min_months_before_leave, is_active
                                   FROM leave_policies
                                   ORDER BY id DESC
                                   LIMIT 1");
@@ -359,6 +387,7 @@ function leaveGetActivePolicy(mysqli $mysqli) {
             'policy_name' => 'Default leave policy',
             'fiscal_year_start_month' => 10,
             'leave_max_requests_per_year' => 0,
+            'vacation_min_months_before_leave' => 0,
             'is_active' => 1,
         ];
     }
@@ -366,6 +395,7 @@ function leaveGetActivePolicy(mysqli $mysqli) {
     $row['id'] = (int)$row['id'];
     $row['fiscal_year_start_month'] = (int)$row['fiscal_year_start_month'];
     $row['leave_max_requests_per_year'] = (int)$row['leave_max_requests_per_year'];
+    $row['vacation_min_months_before_leave'] = (int)$row['vacation_min_months_before_leave'];
     $row['is_active'] = (int)$row['is_active'];
     $row['current_fiscal_year'] = leaveBuildFiscalYearRange($row['fiscal_year_start_month']);
 
@@ -380,23 +410,23 @@ function leaveSavePolicy(mysqli $mysqli, array $input) {
 
     if ($id > 0) {
         $stmt = $mysqli->prepare("UPDATE leave_policies
-                                  SET policy_name = ?, fiscal_year_start_month = ?, leave_max_requests_per_year = ?
+                                  SET policy_name = ?, fiscal_year_start_month = ?, leave_max_requests_per_year = ?, vacation_min_months_before_leave = ?
                                   WHERE id = ?");
         if (!$stmt) {
             throw new RuntimeException('Cannot prepare leave policy update');
         }
-        $stmt->bind_param('siii', $payload['policy_name'], $payload['fiscal_year_start_month'], $payload['leave_max_requests_per_year'], $id);
+        $stmt->bind_param('siiii', $payload['policy_name'], $payload['fiscal_year_start_month'], $payload['leave_max_requests_per_year'], $payload['vacation_min_months_before_leave'], $id);
         if (!$stmt->execute()) {
             throw new RuntimeException($stmt->error ?: 'Cannot save leave policy');
         }
         $stmt->close();
     } else {
-        $stmt = $mysqli->prepare("INSERT INTO leave_policies (policy_name, fiscal_year_start_month, leave_max_requests_per_year, is_active)
-                                  VALUES (?, ?, ?, 0)");
+        $stmt = $mysqli->prepare("INSERT INTO leave_policies (policy_name, fiscal_year_start_month, leave_max_requests_per_year, vacation_min_months_before_leave, is_active)
+                                  VALUES (?, ?, ?, ?, 0)");
         if (!$stmt) {
             throw new RuntimeException('Cannot prepare leave policy insert');
         }
-        $stmt->bind_param('sii', $payload['policy_name'], $payload['fiscal_year_start_month'], $payload['leave_max_requests_per_year']);
+        $stmt->bind_param('siii', $payload['policy_name'], $payload['fiscal_year_start_month'], $payload['leave_max_requests_per_year'], $payload['vacation_min_months_before_leave']);
         if (!$stmt->execute()) {
             throw new RuntimeException($stmt->error ?: 'Cannot save leave policy');
         }
@@ -575,6 +605,58 @@ function leaveBuildUsageWarningStatus($usedDays, $requestLimit) {
     return 'normal';
 }
 
+function leaveIsVacationLeaveType($typeName) {
+    $name = mb_strtolower((string)$typeName, 'UTF-8');
+    return strpos($name, 'พักผ่อน') !== false
+        || strpos($name, 'พักร้อน') !== false
+        || strpos($name, 'annual') !== false
+        || strpos($name, 'vacation') !== false;
+}
+
+function leaveBuildVacationEligibilityStatus($employeeStartDate, $requestStartDate, $minMonths) {
+    $minMonths = max(0, (int)$minMonths);
+    if ($minMonths <= 0) {
+        return [
+            'eligible' => true,
+            'required_months' => 0,
+            'completed_months' => null,
+            'eligible_date' => null,
+        ];
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$employeeStartDate)
+        || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$requestStartDate)) {
+        return [
+            'eligible' => false,
+            'required_months' => $minMonths,
+            'completed_months' => 0,
+            'eligible_date' => null,
+        ];
+    }
+
+    $start = new DateTimeImmutable((string)$employeeStartDate);
+    $request = new DateTimeImmutable((string)$requestStartDate);
+    if ($request < $start) {
+        return [
+            'eligible' => false,
+            'required_months' => $minMonths,
+            'completed_months' => 0,
+            'eligible_date' => $start->modify('+' . $minMonths . ' months')->format('Y-m-d'),
+        ];
+    }
+
+    $diff = $start->diff($request);
+    $completedMonths = ($diff->y * 12) + $diff->m;
+    $eligibleDate = $start->modify('+' . $minMonths . ' months')->format('Y-m-d');
+
+    return [
+        'eligible' => $completedMonths >= $minMonths,
+        'required_months' => $minMonths,
+        'completed_months' => $completedMonths,
+        'eligible_date' => $eligibleDate,
+    ];
+}
+
 function leaveApplyUsageLimitFields(array &$item, $usedDays, $limitDays, $remainingKey = 'remaining_days') {
     $usedDays = (float)$usedDays;
     $limitDays = (float)$limitDays;
@@ -596,10 +678,10 @@ function leaveApplyUsageLimitFields(array &$item, $usedDays, $limitDays, $remain
 function leaveFetchLeaveTypeLimits(mysqli $mysqli) {
     leaveEnsureLeaveTypeCalculationColumns($mysqli);
     $types = [];
-    $result = $mysqli->query("SELECT id, type_name, days_per_year, calculation_unit, hours_per_day, hour_full_day_threshold FROM leave_types ORDER BY id ASC");
+    $result = $mysqli->query("SELECT id, type_name, days_per_year, calculation_unit, hours_per_day, hour_full_day_threshold, is_actual_leave FROM leave_types ORDER BY id ASC");
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            if (leaveDetectHourlyRequestType($row['type_name']) !== null) {
+            if ((int)($row['is_actual_leave'] ?? 1) !== 1) {
                 continue;
             }
 
@@ -610,6 +692,7 @@ function leaveFetchLeaveTypeLimits(mysqli $mysqli) {
                 'calculation_unit' => $row['calculation_unit'] ?? 'day',
                 'hours_per_day' => (float)($row['hours_per_day'] ?? 8),
                 'hour_full_day_threshold' => (float)($row['hour_full_day_threshold'] ?? 0),
+                'is_actual_leave' => (int)($row['is_actual_leave'] ?? 1),
             ];
         }
     }
@@ -626,7 +709,7 @@ function leaveBuildUsageSummaryItems(array $leaveTypes, array $entries) {
         }
 
         $typeName = (string)($type['type_name'] ?? '');
-        if (leaveDetectHourlyRequestType($typeName) !== null) {
+        if ((int)($type['is_actual_leave'] ?? 1) !== 1) {
             continue;
         }
 
@@ -658,24 +741,7 @@ function leaveBuildUsageSummaryItems(array $leaveTypes, array $entries) {
         }
 
         if (!isset($items[$typeId])) {
-            $items[$typeId] = [
-                'leave_type_id' => $typeId,
-                'type_name' => (string)($entry['type_name'] ?? ''),
-                'limit_days' => 0.0,
-                'request_limit' => 0.0,
-                'approved_days' => 0.0,
-                'approved_requests' => 0,
-                'pending_days' => 0.0,
-                'pending_requests' => 0,
-                'usage_percent' => 0.0,
-                'request_usage_percent' => 0.0,
-                'remaining_days' => null,
-                'remaining_requests' => null,
-                'over_limit_days' => 0.0,
-                'is_over_limit' => false,
-                'status' => 'normal',
-                'entries' => [],
-            ];
+            continue;
         }
 
         $days = (float)($entry['days'] ?? 0);

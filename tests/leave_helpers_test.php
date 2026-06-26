@@ -113,6 +113,21 @@ assertLeaveSame('near', $nearByRequests, 'Leave warning status should turn near 
 $overByRequests = leaveBuildUsageWarningStatus(5.5, 5);
 assertLeaveSame('over', $overByRequests, 'Leave warning status should turn over when approved leave days exceed the fiscal year limit.');
 
+$vacationEligible = leaveBuildVacationEligibilityStatus('2025-06-01', '2026-06-01', 12);
+assertLeaveSame(true, $vacationEligible['eligible'], 'Vacation leave should be allowed once employee tenure reaches the configured month threshold.');
+assertLeaveSame(12, $vacationEligible['completed_months'], 'Vacation eligibility should count completed calendar months from employee start date.');
+
+$vacationTooSoon = leaveBuildVacationEligibilityStatus('2025-07-01', '2026-06-30', 12);
+assertLeaveSame(false, $vacationTooSoon['eligible'], 'Vacation leave should be blocked before the configured month threshold is reached.');
+assertLeaveSame(11, $vacationTooSoon['completed_months'], 'Vacation eligibility should not round up incomplete months.');
+
+$vacationDisabled = leaveBuildVacationEligibilityStatus('2026-06-01', '2026-06-01', 0);
+assertLeaveSame(true, $vacationDisabled['eligible'], 'Vacation eligibility should be disabled when the policy threshold is zero.');
+
+assertLeaveSame(true, leaveIsVacationLeaveType('Annual vacation'), 'Vacation type detection should support English annual/vacation names.');
+assertLeaveSame(true, leaveIsVacationLeaveType('ลาพักร้อน'), 'Vacation type detection should support Thai vacation leave names used in the system.');
+assertLeaveSame(false, leaveIsVacationLeaveType('Sick leave'), 'Vacation type detection should not match unrelated leave names.');
+
 $perTypeSummary = leaveBuildUsageSummaryItems([
     [
         'id' => 1,
@@ -128,11 +143,13 @@ $perTypeSummary = leaveBuildUsageSummaryItems([
         'id' => 3,
         'type_name' => 'ขอมาสาย',
         'days_per_year' => 0,
+        'is_actual_leave' => 0,
     ],
     [
         'id' => 4,
-        'type_name' => 'ขอออกก่อน',
+        'type_name' => 'OT หลังเลิกงาน',
         'days_per_year' => 0,
+        'is_actual_leave' => 0,
     ],
 ], [
     [
