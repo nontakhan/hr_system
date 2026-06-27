@@ -20,6 +20,9 @@ window.leaveApprovalTimeRequestType = 'overtime_after_work';
         <h1 class="h3 mb-0 text-gray-800">อนุมัติ OT หลังเลิกงาน</h1>
         <p class="text-muted small">รายการขอ OT หลังเลิกงานจากพนักงาน พร้อมผลสแกนออกสำหรับ HR ตรวจสอบ</p>
     </div>
+    <a href="overtime_history.php" class="btn btn-outline-secondary overtime-approval-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ OT
+    </a>
 </div>
 
 <div class="card shadow-sm border-0">

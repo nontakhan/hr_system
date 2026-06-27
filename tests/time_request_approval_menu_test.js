@@ -17,21 +17,29 @@ function assertNotIncludes(text, unexpected, message) {
 }
 
 const header = fs.readFileSync('includes/header.php', 'utf8');
+const timeHistoryPage = fs.readFileSync('late_early_history.php', 'utf8');
+const overtimeHistoryPage = fs.readFileSync('overtime_history.php', 'utf8');
 const timeApprovalsPage = fs.readFileSync('late_early_approvals.php', 'utf8');
 const overtimeApprovalsPage = fs.readFileSync('overtime_approvals.php', 'utf8');
 const leaveApprovalsPage = fs.readFileSync('leave_approvals.php', 'utf8');
 const script = fs.readFileSync('assets/js/leave_approval.js', 'utf8');
 const api = fs.readFileSync('api/leave_approval_api.php', 'utf8');
 
-assertIncludes(header, 'href="late_early_approvals.php"', 'Time request approval menu should link to the time approval page.');
-assertIncludes(header, 'href="overtime_approvals.php"', 'Overtime approval menu should link to its own approval page.');
+assertIncludes(header, 'href="late_early_history.php"', 'Time request sidebar menu should link directly to the history page.');
+assertIncludes(timeHistoryPage, 'href="late_early_approvals.php"', 'Time request history page should link to the time approval page.');
+assertIncludes(header, 'href="overtime_history.php"', 'Overtime sidebar menu should link directly to the OT history page.');
+assertIncludes(overtimeHistoryPage, 'href="overtime_approvals.php"', 'Overtime history page should link to the OT approval page.');
 assertNotIncludes(header, 'href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive(\'leave_approvals.php\'); ?>">\n                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts[\'time_request\']); ?>\n                    <small>อนุมัติคำขอเวลา</small>', 'Time request approval menu should not link to leave approvals.');
-assertIncludes(header, 'isActive(\'late_early_approvals.php\')', 'Time request approval page should open the time request menu group.');
-assertIncludes(header, 'isActive(\'overtime_approvals.php\')', 'Overtime approval page should open the overtime menu group.');
+assertIncludes(header, "isActive('late_early_approvals.php')", 'Time request approval page should keep the direct sidebar item active.');
+assertIncludes(header, 'isActive(\'overtime_approvals.php\')', 'Overtime approval page should keep the direct sidebar item active.');
 
 assertIncludes(timeApprovalsPage, "window.leaveApprovalRequestUnit = 'hour';", 'Time request approval page should request only hourly time requests.');
 assertIncludes(timeApprovalsPage, "window.leaveApprovalTimeRequestType = 'late_early';", 'Time request approval page should exclude OT rows.');
+assertIncludes(timeApprovalsPage, 'href="late_early_history.php"', 'Time request approval page should include a back button to the history landing page.');
+assertIncludes(timeApprovalsPage, 'time-request-approval-back-link', 'Time request approval back button should have a stable class.');
 assertIncludes(overtimeApprovalsPage, "window.leaveApprovalTimeRequestType = 'overtime_after_work';", 'Overtime approval page should request only OT rows.');
+assertIncludes(overtimeApprovalsPage, 'href="overtime_history.php"', 'Overtime approval page should include a back button to the OT history landing page.');
+assertIncludes(overtimeApprovalsPage, 'overtime-approval-back-link', 'Overtime approval back button should have a stable class.');
 assertIncludes(leaveApprovalsPage, "window.leaveApprovalRequestUnit = 'day';", 'Leave approval page should request only day-based leave.');
 assertIncludes(timeApprovalsPage, 'อนุมัติคำขอเวลา', 'Time request approval page should have time request wording.');
 assertIncludes(overtimeApprovalsPage, 'อนุมัติ OT หลังเลิกงาน', 'Overtime approval page should have OT wording.');

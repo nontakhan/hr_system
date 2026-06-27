@@ -23,6 +23,9 @@ window.leaveApprovalTimeRequestType = 'late_early';
         <h1 class="h3 mb-0 text-gray-800">อนุมัติคำขอเวลา</h1>
         <p class="text-muted small">รายการขอมาสาย/ออกก่อนเวลาจากพนักงานในสังกัดของคุณ</p>
     </div>
+    <a href="late_early_history.php" class="btn btn-outline-secondary time-request-approval-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ
+    </a>
 </div>
 
 <div class="card shadow-sm border-0">

@@ -16,6 +16,24 @@ window.timeRequestHistoryType = 'overtime_after_work';
     </div>
 </div>
 
+<div class="overtime-dashboard-actions mb-4">
+    <div class="overtime-dashboard-actions-main">
+        <a href="overtime_request.php" class="btn overtime-menu-button overtime-menu-button-request">
+            <i class="fas fa-plus"></i>
+            <span>ส่งคำขอ OT</span>
+        </a>
+    </div>
+    <?php if (in_array($_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)) : ?>
+    <div class="overtime-dashboard-actions-admin">
+        <a href="overtime_approvals.php" class="btn overtime-menu-button overtime-menu-button-approval">
+            <i class="fas fa-user-check"></i>
+            <span>อนุมัติ OT</span>
+            <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['overtime']); ?>
+        </a>
+    </div>
+    <?php endif; ?>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -25,7 +43,7 @@ window.timeRequestHistoryType = 'overtime_after_work';
             </button>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle" id="overtimeHistoryTable">
                 <thead>
                     <tr>
                         <th>วันที่ส่ง</th>

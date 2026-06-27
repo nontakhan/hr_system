@@ -1,3 +1,5 @@
+let lateEarlyHistoryDataTable = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('lateEarlyRequestForm');
     const historyBody = document.getElementById('lateEarlyHistoryBody');
@@ -148,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadTimeRequestHistory() {
     const tbody = document.getElementById('lateEarlyHistoryBody');
     if (!tbody) return;
+    resetLateEarlyHistoryDataTable();
     tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">กำลังโหลดข้อมูล...</td></tr>';
 
     try {
@@ -173,10 +176,49 @@ async function loadTimeRequestHistory() {
                 <td>${formatRequestStatusBadge(item.status)}</td>
             </tr>
         `).join('');
+        initLateEarlyHistoryDataTable();
     } catch (error) {
         console.error(error);
         tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
+}
+
+function resetLateEarlyHistoryDataTable() {
+    const selector = getTimeRequestHistoryTableSelector();
+    if (!selector) {
+        return;
+    }
+    if (lateEarlyHistoryDataTable) {
+        lateEarlyHistoryDataTable.destroy();
+        lateEarlyHistoryDataTable = null;
+    } else if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable(selector)) {
+        $(selector).DataTable().destroy();
+    }
+}
+
+function initLateEarlyHistoryDataTable() {
+    const selector = getTimeRequestHistoryTableSelector();
+    if (!window.jQuery || !$.fn.DataTable || !selector) {
+        return;
+    }
+    lateEarlyHistoryDataTable = $(selector).DataTable({
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json' },
+        pageLength: 10,
+        order: [[0, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: [4] },
+        ],
+    });
+}
+
+function getTimeRequestHistoryTableSelector() {
+    if (document.getElementById('lateEarlyHistoryTable')) {
+        return '#lateEarlyHistoryTable';
+    }
+    if (document.getElementById('overtimeHistoryTable')) {
+        return '#overtimeHistoryTable';
+    }
+    return null;
 }
 
 function formatTimeRequestType(type) {

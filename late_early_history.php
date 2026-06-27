@@ -13,6 +13,24 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<div class="time-request-dashboard-actions mb-4">
+    <div class="time-request-dashboard-actions-main">
+        <a href="late_early_request.php" class="btn time-request-menu-button time-request-menu-button-request">
+            <i class="fas fa-plus"></i>
+            <span>ส่งคำขอเวลา</span>
+        </a>
+    </div>
+    <?php if (in_array($_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)) : ?>
+    <div class="time-request-dashboard-actions-admin">
+        <a href="late_early_approvals.php" class="btn time-request-menu-button time-request-menu-button-approval">
+            <i class="fas fa-user-check"></i>
+            <span>อนุมัติคำขอเวลา</span>
+            <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
+        </a>
+    </div>
+    <?php endif; ?>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -22,7 +40,7 @@ require_once 'includes/header.php';
             </button>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle" id="lateEarlyHistoryTable">
                 <thead>
                     <tr>
                         <th>วันที่ส่ง</th>

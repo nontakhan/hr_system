@@ -90,44 +90,16 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <i class="fas fa-calendar-alt me-2"></i> ระบบการลา
             </a>
             <!-- Late / Early Time Request System -->
-            <a href="#timeRequestSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+            <a href="late_early_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('late_early_request.php') || isActive('late_early_history.php') || isActive('late_early_approvals.php')) ? 'active' : ''; ?>">
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
                 <i class="fas fa-business-time me-2"></i> ขอมาสาย/ออกก่อนเวลา
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('late_early_request.php') || isActive('late_early_history.php') || isActive('late_early_approvals.php')) ? 'show' : ''; ?>" id="timeRequestSubmenu" data-bs-parent="#sidebarMenu">
-                <a href="late_early_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('late_early_request.php'); ?>">
-                    <small>ส่งคำขอเวลา</small>
-                </a>
-                <a href="late_early_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('late_early_history.php'); ?>">
-                    <small>ประวัติคำขอเวลา</small>
-                </a>
-                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="late_early_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('late_early_approvals.php'); ?>">
-                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
-                    <small>อนุมัติคำขอเวลา</small>
-                </a>
-                <?php endif; ?>
-            </div>
 
             <!-- Overtime Request System -->
-            <a href="#overtimeSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+            <a href="overtime_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('overtime_request.php') || isActive('overtime_history.php') || isActive('overtime_approvals.php')) ? 'active' : ''; ?>">
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['overtime']); ?>
                 <i class="fas fa-business-time me-2"></i> OT หลังเลิกงาน
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('overtime_request.php') || isActive('overtime_history.php') || isActive('overtime_approvals.php')) ? 'show' : ''; ?>" id="overtimeSubmenu" data-bs-parent="#sidebarMenu">
-                <a href="overtime_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('overtime_request.php'); ?>">
-                    <small>ส่งคำขอ OT</small>
-                </a>
-                <a href="overtime_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('overtime_history.php'); ?>">
-                    <small>ประวัติคำขอ OT</small>
-                </a>
-                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="overtime_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('overtime_approvals.php'); ?>">
-                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['overtime']); ?>
-                    <small>อนุมัติ OT</small>
-                </a>
-                <?php endif; ?>
-            </div>
 
             <!-- Day Swap System (Dropdown) -->
             <a href="#daySwapSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
