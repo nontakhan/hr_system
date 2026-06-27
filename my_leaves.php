@@ -9,14 +9,29 @@ $page_title = "ประวัติการลาของฉัน";
 require_once 'includes/header.php';
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h3 mb-0 text-gray-800">ประวัติการลาของฉัน</h1>
         <p class="text-muted small">ตรวจสอบสถานะและประวัติการลาทั้งหมด</p>
     </div>
-    <a href="leave_request.php" class="btn btn-primary">
-        <i class="fas fa-plus"></i> ยื่นใบลาใหม่
-    </a>
+</div>
+
+<div class="leave-dashboard-actions mb-4">
+    <div class="leave-dashboard-actions-main">
+        <a href="leave_request.php" class="btn leave-menu-button leave-menu-button-request">
+            <i class="fas fa-plus"></i>
+            <span>ยื่นใบลา</span>
+        </a>
+    </div>
+    <?php if (in_array($_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)) : ?>
+    <div class="leave-dashboard-actions-admin">
+        <a href="leave_approvals.php" class="btn leave-menu-button leave-menu-button-approval">
+            <i class="fas fa-user-check"></i>
+            <span>อนุมัติการลา</span>
+            <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
+        </a>
+    </div>
+    <?php endif; ?>
 </div>
 
 <div class="card shadow-sm border-0 mb-4">
@@ -41,7 +56,7 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
+<div class="card shadow-sm border-0" id="leaveHistorySection">
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-hover align-middle" id="myLeavesTable">

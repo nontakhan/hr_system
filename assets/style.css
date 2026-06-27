@@ -466,6 +466,77 @@ body {
     gap: 0.85rem;
 }
 
+.leave-dashboard-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.leave-dashboard-actions-main,
+.leave-dashboard-actions-admin {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.leave-dashboard-actions-admin {
+    margin-left: 0;
+    justify-content: flex-end;
+}
+
+.leave-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 42px;
+    padding: 0.55rem 0.9rem;
+    border-radius: 8px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.leave-menu-button i {
+    font-size: 0.95rem;
+}
+
+.leave-menu-button-request {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    color: #ffffff;
+}
+
+.leave-menu-button-request:hover,
+.leave-menu-button-request:focus-visible {
+    background: #991b1b;
+    border-color: #991b1b;
+    color: #ffffff;
+}
+
+.leave-menu-button-approval {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #ffffff;
+}
+
+.leave-menu-button-approval:hover,
+.leave-menu-button-approval:focus-visible {
+    background: #115e59;
+    border-color: #115e59;
+    color: #ffffff;
+}
+
+.leave-menu-button-approval .badge {
+    margin-left: 0.25rem !important;
+    background-color: #f59e0b !important;
+    color: #111827;
+}
+
 .leave-usage-overall-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

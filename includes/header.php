@@ -84,26 +84,11 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <i class="fas fa-calendar-days me-2"></i> ปฏิทินวันหยุด
             </a>
 
-            <!-- Leave System (Dropdown) -->
-            <a href="#leaveSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+            <!-- Leave System -->
+            <a href="my_leaves.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('my_leaves.php') || isActive('leave_request.php') || isActive('leave_approvals.php')) ? 'active' : ''; ?>">
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
                 <i class="fas fa-calendar-alt me-2"></i> ระบบการลา
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('leave_request.php') || isActive('my_leaves.php') || isActive('leave_approvals.php')) ? 'show' : ''; ?>" id="leaveSubmenu" data-bs-parent="#sidebarMenu">
-                <a href="leave_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_request.php'); ?>">
-                    <small>ยื่นใบลา</small>
-                </a>
-                <a href="my_leaves.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('my_leaves.php'); ?>">
-                    <small>ประวัติการลา</small>
-                </a>
-                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('leave_approvals.php'); ?>">
-                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
-                    <small>อนุมัติการลา</small>
-                </a>
-                <?php endif; ?>
-            </div>
-
             <!-- Late / Early Time Request System -->
             <a href="#timeRequestSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
