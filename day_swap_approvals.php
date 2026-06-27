@@ -15,6 +15,9 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">อนุมัติสลับวันหยุด</h1>
         <p class="text-muted small">อนุมัติแล้วจึงมีผลกับรายงานลงเวลาของพนักงานทั้งสองฝั่ง</p>
     </div>
+    <a href="day_swap_history.php" class="btn btn-outline-secondary day-swap-approval-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ
+    </a>
 </div>
 
 <div class="card shadow-sm border-0">
@@ -35,7 +38,7 @@ require_once 'includes/header.php';
         <div class="tab-content">
             <div class="tab-pane fade show active" id="daySwapPending">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" id="daySwapPendingTable">
                         <thead class="table-light">
                             <tr>
                                 <th>ผู้ขอ</th>
@@ -53,7 +56,7 @@ require_once 'includes/header.php';
             </div>
             <div class="tab-pane fade" id="daySwapHistory">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" id="daySwapApprovalHistoryTable">
                         <thead class="table-light">
                             <tr>
                                 <th>วันที่พิจารณา</th>

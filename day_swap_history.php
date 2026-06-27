@@ -10,9 +10,24 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">ประวัติขอสลับวันหยุด</h1>
         <p class="text-muted small mb-0">ตรวจสอบสถานะคำขอสลับวันหยุดที่คุณส่งหรือเป็นคู่สลับ</p>
     </div>
-    <a href="day_swap_request.php" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i> ขอสลับวันหยุด
-    </a>
+</div>
+
+<div class="day-swap-dashboard-actions mb-4">
+    <div class="day-swap-dashboard-actions-main">
+        <a href="day_swap_request.php" class="btn day-swap-menu-button day-swap-menu-button-request">
+            <i class="fas fa-plus"></i>
+            <span>ขอสลับวันหยุด</span>
+        </a>
+    </div>
+    <?php if (in_array($_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)) : ?>
+    <div class="day-swap-dashboard-actions-admin">
+        <a href="day_swap_approvals.php" class="btn day-swap-menu-button day-swap-menu-button-approval">
+            <i class="fas fa-user-check"></i>
+            <span>อนุมัติสลับวันหยุด</span>
+            <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
+        </a>
+    </div>
+    <?php endif; ?>
 </div>
 
 <div class="card shadow-sm border-0">
@@ -24,7 +39,7 @@ require_once 'includes/header.php';
             </button>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle" id="daySwapHistoryTable">
                 <thead class="table-light">
                     <tr>
                         <th>วันที่ส่ง</th>

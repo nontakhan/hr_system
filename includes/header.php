@@ -101,25 +101,11 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <i class="fas fa-business-time me-2"></i> OT หลังเลิกงาน
             </a>
 
-            <!-- Day Swap System (Dropdown) -->
-            <a href="#daySwapSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+            <!-- Day Swap System -->
+            <a href="day_swap_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('day_swap_request.php') || isActive('day_swap_history.php') || isActive('day_swap_approvals.php')) ? 'active' : ''; ?>">
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
                 <i class="fas fa-right-left me-2"></i> สลับวันหยุด
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('day_swap_request.php') || isActive('day_swap_history.php') || isActive('day_swap_approvals.php')) ? 'show' : ''; ?>" id="daySwapSubmenu" data-bs-parent="#sidebarMenu">
-                <a href="day_swap_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_request.php'); ?>">
-                    <small>ขอสลับวันหยุด</small>
-                </a>
-                <a href="day_swap_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('day_swap_history.php'); ?>">
-                    <small>ประวัติคำขอ</small>
-                </a>
-                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="day_swap_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('day_swap_approvals.php'); ?>">
-                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
-                    <small>อนุมัติสลับวันหยุด</small>
-                </a>
-                <?php endif; ?>
-            </div>
 
             <!-- Training Request System (Dropdown) -->
             <a href="#trainingSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">

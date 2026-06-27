@@ -14,6 +14,7 @@ let requesterHolidayCalendar = null;
 let targetHolidayCalendar = null;
 let requesterHolidayEvents = [];
 let targetHolidayEvents = [];
+const daySwapDataTables = {};
 
 function initDaySwapRequestPage() {
     if (window.jQuery && jQuery.fn.select2) {
@@ -257,6 +258,7 @@ async function loadDaySwapHistory() {
     const tbody = document.getElementById('daySwapHistoryBody');
     if (!tbody) return;
 
+    resetDaySwapDataTable('daySwapHistoryTable');
     tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
     try {
         const response = await fetch('api/day_swap_api.php?action=my_requests');
@@ -274,6 +276,7 @@ async function loadDaySwapHistory() {
                 <td>${renderDaySwapStatus(item.status)}</td>
             </tr>
         `).join('');
+        initDaySwapDataTable('daySwapHistoryTable', [[0, 'desc']], [3]);
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
@@ -288,6 +291,7 @@ function initDaySwapApprovalPage() {
 
 async function loadDaySwapPendingApprovals() {
     const tbody = document.getElementById('daySwapPendingBody');
+    resetDaySwapDataTable('daySwapPendingTable');
     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
     try {
         const response = await fetch('api/day_swap_api.php?action=pending');
@@ -313,6 +317,7 @@ async function loadDaySwapPendingApprovals() {
                 </td>
             </tr>
         `).join('');
+        initDaySwapDataTable('daySwapPendingTable', [[2, 'asc']], [4]);
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
@@ -320,6 +325,7 @@ async function loadDaySwapPendingApprovals() {
 
 async function loadDaySwapApprovalHistory() {
     const tbody = document.getElementById('daySwapApprovalHistoryBody');
+    resetDaySwapDataTable('daySwapApprovalHistoryTable');
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
     try {
         const response = await fetch('api/day_swap_api.php?action=history');
@@ -339,9 +345,37 @@ async function loadDaySwapApprovalHistory() {
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || '-')}</small></td>
             </tr>
         `).join('');
+        initDaySwapDataTable('daySwapApprovalHistoryTable', [[0, 'desc']], []);
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
+}
+
+function resetDaySwapDataTable(tableId) {
+    const selector = `#${tableId}`;
+    if (daySwapDataTables[tableId]) {
+        daySwapDataTables[tableId].destroy();
+        delete daySwapDataTables[tableId];
+    } else if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable(selector)) {
+        jQuery(selector).DataTable().destroy();
+    }
+}
+
+function initDaySwapDataTable(tableId, order = [[0, 'desc']], unsortableTargets = []) {
+    if (!window.jQuery || !jQuery.fn.DataTable || !document.getElementById(tableId)) {
+        return;
+    }
+
+    const options = {
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json' },
+        pageLength: 10,
+        order,
+    };
+    if (unsortableTargets.length) {
+        options.columnDefs = [{ orderable: false, targets: unsortableTargets }];
+    }
+
+    daySwapDataTables[tableId] = jQuery(`#${tableId}`).DataTable(options);
 }
 
 window.openDaySwapActionModal = function(id, action, name) {

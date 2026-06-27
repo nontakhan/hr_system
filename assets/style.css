@@ -871,6 +871,70 @@ body {
     color: #111827;
 }
 
+.day-swap-dashboard-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.day-swap-dashboard-actions-main,
+.day-swap-dashboard-actions-admin {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.day-swap-dashboard-actions-admin {
+    justify-content: flex-end;
+}
+
+.day-swap-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 42px;
+    padding: 0.55rem 0.95rem;
+    border-radius: 8px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.day-swap-menu-button-request {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #ffffff;
+}
+
+.day-swap-menu-button-request:hover,
+.day-swap-menu-button-request:focus-visible {
+    background: #115e59;
+    border-color: #115e59;
+    color: #ffffff;
+}
+
+.day-swap-menu-button-approval {
+    background: #b45309;
+    border-color: #b45309;
+    color: #ffffff;
+}
+
+.day-swap-menu-button-approval:hover,
+.day-swap-menu-button-approval:focus-visible {
+    background: #92400e;
+    border-color: #92400e;
+    color: #ffffff;
+}
+
+.day-swap-menu-button-approval .badge {
+    margin-left: 0.25rem !important;
+    background-color: #facc15 !important;
+    color: #111827;
+}
+
 .time-request-type-group {
     gap: 0.65rem;
 }
