@@ -15,6 +15,9 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">อนุมัติคำขออบรม</h1>
         <p class="text-muted small mb-0">หัวหน้าอนุมัติก่อน จากนั้น HR อนุมัติและระบบจะสร้างประวัติอบรมให้อัตโนมัติ</p>
     </div>
+    <a href="training_history.php" class="btn btn-outline-secondary training-approval-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ
+    </a>
 </div>
 
 <div class="card shadow-sm border-0">
@@ -35,7 +38,7 @@ require_once 'includes/header.php';
         <div class="tab-content">
             <div class="tab-pane fade show active" id="trainingRequestPending">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" id="trainingRequestPendingTable">
                         <thead class="table-light">
                             <tr>
                                 <th>พนักงาน</th>
@@ -54,7 +57,7 @@ require_once 'includes/header.php';
 
             <div class="tab-pane fade" id="trainingRequestApprovalHistory">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" id="trainingRequestApprovalHistoryTable">
                         <thead class="table-light">
                             <tr>
                                 <th>วันที่ทำรายการ</th>

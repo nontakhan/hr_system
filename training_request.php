@@ -10,9 +10,6 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">ขอไปอบรม</h1>
         <p class="text-muted small mb-0">ส่งคำขอเข้าร่วมอบรมเพื่อให้หัวหน้าและ HR พิจารณา</p>
     </div>
-    <a href="training_history.php" class="btn btn-outline-primary">
-        <i class="fas fa-clock-rotate-left me-1"></i> ดูประวัติคำขอ
-    </a>
 </div>
 
 <div class="card shadow-sm border-0">

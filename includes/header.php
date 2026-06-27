@@ -107,25 +107,11 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <i class="fas fa-right-left me-2"></i> สลับวันหยุด
             </a>
 
-            <!-- Training Request System (Dropdown) -->
-            <a href="#trainingSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">
+            <!-- Training Request System -->
+            <a href="training_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('training_request.php') || isActive('training_history.php') || isActive('training_approvals.php')) ? 'active' : ''; ?>">
                 <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
                 <i class="fas fa-graduation-cap me-2"></i> อบรม
             </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('training_request.php') || isActive('training_history.php') || isActive('training_approvals.php')) ? 'show' : ''; ?>" id="trainingSubmenu" data-bs-parent="#sidebarMenu">
-                <a href="training_request.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('training_request.php'); ?>">
-                    <small>ขอไปอบรม</small>
-                </a>
-                <a href="training_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('training_history.php'); ?>">
-                    <small>ประวัติคำขออบรม</small>
-                </a>
-                <?php if (in_array($_SESSION['role'], ['manager', 'admin', 'hr'])) : ?>
-                <a href="training_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('training_approvals.php'); ?>">
-                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
-                    <small>อนุมัติคำขออบรม</small>
-                </a>
-                <?php endif; ?>
-            </div>
 
             <!-- Employee Warning Records -->
             <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
