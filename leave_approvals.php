@@ -23,6 +23,9 @@ window.leaveApprovalRequestUnit = 'day';
         <h1 class="h3 mb-0 text-gray-800">รายการรออนุมัติ</h1>
         <p class="text-muted small">รายการขอลาจากพนักงานในสังกัดของคุณ</p>
     </div>
+    <a href="my_leaves.php" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> กลับหน้าระบบลา
+    </a>
 </div>
 
 <div class="card shadow-sm border-0">

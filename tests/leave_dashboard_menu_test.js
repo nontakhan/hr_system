@@ -18,6 +18,7 @@ function assertNotIncludes(text, unexpected, message) {
 
 const header = fs.readFileSync('includes/header.php', 'utf8');
 const myLeaves = fs.readFileSync('my_leaves.php', 'utf8');
+const leaveApprovals = fs.readFileSync('leave_approvals.php', 'utf8');
 const styles = fs.readFileSync('assets/style.css', 'utf8');
 
 assertIncludes(header, 'href="my_leaves.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center', 'Leave sidebar entry should link directly to the leave dashboard.');
@@ -36,6 +37,8 @@ assertNotIncludes(myLeaves, 'href="#leaveHistorySection"', 'Leave dashboard shou
 assertIncludes(myLeaves, "in_array(\$_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)", 'Leave approval shortcut should only render for manager, HR, or admin roles.');
 assertIncludes(myLeaves, "$approvalBadgeCounts['leave']", 'Leave dashboard approval shortcut should show the existing leave approval badge count.');
 assertIncludes(myLeaves, 'leave-menu-button-approval', 'Leave approval shortcut should use its own button color treatment.');
+assertIncludes(leaveApprovals, 'href="my_leaves.php" class="btn btn-outline-secondary"', 'Leave approvals page should include a back button to the leave dashboard.');
+assertIncludes(leaveApprovals, 'fa-arrow-left', 'Leave approvals back button should use a back arrow icon.');
 
 assertIncludes(styles, '.leave-dashboard-actions', 'Styles should include leave dashboard action layout.');
 assertIncludes(styles, '.leave-dashboard-actions-admin', 'Styles should include right-aligned admin/HR action layout.');

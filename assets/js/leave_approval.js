@@ -22,6 +22,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+const leaveApprovalDataTables = {
+    pending: null,
+    history: null,
+};
+
+function resetLeaveApprovalDataTable(tableId, key) {
+    const selector = `#${tableId}`;
+    if (leaveApprovalDataTables[key]) {
+        leaveApprovalDataTables[key].destroy();
+        leaveApprovalDataTables[key] = null;
+        return;
+    }
+    if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable(selector)) {
+        $(selector).DataTable().destroy();
+    }
+}
+
+function initLeaveApprovalDataTable(tableId, key, orderColumn = 0) {
+    const selector = `#${tableId}`;
+    if (!window.jQuery || !$.fn.DataTable || !document.getElementById(tableId)) {
+        return;
+    }
+    leaveApprovalDataTables[key] = $(selector).DataTable({
+        language: {
+            lengthMenu: 'แสดง _MENU_ รายการ ต่อหน้า',
+            zeroRecords: 'ไม่พบข้อมูลที่ตรงกัน',
+            info: 'แสดง _START_ ถึง _END_ จากทั้งหมด _TOTAL_ รายการ',
+            infoEmpty: 'แสดง 0 ถึง 0 จากทั้งหมด 0 รายการ',
+            infoFiltered: '(กรองจากทั้งหมด _MAX_ รายการ)',
+            search: 'ค้นหา:',
+            paginate: {
+                first: 'หน้าแรก',
+                last: 'สุดท้าย',
+                next: 'ถัดไป',
+                previous: 'ก่อนหน้า',
+            },
+        },
+        order: [[orderColumn, 'asc']],
+        pageLength: 10,
+        deferRender: true,
+        autoWidth: false,
+    });
+}
+
 function getLeaveApprovalRequestUnit() {
     return window.leaveApprovalRequestUnit === 'hour' ? 'hour' : 'day';
 }
@@ -57,6 +101,7 @@ function renderLeaveStatusBadge(status) {
 // โหลดรายการรออนุมัติ
 async function loadPendingLeaves() {
     const tbody = document.getElementById('pendingTableBody');
+    resetLeaveApprovalDataTable('pendingTable', 'pending');
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">กำลังโหลด...</td></tr>';
 
     try {
@@ -149,6 +194,7 @@ async function loadPendingLeaves() {
                     </tr>
                 `;
             }).join('');
+            initLeaveApprovalDataTable('pendingTable', 'pending', 0);
         }
     } catch (err) { console.error(err); }
 }
@@ -156,6 +202,7 @@ async function loadPendingLeaves() {
 // โหลดประวัติการอนุมัติ
 async function loadHistoryLeaves() {
     const tbody = document.getElementById('historyTableBody');
+    resetLeaveApprovalDataTable('historyTable', 'history');
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">กำลังโหลด...</td></tr>';
 
     try {
@@ -198,6 +245,7 @@ async function loadHistoryLeaves() {
                     </tr>
                 `;
             }).join('');
+            initLeaveApprovalDataTable('historyTable', 'history', 0);
         }
     } catch (err) { console.error(err); }
 }
