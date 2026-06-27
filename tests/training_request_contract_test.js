@@ -48,9 +48,8 @@ assertIncludes(api, "action === 'my_requests'", 'API should expose employee requ
 assertIncludes(api, "action === 'pending' || $action === 'history'", 'API should expose approval queues.');
 
 assertIncludes(requestPage, 'id="trainingRequestForm"', 'Request page should render the employee training request form.');
-if (requestPage.includes('href="training_history.php"')) {
-  throw new Error('Request page should not keep a separate history button after history becomes the landing page.');
-}
+assertIncludes(requestPage, 'href="training_history.php"', 'Training request page should include a back button to the history landing page.');
+assertIncludes(requestPage, 'training-request-back-link', 'Training request back button should have a stable class.');
 assertIncludes(historyPage, 'id="trainingRequestHistoryBody"', 'History page should render request history table.');
 assertIncludes(historyPage, 'id="trainingRequestHistoryTable"', 'Training history table should have a stable DataTables id.');
 assertIncludes(historyPage, 'href="training_request.php"', 'Training history page should link to the request page.');

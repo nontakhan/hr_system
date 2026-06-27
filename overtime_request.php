@@ -14,6 +14,9 @@ window.timeRequestFixedType = 'overtime_after_work';
         <h1 class="h3 mb-0 text-gray-800">ขอ OT หลังเลิกงาน</h1>
         <p class="text-muted small mb-0">เลือกวันที่และจำนวนเวลาที่ต้องการทำ OT หลังเลิกงาน เพื่อส่งให้หัวหน้าและ HR อนุมัติจากผลสแกนออกจริง</p>
     </div>
+    <a href="overtime_history.php" class="btn btn-outline-secondary overtime-request-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ OT
+    </a>
 </div>
 
 <div class="time-request-shell">

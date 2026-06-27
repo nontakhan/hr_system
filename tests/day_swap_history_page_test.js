@@ -24,7 +24,8 @@ const header = fs.readFileSync('includes/header.php', 'utf8');
 
 assertIncludes(requestPage, 'id="daySwapForm"', 'Day-swap request page should keep the request form.');
 assertNotIncludes(requestPage, 'id="daySwapHistoryBody"', 'Day-swap request page should not render request history.');
-assertNotIncludes(requestPage, 'href="day_swap_history.php"', 'Day-swap request page should not keep a separate history button after history becomes the landing page.');
+assertIncludes(requestPage, 'href="day_swap_history.php"', 'Day-swap request page should include a back button to the history landing page.');
+assertIncludes(requestPage, 'day-swap-request-back-link', 'Day-swap request back button should have a stable class.');
 
 assertNotIncludes(historyPage, 'id="daySwapForm"', 'Day-swap history page should not render the request form.');
 assertIncludes(historyPage, 'id="daySwapHistoryBody"', 'Day-swap history page should render the request history table.');

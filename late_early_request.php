@@ -11,6 +11,9 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">ขอมาสาย/ออกก่อนเวลา</h1>
         <p class="text-muted small mb-0">ระบุเวลาจริงที่ต้องการ ระบบจะคำนวณนาทีจากกะของวันนั้น สูงสุดไม่เกิน 1 ชม.</p>
     </div>
+    <a href="late_early_history.php" class="btn btn-outline-secondary time-request-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ
+    </a>
 </div>
 
 <div class="time-request-shell">

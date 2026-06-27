@@ -14,8 +14,8 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">ยื่นใบลา</h1>
         <p class="text-muted small">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อส่งให้หัวหน้าอนุมัติ</p>
     </div>
-    <a href="my_leaves.php" class="btn btn-outline-primary">
-        <i class="fas fa-list"></i> ประวัติการลาของฉัน
+    <a href="my_leaves.php" class="btn btn-outline-secondary leave-request-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติการลา
     </a>
 </div>
 

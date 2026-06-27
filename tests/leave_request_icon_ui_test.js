@@ -30,6 +30,8 @@ const styles = fs.readFileSync('assets/style.css', 'utf8');
 assertIncludes(page, 'type="hidden" name="leave_type_id" id="leaveTypeSelect"', 'Leave request page should submit leave_type_id through a hidden field.');
 assertIncludes(page, 'id="leaveTypeIconGrid"', 'Leave request page should include an icon grid container.');
 assertIncludes(page, 'id="leaveUsageSummaryGrid"', 'Leave request page should include the leave usage summary grid.');
+assertIncludes(page, 'href="my_leaves.php"', 'Leave request page should include a back button to my leave history.');
+assertIncludes(page, 'leave-request-back-link', 'Leave request back button should have a stable class.');
 assertIncludes(timeRequestPage, 'id="lateEarlyRequestForm"', 'Late/early request page should include its own request form.');
 assertIncludes(timeRequestPage, 'name="time_request_type"', 'Late/early request page should choose a time request type.');
 assertIncludes(timeRequestPage, 'type="radio" name="time_request_type"', 'Late/early request page should use easy-tap radio buttons for request type.');

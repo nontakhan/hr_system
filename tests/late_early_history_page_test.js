@@ -27,7 +27,8 @@ assertNotIncludes(requestPage, 'id="lateEarlyHistoryBody"', 'Late/early request 
 assertNotIncludes(requestPage, 'id="refreshTimeRequestsBtn"', 'Late/early request page should not render the history refresh button.');
 assertIncludes(requestPage, 'class="time-request-shell"', 'Late/early request page should use the balanced form shell.');
 assertNotIncludes(requestPage, 'time-request-guidance', 'Late/early request page should not render the explanatory guidance panel.');
-assertNotIncludes(requestPage, 'href="late_early_history.php"', 'Late/early request page should not be the workflow landing page.');
+assertIncludes(requestPage, 'href="late_early_history.php"', 'Late/early request page should include a back button to the history landing page.');
+assertIncludes(requestPage, 'time-request-back-link', 'Late/early request back button should have a stable class.');
 assertIncludes(styles, 'width: 80%;', 'Late/early request form shell should use 80 percent of the content area.');
 assertIncludes(styles, 'margin-left: auto;', 'Late/early request form shell should be centered horizontally.');
 assertIncludes(styles, 'margin-right: auto;', 'Late/early request form shell should be centered horizontally.');

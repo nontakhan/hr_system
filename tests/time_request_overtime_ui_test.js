@@ -33,10 +33,8 @@ assertIncludes(overtimeHistoryPage, 'href="overtime_request.php"', 'OT history p
 assertIncludes(overtimeHistoryPage, 'href="overtime_approvals.php"', 'OT history page should link to the approval page for approvers.');
 assertIncludes(overtimeHistoryPage, 'id="overtimeHistoryTable"', 'OT history table should have a stable DataTables id.');
 assertIncludes(overtimeRequestPage, "window.timeRequestFixedType = 'overtime_after_work';", 'OT request page should remain scoped to OT submissions.');
-if (overtimeRequestPage.includes('time-request-history-link')) {
-  console.error('OT request page should not keep a separate history button after history becomes the landing page.');
-  process.exit(1);
-}
+assertIncludes(overtimeRequestPage, 'href="overtime_history.php"', 'OT request page should include a back button to the OT history landing page.');
+assertIncludes(overtimeRequestPage, 'overtime-request-back-link', 'OT request back button should have a stable class.');
 assertIncludes(overtimeApprovalsPage, 'href="overtime_history.php"', 'OT approval page should include a back button to the OT history landing page.');
 assertIncludes(overtimeApprovalsPage, 'overtime-approval-back-link', 'OT approval back button should have a stable class.');
 assertIncludes(timeScript, 'overtimeHistoryTable', 'Time request script should initialize DataTables for the OT history table.');

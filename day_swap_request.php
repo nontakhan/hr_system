@@ -12,6 +12,9 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">ขอสลับวันหยุด</h1>
         <p class="text-muted small">เลือกวันหยุดปกติจากปฏิทินทั้งสองฝั่งเพื่อส่งให้หัวหน้าอนุมัติ</p>
     </div>
+    <a href="day_swap_history.php" class="btn btn-outline-secondary day-swap-request-back-link">
+        <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ
+    </a>
 </div>
 
 <div class="row g-4">
