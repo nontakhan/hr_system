@@ -113,6 +113,12 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <i class="fas fa-graduation-cap me-2"></i> อบรม
             </a>
 
+            <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
+            <a href="request_proxy.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('request_proxy.php'); ?>">
+                <i class="fas fa-user-pen me-2"></i> ทำรายการแทนพนักงาน
+            </a>
+            <?php endif; ?>
+
             <!-- Employee Warning Records -->
             <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
             <a href="employee_warnings.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('employee_warnings.php'); ?>">
