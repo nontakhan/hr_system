@@ -7,8 +7,67 @@ if (!in_array($_SESSION['role'] ?? '', ['admin', 'hr'], true)) {
 }
 
 $page_title = 'ทำรายการแทนพนักงาน';
+$use_select2 = true;
 require_once 'includes/header.php';
 ?>
+
+<style>
+    .proxy-request-type-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .proxy-type-btn {
+        --proxy-accent: #b91c1c;
+        --proxy-accent-soft: rgba(185, 28, 28, 0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 44px;
+        padding: 0.65rem 0.95rem;
+        border: 1px solid var(--proxy-accent);
+        border-radius: 10px;
+        background: var(--proxy-accent-soft);
+        color: var(--proxy-accent);
+        font-weight: 600;
+        transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .proxy-type-btn:hover,
+    .proxy-type-btn:focus {
+        box-shadow: 0 0 0 0.2rem rgba(185, 28, 28, 0.12);
+    }
+
+    .proxy-type-btn.active {
+        background: var(--proxy-accent);
+        border-color: var(--proxy-accent);
+        color: #ffffff;
+    }
+
+    .proxy-type-btn i {
+        width: 1.1rem;
+        text-align: center;
+    }
+
+    .proxy-type-leave { --proxy-accent: #b91c1c; --proxy-accent-soft: rgba(185, 28, 28, 0.1); }
+    .proxy-type-time { --proxy-accent: #b45309; --proxy-accent-soft: rgba(180, 83, 9, 0.12); }
+    .proxy-type-ot { --proxy-accent: #1d4ed8; --proxy-accent-soft: rgba(29, 78, 216, 0.1); }
+    .proxy-type-swap { --proxy-accent: #047857; --proxy-accent-soft: rgba(4, 120, 87, 0.1); }
+    .proxy-type-training { --proxy-accent: #6d28d9; --proxy-accent-soft: rgba(109, 40, 217, 0.1); }
+
+    .proxy-request-employee-card .select2-container {
+        width: 100% !important;
+    }
+
+    @media (max-width: 575.98px) {
+        .proxy-type-btn {
+            flex: 1 1 100%;
+            justify-content: center;
+        }
+    }
+</style>
 
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
@@ -17,20 +76,30 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<div class="card shadow-sm border-0 mb-4">
+<div class="card shadow-sm border-0 mb-4 proxy-request-employee-card">
     <div class="card-body">
         <label class="form-label" for="proxyEmployeeId">พนักงาน <span class="text-danger">*</span></label>
         <select id="proxyEmployeeId" class="form-select" required></select>
     </div>
 </div>
 
-<ul class="nav nav-pills mb-3" id="proxyRequestTabs">
-    <li class="nav-item"><button class="nav-link active" data-proxy-tab="leave" type="button">ลา</button></li>
-    <li class="nav-item"><button class="nav-link" data-proxy-tab="late_early" type="button">มาสาย/ออกก่อน</button></li>
-    <li class="nav-item"><button class="nav-link" data-proxy-tab="overtime" type="button">OT</button></li>
-    <li class="nav-item"><button class="nav-link" data-proxy-tab="day_swap" type="button">สลับวันหยุด</button></li>
-    <li class="nav-item"><button class="nav-link" data-proxy-tab="training" type="button">อบรม</button></li>
-</ul>
+<div class="proxy-request-type-grid" id="proxyRequestTabs" role="group" aria-label="เลือกประเภทรายการแทนพนักงาน">
+    <button class="proxy-type-btn proxy-type-leave active" data-proxy-tab="leave" type="button" aria-pressed="true">
+        <i class="fas fa-calendar-check"></i> ลา
+    </button>
+    <button class="proxy-type-btn proxy-type-time" data-proxy-tab="late_early" type="button" aria-pressed="false">
+        <i class="fas fa-business-time"></i> มาสาย/ออกก่อน
+    </button>
+    <button class="proxy-type-btn proxy-type-ot" data-proxy-tab="overtime" type="button" aria-pressed="false">
+        <i class="fas fa-clock"></i> OT
+    </button>
+    <button class="proxy-type-btn proxy-type-swap" data-proxy-tab="day_swap" type="button" aria-pressed="false">
+        <i class="fas fa-right-left"></i> สลับวันหยุด
+    </button>
+    <button class="proxy-type-btn proxy-type-training" data-proxy-tab="training" type="button" aria-pressed="false">
+        <i class="fas fa-graduation-cap"></i> อบรม
+    </button>
+</div>
 
 <div class="proxy-request-panels">
     <form class="card shadow-sm border-0 proxy-panel" data-proxy-panel="leave" data-action="create_leave">

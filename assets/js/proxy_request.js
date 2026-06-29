@@ -19,7 +19,9 @@
     function showPanel(name) {
         panels.forEach((panel) => panel.classList.toggle('d-none', panel.dataset.proxyPanel !== name));
         document.querySelectorAll('[data-proxy-tab]').forEach((tab) => {
-            tab.classList.toggle('active', tab.dataset.proxyTab === name);
+            const isActive = tab.dataset.proxyTab === name;
+            tab.classList.toggle('active', isActive);
+            tab.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
     }
 
@@ -38,6 +40,24 @@
         return `<option value="${escapeHtml(row.id)}">${escapeHtml(code + name)}</option>`;
     }
 
+    function initSelect2(select, placeholder) {
+        if (!select || !window.jQuery || !jQuery.fn.select2) return;
+        const $select = jQuery(select);
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+        $select.select2({
+            width: '100%',
+            placeholder,
+            allowClear: true,
+        });
+    }
+
+    function initEmployeeSelect2() {
+        initSelect2(employeeSelect, 'เลือกพนักงาน');
+        initSelect2(targetEmployeeSelect, 'เลือกพนักงานคู่สลับ');
+    }
+
     async function loadEmployees() {
         const result = await loadJson(employeesUrl);
         if (result.status !== 'success') throw new Error(result.message || 'Load employees failed');
@@ -45,6 +65,7 @@
         const options = '<option value="">เลือกพนักงาน</option>' + employees.map(employeeOption).join('');
         if (employeeSelect) employeeSelect.innerHTML = options;
         if (targetEmployeeSelect) targetEmployeeSelect.innerHTML = options;
+        initEmployeeSelect2();
     }
 
     async function loadLeaveTypes() {
