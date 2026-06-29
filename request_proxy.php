@@ -25,13 +25,14 @@ require_once 'includes/header.php';
         --proxy-accent-soft: rgba(185, 28, 28, 0.1);
         display: inline-flex;
         align-items: center;
-        gap: 0.55rem;
-        min-height: 44px;
-        padding: 0.65rem 0.95rem;
+        gap: 0.65rem;
+        min-height: 50px;
+        padding: 0.78rem 1.15rem;
         border: 1px solid var(--proxy-accent);
         border-radius: 10px;
         background: var(--proxy-accent-soft);
         color: var(--proxy-accent);
+        font-size: 1.02rem;
         font-weight: 600;
         transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
     }
@@ -48,7 +49,8 @@ require_once 'includes/header.php';
     }
 
     .proxy-type-btn i {
-        width: 1.1rem;
+        width: 1.2rem;
+        font-size: 1.05rem;
         text-align: center;
     }
 
