@@ -89,6 +89,7 @@ assertNotIncludes(script, "request_unit: 'hour'", 'Leave request JS should no lo
 const requestApi = fs.readFileSync('api/leave_request_api.php', 'utf8');
 const historyApi = fs.readFileSync('api/leave_history_api.php', 'utf8');
 assertIncludes(requestApi, 'leaveDetectHourlyRequestType($row', 'Leave request API should filter late/early types out of leave options.');
+assertIncludes(requestApi, 'is_actual_leave = 1', 'Leave request API should only expose real leave types in leave options.');
 assertIncludes(requestApi, 'calculation_unit', 'Leave request API should expose leave type calculation unit.');
 assertIncludes(requestApi, 'leaveBuildHourlyLeavePayload', 'Leave request API should build quota-counting hourly leave payloads.');
 assertIncludes(requestApi, 'leaveBuildVacationEligibilityStatus', 'Leave request API should enforce the active vacation tenure threshold before saving vacation leave.');

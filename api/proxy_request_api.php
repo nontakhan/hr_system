@@ -120,8 +120,9 @@ function proxyRequestFetchEmployees(mysqli $mysqli): array {
 function proxyRequestFetchLeaveTypes(mysqli $mysqli): array {
     leaveEnsureHourlyRequestTypes($mysqli);
     leaveEnsureLeaveTypeCalculationColumns($mysqli);
-    $result = $mysqli->query("SELECT id, type_name, days_per_year, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold, vacation_min_months_before_leave
+    $result = $mysqli->query("SELECT id, type_name, days_per_year, requires_file, calculation_unit, hours_per_day, hour_full_day_threshold, vacation_min_months_before_leave, is_actual_leave
                               FROM leave_types
+                              WHERE is_actual_leave = 1
                               ORDER BY id ASC");
     $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     return array_values(array_filter($rows, function ($row) {
@@ -229,6 +230,12 @@ function proxyRequestCreateLeave(mysqli $mysqli): void {
     }
     if ($end < $start) {
         throw new InvalidArgumentException('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
+    }
+    $stmtType = $mysqli->prepare("SELECT id FROM leave_types WHERE id = ? AND is_actual_leave = 1 LIMIT 1");
+    $stmtType->bind_param('i', $typeId);
+    $stmtType->execute();
+    if ($stmtType->get_result()->num_rows !== 1) {
+        throw new InvalidArgumentException('ประเภทการลานี้ไม่ใช่การลาจริง');
     }
 
     $summary = leaveBuildDateSummary($start, $end, $startPart, $endPart, leaveFetchEmployeeWorkDays($mysqli, $employeeId), leaveFetchCompanyHolidays($mysqli, $start, $end));

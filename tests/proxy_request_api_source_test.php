@@ -19,6 +19,7 @@ $needles = [
     'trainingRequestCreateHistoryRecord',
     'daySwapHasPendingOrApprovedConflict',
     'leaveFetchConflictingLeaveDates',
+    'is_actual_leave = 1',
 ];
 
 foreach ($needles as $needle) {
