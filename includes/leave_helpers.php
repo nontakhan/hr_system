@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/proxy_request_helpers.php';
+
 function leaveDayName($date) {
     return date('D', strtotime($date));
 }
@@ -1129,6 +1131,8 @@ function leaveEnsureTwoStepApprovalColumns(mysqli $mysqli) {
             $columns[$row['Field']] = $row;
         }
     }
+
+    proxyRequestEnsureAuditColumns($mysqli, 'leave_requests');
 
     if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_cancel_hr') === false) {
         $mysqli->query("ALTER TABLE leave_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','pending_cancel_hr','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");

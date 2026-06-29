@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/proxy_request_helpers.php';
+
 function trainingRequestEnsureTable(mysqli $mysqli): void
 {
     $mysqli->query("CREATE TABLE IF NOT EXISTS training_requests (
@@ -29,6 +31,8 @@ function trainingRequestEnsureTable(mysqli $mysqli): void
         INDEX idx_training_requests_status (status),
         INDEX idx_training_requests_dates (start_date, end_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    proxyRequestEnsureAuditColumns($mysqli, 'training_requests');
 }
 
 function trainingRequestCreateHistoryRecord(mysqli $mysqli, array $request, int $approverId): int

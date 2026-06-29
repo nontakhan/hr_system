@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/proxy_request_helpers.php';
+
 function daySwapEnsureTable($mysqli) {
     $mysqli->query("CREATE TABLE IF NOT EXISTS day_swap_requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -29,6 +31,8 @@ function daySwapEnsureTable($mysqli) {
             $columns[$row['Field']] = $row;
         }
     }
+    proxyRequestEnsureAuditColumns($mysqli, 'day_swap_requests');
+
     if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_manager') === false) {
         $mysqli->query("ALTER TABLE day_swap_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
     }
