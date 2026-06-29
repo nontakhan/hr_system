@@ -15,6 +15,7 @@ require_once 'includes/header.php';
     .proxy-request-type-grid {
         display: flex;
         flex-wrap: wrap;
+        justify-content: center;
         gap: 0.75rem;
         margin-bottom: 1rem;
     }
