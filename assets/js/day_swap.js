@@ -268,14 +268,17 @@ async function loadDaySwapHistory() {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">ยังไม่มีคำขอ</td></tr>';
             return;
         }
-        tbody.innerHTML = res.data.map(item => `
+        tbody.innerHTML = res.data.map(item => {
+            const proxyHtml = renderProxyCreatorLine(item);
+            return `
             <tr>
                 <td>${formatThaiDate(item.created_at)}</td>
-                <td>${escapeHtml(item.requester_name || '-')} ↔ ${escapeHtml(item.target_name || '-')}</td>
+                <td>${escapeHtml(item.requester_name || '-')} ↔ ${escapeHtml(item.target_name || '-')}${proxyHtml}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
                 <td>${renderDaySwapStatus(item.status)}</td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         initDaySwapDataTable('daySwapHistoryTable', [[0, 'desc']], [3]);
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
@@ -335,20 +338,29 @@ async function loadDaySwapApprovalHistory() {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีประวัติ</td></tr>';
             return;
         }
-        tbody.innerHTML = res.data.map(item => `
+        tbody.innerHTML = res.data.map(item => {
+            const proxyHtml = renderProxyCreatorLine(item);
+            return `
             <tr>
                 <td>${item.approval_date ? formatThaiDate(item.approval_date) : '-'}</td>
-                <td>${escapeHtml(item.requester_name || '-')}</td>
+                <td>${escapeHtml(item.requester_name || '-')}${proxyHtml}</td>
                 <td>${escapeHtml(item.target_name || '-')}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
                 <td>${renderDaySwapStatus(item.status)}</td>
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || '-')}</small></td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         initDaySwapDataTable('daySwapApprovalHistoryTable', [[0, 'desc']], []);
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
+}
+
+function renderProxyCreatorLine(item) {
+    if (!item || item.created_via !== 'admin_proxy') return '';
+    const name = item.proxy_creator_name || item.created_by_role || '';
+    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
 }
 
 function resetDaySwapDataTable(tableId) {

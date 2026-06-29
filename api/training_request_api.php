@@ -78,10 +78,12 @@ try {
 
 function fetchMyTrainingRequests(mysqli $mysqli, int $employeeId): array
 {
-    $stmt = $mysqli->prepare("SELECT tr.*,
-                                     CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name
+    $stmt = $mysqli->prepare("SELECT tr.*, tr.created_via, tr.created_by_role, tr.proxy_note,
+                                     CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
+                                     CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
                               FROM training_requests tr
                               LEFT JOIN employees ae ON tr.approver_id = ae.id
+                              LEFT JOIN employees pce ON tr.created_by_employee_id = pce.id
                               WHERE tr.employee_id = ?
                               ORDER BY tr.created_at DESC
                               LIMIT 100");

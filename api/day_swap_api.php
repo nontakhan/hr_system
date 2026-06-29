@@ -71,14 +71,16 @@ try {
         }
 
         if ($action === 'my_requests') {
-            $stmt = $mysqli->prepare("SELECT dsr.*,
+            $stmt = $mysqli->prepare("SELECT dsr.*, dsr.created_via, dsr.created_by_role, dsr.proxy_note,
                                              CONCAT_WS(' ', te.first_name_th, te.last_name_th) AS target_name,
                                              CONCAT_WS(' ', re.first_name_th, re.last_name_th) AS requester_name,
-                                             CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name
+                                             CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
+                                             CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
                                       FROM day_swap_requests dsr
                                       JOIN employees te ON dsr.target_employee_id = te.id
                                       JOIN employees re ON dsr.requester_employee_id = re.id
                                       LEFT JOIN employees ae ON dsr.approver_id = ae.id
+                                      LEFT JOIN employees pce ON dsr.created_by_employee_id = pce.id
                                       WHERE dsr.requester_employee_id = ? OR dsr.target_employee_id = ?
                                       ORDER BY dsr.created_at DESC");
             $stmt->bind_param('ii', $myEmployeeId, $myEmployeeId);
@@ -270,16 +272,18 @@ function daySwapHasPendingOrApprovedConflict($mysqli, $employeeId, $targetId, $r
 }
 
 function daySwapApprovalQuery($type, $role, array $scopes) {
-    $sql = "SELECT dsr.*,
+    $sql = "SELECT dsr.*, dsr.created_via, dsr.created_by_role, dsr.proxy_note,
                    CONCAT_WS(' ', re.first_name_th, re.last_name_th) AS requester_name,
                    re.citizen_id AS requester_code,
                    CONCAT_WS(' ', te.first_name_th, te.last_name_th) AS target_name,
                    te.citizen_id AS target_code,
-                   CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name
+                   CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
+                   CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
             FROM day_swap_requests dsr
             JOIN employees re ON dsr.requester_employee_id = re.id
             JOIN employees te ON dsr.target_employee_id = te.id
             LEFT JOIN employees ae ON dsr.approver_id = ae.id
+            LEFT JOIN employees pce ON dsr.created_by_employee_id = pce.id
             WHERE 1=1";
 
     if ($role === 'hr') {

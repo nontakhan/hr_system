@@ -62,19 +62,23 @@ async function loadTrainingRequestHistory() {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีคำขออบรม</td></tr>';
             return;
         }
-        tbody.innerHTML = res.data.map(item => `
+        tbody.innerHTML = res.data.map(item => {
+            const proxyHtml = renderProxyCreatorLine(item);
+            return `
             <tr>
                 <td>${formatThaiDate(item.created_at)}</td>
                 <td>
                     <div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div>
                     <small class="text-muted">${escapeHtml(item.training_type || '-')}</small>
+                    ${proxyHtml}
                 </td>
                 <td>${formatTrainingRequestDateRange(item)}</td>
                 <td>${escapeHtml(item.provider || '-')}<br><small class="text-muted">${escapeHtml(item.location || '-')}</small></td>
                 <td>${renderTrainingRequestStatus(item.status)}</td>
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || item.objective || '-')}</small>${renderTrainingRequestAttachment(item)}</td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         initTrainingRequestDataTable('trainingRequestHistoryTable', [[0, 'desc']], [5]);
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
@@ -136,20 +140,29 @@ async function loadTrainingRequestApprovalHistory() {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีประวัติ</td></tr>';
             return;
         }
-        tbody.innerHTML = res.data.map(item => `
+        tbody.innerHTML = res.data.map(item => {
+            const proxyHtml = renderProxyCreatorLine(item);
+            return `
             <tr>
                 <td>${item.approval_date ? formatThaiDate(item.approval_date) : '-'}</td>
-                <td>${escapeHtml(item.employee_name || '-')}</td>
+                <td>${escapeHtml(item.employee_name || '-')}${proxyHtml}</td>
                 <td>${escapeHtml(item.course_name || '-')}</td>
                 <td>${formatTrainingRequestDateRange(item)}</td>
                 <td>${renderTrainingRequestStatus(item.status)}</td>
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || '-')}</small></td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         initTrainingRequestDataTable('trainingRequestApprovalHistoryTable', [[0, 'desc']], []);
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
+}
+
+function renderProxyCreatorLine(item) {
+    if (!item || item.created_via !== 'admin_proxy') return '';
+    const name = item.proxy_creator_name || item.created_by_role || '';
+    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
 }
 
 function resetTrainingRequestDataTable(tableId) {

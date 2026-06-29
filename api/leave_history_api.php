@@ -24,9 +24,11 @@ try {
     // --- GET: ดึงประวัติการลา ---
     if ($method === 'GET') {
         leaveEnsureTwoStepApprovalColumns($mysqli);
-        $sql = "SELECT lr.*, lt.type_name 
+        $sql = "SELECT lr.*, lr.created_via, lr.created_by_role, lr.proxy_note, lt.type_name,
+                       CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
                 FROM leave_requests lr
                 JOIN leave_types lt ON lr.leave_type_id = lt.id
+                LEFT JOIN employees pce ON lr.created_by_employee_id = pce.id
                 WHERE lr.employee_id = ?
                   AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL)
                 ORDER BY lr.created_at DESC";

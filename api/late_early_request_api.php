@@ -81,9 +81,11 @@ function fetchMyTimeRequests(mysqli $mysqli, $typeFilter = 'late_early') {
     $typeSql = $typeFilter === 'overtime_after_work'
         ? " AND lr.time_request_type = 'overtime_after_work'"
         : " AND lr.time_request_type IN ('late_arrival','early_departure')";
-    $stmt = $mysqli->prepare("SELECT lr.*, lt.type_name
+    $stmt = $mysqli->prepare("SELECT lr.*, lr.created_via, lr.created_by_role, lr.proxy_note, lt.type_name,
+                                     CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
                               FROM leave_requests lr
                               JOIN leave_types lt ON lr.leave_type_id = lt.id
+                              LEFT JOIN employees pce ON lr.created_by_employee_id = pce.id
                               WHERE lr.employee_id = ?
                                 AND lr.request_unit = 'hour'
                                 {$typeSql}

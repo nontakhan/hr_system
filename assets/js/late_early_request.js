@@ -167,20 +167,29 @@ async function loadTimeRequestHistory() {
             return;
         }
 
-        tbody.innerHTML = result.data.map(item => `
+        tbody.innerHTML = result.data.map(item => {
+            const proxyHtml = renderProxyCreatorLine(item);
+            return `
             <tr>
                 <td>${formatThaiDate(item.created_at)}</td>
-                <td>${escapeHtml(formatTimeRequestType(item.time_request_type))}</td>
+                <td>${escapeHtml(formatTimeRequestType(item.time_request_type))}${proxyHtml}</td>
                 <td>${formatThaiDate(item.start_date)}</td>
                 <td>${escapeHtml(formatTimeRequestDuration(item))}</td>
                 <td>${formatRequestStatusBadge(item.status)}</td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         initLateEarlyHistoryDataTable();
     } catch (error) {
         console.error(error);
         tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
+}
+
+function renderProxyCreatorLine(item) {
+    if (!item || item.created_via !== 'admin_proxy') return '';
+    const name = item.proxy_creator_name || item.created_by_role || '';
+    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
 }
 
 function resetLateEarlyHistoryDataTable() {

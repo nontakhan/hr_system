@@ -61,6 +61,7 @@ async function loadMyLeaves() {
                 const itemId = Number.parseInt(item.id, 10) || 0;
                 const typeName = escapeHtml(item.type_name);
                 const reason = escapeHtml(item.reason);
+                const proxyHtml = renderProxyCreatorLine(item);
                 
                 // Badge สถานะ
                 let actionBtn = '';
@@ -80,7 +81,7 @@ async function loadMyLeaves() {
                         <td><span class="fw-bold text-primary">${typeName}</span></td>
                         <td>${dateRange || `${startDate} - ${endDate}`}</td>
                         <td>${durationText}</td>
-                        <td><small class="text-muted">${reason}</small></td>
+                        <td><small class="text-muted">${reason}</small>${proxyHtml}</td>
                         <td>${statusBadge}</td>
                         <td>${actionBtn}</td>
                     </tr>
@@ -118,6 +119,12 @@ function renderLeaveUsageSummary(summary) {
     grid.innerHTML = typeItems.length
         ? typeItems.map(item => renderTypeLeaveUsageCard(item)).join('')
         : '<div class="text-muted small">ยังไม่มีประเภทการลาที่นำมาสรุปสิทธิ์</div>';
+}
+
+function renderProxyCreatorLine(item) {
+    if (!item || item.created_via !== 'admin_proxy') return '';
+    const name = item.proxy_creator_name || item.created_by_role || '';
+    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
 }
 
 function renderOverallLeaveUsageCard(item) {
