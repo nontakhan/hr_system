@@ -21,6 +21,7 @@ const historyPage = fs.existsSync('day_swap_history.php') ? fs.readFileSync('day
 const approvalsPage = fs.readFileSync('day_swap_approvals.php', 'utf8');
 const script = fs.readFileSync('assets/js/day_swap.js', 'utf8');
 const header = fs.readFileSync('includes/header.php', 'utf8');
+const api = fs.readFileSync('api/day_swap_api.php', 'utf8');
 
 assertIncludes(requestPage, 'id="daySwapForm"', 'Day-swap request page should keep the request form.');
 assertNotIncludes(requestPage, 'id="daySwapHistoryBody"', 'Day-swap request page should not render request history.');
@@ -47,6 +48,9 @@ assertIncludes(script, 'initDaySwapDataTable', 'Day-swap JS should initialize Da
 assertIncludes(script, "initDaySwapDataTable('daySwapHistoryTable'", 'Day-swap history should use DataTables.');
 assertIncludes(script, "initDaySwapDataTable('daySwapPendingTable'", 'Day-swap pending approvals should use DataTables.');
 assertIncludes(script, "initDaySwapDataTable('daySwapApprovalHistoryTable'", 'Day-swap approval history should use DataTables.');
+assertIncludes(script, 'renderEmployeeAvatar(profileImgUrl)', 'Day-swap approval rows should render employee photos through the shared default-image fallback.');
+assertIncludes(api, 're.profile_img_url AS requester_profile_img_url', 'Day-swap approval API should return requester profile images.');
+assertIncludes(api, 'te.profile_img_url AS target_profile_img_url', 'Day-swap approval API should return target profile images.');
 
 assertIncludes(header, 'isActive(\'day_swap_history.php\')', 'Sidebar should treat day-swap history as an active day-swap page.');
 assertIncludes(header, 'href="day_swap_history.php"', 'Sidebar should link directly to the day-swap history landing page.');

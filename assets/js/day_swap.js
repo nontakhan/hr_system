@@ -306,8 +306,8 @@ async function loadDaySwapPendingApprovals() {
         }
         tbody.innerHTML = res.data.map(item => `
             <tr>
-                <td>${escapeHtml(item.requester_name || '-')}<br><small class="text-muted">${escapeHtml(item.requester_code || '')}</small><div class="mt-1">${renderDaySwapStatus(item.status)}</div></td>
-                <td>${escapeHtml(item.target_name || '-')}<br><small class="text-muted">${escapeHtml(item.target_code || '')}</small></td>
+                <td>${renderDaySwapEmployeeCell(item.requester_name, item.requester_code, item.requester_profile_img_url, renderDaySwapStatus(item.status))}</td>
+                <td>${renderDaySwapEmployeeCell(item.target_name, item.target_code, item.target_profile_img_url)}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
                 <td><small class="text-muted">${escapeHtml(item.reason || '-')}</small></td>
                 <td>
@@ -324,6 +324,19 @@ async function loadDaySwapPendingApprovals() {
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
+}
+
+function renderDaySwapEmployeeCell(name, code, profileImgUrl, footerHtml = '') {
+    return `
+        <div class="d-flex align-items-center">
+            ${renderEmployeeAvatar(profileImgUrl)}
+            <div>
+                <div class="fw-bold">${escapeHtml(name || '-')}</div>
+                <small class="text-muted">${escapeHtml(code || '')}</small>
+                ${footerHtml ? `<div class="mt-1">${footerHtml}</div>` : ''}
+            </div>
+        </div>
+    `;
 }
 
 async function loadDaySwapApprovalHistory() {

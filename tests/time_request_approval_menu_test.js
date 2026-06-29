@@ -52,6 +52,8 @@ assertIncludes(script, 'resetLeaveApprovalDataTable', 'Approval JS should destro
 assertIncludes(script, "initLeaveApprovalDataTable('pendingTable', 'pending'", 'Pending approval rows should use DataTables.');
 assertIncludes(script, "initLeaveApprovalDataTable('historyTable', 'history'", 'History approval rows should use DataTables.');
 assertIncludes(script, '$(selector).DataTable', 'Approval table helper should initialize DataTables through jQuery.');
+assertIncludes(script, 'renderEmployeeAvatar(item.profile_img_url)', 'Approval rows should render employee photos through the shared default-image fallback.');
+assertIncludes(api, 'e.profile_img_url', 'Approval API should return employee profile images.');
 assertIncludes(script, 'request_unit', 'Approval JS should send request_unit to the API.');
 assertIncludes(script, 'time_request_type', 'Approval JS should send time_request_type to the API.');
 assertIncludes(api, "request_unit = 'hour'", 'Approval API should support filtering hourly time requests.');

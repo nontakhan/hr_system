@@ -39,6 +39,7 @@ assertIncludes(helper, 'CREATE TABLE IF NOT EXISTS training_requests', 'Training
 assertIncludes(helper, "status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled')", 'Training requests should use the two-step approval status set.');
 assertIncludes(helper, 'trainingRequestCreateHistoryRecord', 'Helper should expose auto history creation after HR approval.');
 assertIncludes(helper, 'employee_training_records', 'Approving a training request should write to employee training history.');
+assertIncludes(helper, 'e.profile_img_url AS employee_profile_img_url', 'Training approval API should return employee profile images.');
 
 assertIncludes(api, "'pending_manager'", 'New employee requests should start at manager approval.');
 assertIncludes(api, "SET status = 'pending_hr'", 'Manager approval should advance to HR.');
@@ -68,6 +69,7 @@ assertIncludes(script, 'initTrainingRequestPage', 'Frontend should initialize re
 assertIncludes(script, 'loadTrainingRequestHistory', 'Frontend should load employee history.');
 assertIncludes(script, 'loadTrainingRequestPendingApprovals', 'Frontend should load pending approvals.');
 assertIncludes(script, 'renderTrainingRequestStatus', 'Frontend should render Thai status labels.');
+assertIncludes(script, 'renderEmployeeAvatar(item.employee_profile_img_url)', 'Training approval rows should render employee photos through the shared default-image fallback.');
 assertIncludes(script, 'pending_hr', 'Frontend should show HR pending status.');
 assertIncludes(script, 'initTrainingRequestDataTable', 'Frontend should initialize DataTables for training request tables.');
 assertIncludes(script, "initTrainingRequestDataTable('trainingRequestHistoryTable'", 'Training request history should use DataTables.');

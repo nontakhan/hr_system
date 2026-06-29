@@ -100,7 +100,7 @@ async function loadTrainingRequestPendingApprovals() {
         }
         tbody.innerHTML = res.data.map(item => `
             <tr>
-                <td>${escapeHtml(item.employee_name || '-')}<br><small class="text-muted">${escapeHtml(item.employee_code || '')}</small><div class="mt-1">${renderTrainingRequestStatus(item.status)}</div></td>
+                <td>${renderTrainingRequestEmployeeCell(item, renderTrainingRequestStatus(item.status))}</td>
                 <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div></td>
                 <td>${formatTrainingRequestDateRange(item)}</td>
                 <td>
@@ -122,6 +122,19 @@ async function loadTrainingRequestPendingApprovals() {
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
+}
+
+function renderTrainingRequestEmployeeCell(item, footerHtml = '') {
+    return `
+        <div class="d-flex align-items-center">
+            ${renderEmployeeAvatar(item.employee_profile_img_url)}
+            <div>
+                <div class="fw-bold">${escapeHtml(item.employee_name || '-')}</div>
+                <small class="text-muted">${escapeHtml(item.employee_code || '')}</small>
+                ${footerHtml ? `<div class="mt-1">${footerHtml}</div>` : ''}
+            </div>
+        </div>
+    `;
 }
 
 async function loadTrainingRequestApprovalHistory() {
