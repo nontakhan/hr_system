@@ -604,19 +604,19 @@ window.loadTrainingHistory = async function(empId) {
     if (!tbody) return;
 
     const canManage = table.dataset.canManageTraining === '1';
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>';
 
     try {
         const response = await fetch(`api/employee_api.php?action=training_history&employee_id=${encodeURIComponent(empId)}`);
         const result = await response.json();
 
         if (result.status !== 'success') {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml(result.message || 'โหลดข้อมูลไม่สำเร็จ')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">${escapeHtml(result.message || 'โหลดข้อมูลไม่สำเร็จ')}</td></tr>`;
             return;
         }
 
         if (result.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ยังไม่มีประวัติการฝึกอบรม</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีประวัติการฝึกอบรม</td></tr>';
             return;
         }
 
@@ -638,8 +638,6 @@ window.loadTrainingHistory = async function(empId) {
                 <tr>
                     <td>${formatThaiDate(row.training_date)}</td>
                     <td>${escapeHtml(row.course_name || '-')}</td>
-                    <td>${escapeHtml(row.provider || '-')}</td>
-                    <td>${escapeHtml(row.training_type || '-')}</td>
                     <td>${escapeHtml(row.result_status || '-')}</td>
                     <td>${formatThaiDate(row.certificate_expiry_date)}</td>
                     <td>${attachment}</td>
@@ -649,7 +647,7 @@ window.loadTrainingHistory = async function(empId) {
             `;
         }).join('');
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
     }
 }
 
@@ -659,8 +657,6 @@ window.openTrainingHistoryEdit = function(button) {
     document.getElementById('trainingId').value = row.id || '';
     setThaiDateInputValue(document.getElementById('trainingDate'), row.training_date || new Date().toISOString().slice(0, 10));
     document.getElementById('trainingCourseName').value = row.course_name || '';
-    document.getElementById('trainingProvider').value = row.provider || '';
-    document.getElementById('trainingType').value = row.training_type || '';
     document.getElementById('trainingResultStatus').value = row.result_status || '';
     setThaiDateInputValue(document.getElementById('trainingCertificateExpiryDate'), row.certificate_expiry_date || '');
     document.getElementById('trainingNotes').value = row.notes || '';

@@ -1,0 +1,112 @@
+<h2>เลือกแนวทางจัด Sidebar ใหม่</h2>
+<p class="subtitle">เป้าหมายคือแยกงานพนักงาน งานคำขอ และงาน HR/Admin ให้สแกนง่ายขึ้น โดยยังคงหน้าที่มีอยู่ในระบบ</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A: แยกตามบทบาทก่อน</div>
+        <div class="mockup-body">
+          <div class="mock-nav">HR System</div>
+          <div class="mock-sidebar">
+            <strong>ภาพรวม</strong><br>
+            หน้าหลัก<br>
+            ปฏิทินวันหยุด<br><br>
+            <strong>พื้นที่พนักงาน</strong><br>
+            เวลาทำงานของฉัน<br>
+            ใบเตือนของฉัน<br>
+            โปรไฟล์ของฉัน<br><br>
+            <strong>คำขอของฉัน</strong><br>
+            การลา / มาสาย-ออกก่อน / OT / สลับวันหยุด / อบรม<br><br>
+            <strong>HR & Admin</strong><br>
+            จัดการพนักงาน<br>
+            ลงเวลาและนำเข้า<br>
+            ใบเตือนพนักงาน<br>
+            ตั้งค่าระบบ
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. แยกตามบทบาทก่อน</h3>
+      <p>อ่านง่ายที่สุดสำหรับผู้ใช้ทั่วไป เพราะเห็นก่อนว่าอะไรเป็นของฉัน อะไรเป็นงาน HR/Admin</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B: Workflow เป็นศูนย์กลาง</div>
+        <div class="mockup-body">
+          <div class="mock-nav">HR System</div>
+          <div class="mock-sidebar">
+            <strong>ภาพรวม</strong><br>
+            หน้าหลัก<br>
+            ปฏิทินวันหยุด<br><br>
+            <strong>Workflow คำขอ</strong><br>
+            การลา<br>
+            มาสาย / ออกก่อน<br>
+            OT หลังเลิกงาน<br>
+            สลับวันหยุด<br>
+            อบรม<br>
+            อนุมัติคำขอทั้งหมด<br><br>
+            <strong>ข้อมูลพนักงาน</strong><br>
+            เวลาทำงานของฉัน<br>
+            ใบเตือนของฉัน<br><br>
+            <strong>งาน HR/Admin</strong><br>
+            จัดการพนักงาน<br>
+            นำเข้า/ปรับแก้เวลาสแกน<br>
+            ตั้งค่าระบบ
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Workflow เป็นศูนย์กลาง</h3>
+      <p>รวมคำขอทุกประเภทไว้ที่เดียวเด่นมาก เหมาะถ้าผู้ใช้เข้า sidebar เพื่อทำ/ดู/อนุมัติคำขอบ่อยที่สุด</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C: Hybrid ที่ผมแนะนำ</div>
+        <div class="mockup-body">
+          <div class="mock-nav">HR System</div>
+          <div class="mock-sidebar">
+            <strong>ภาพรวม</strong><br>
+            หน้าหลัก<br>
+            ปฏิทินงานและวันหยุด<br><br>
+            <strong>ของฉัน</strong><br>
+            เวลาทำงาน<br>
+            ใบเตือนของฉัน<br>
+            โปรไฟล์<br><br>
+            <strong>ศูนย์คำขอ</strong><br>
+            การลา<br>
+            มาสาย / ออกก่อน<br>
+            OT หลังเลิกงาน<br>
+            สลับวันหยุด<br>
+            อบรม<br>
+            ทำรายการแทนพนักงาน<br><br>
+            <strong>อนุมัติคำขอ</strong><br>
+            รายการรออนุมัติทั้งหมด<br><br>
+            <strong>บริหารบุคลากร</strong><br>
+            พนักงาน<br>
+            ลงเวลา<br>
+            ใบเตือน<br>
+            ตั้งค่าระบบ
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Hybrid: ของฉัน + ศูนย์คำขอ + บริหารบุคลากร</h3>
+      <p>บาลานซ์ที่สุด: พนักงานไม่หลง, HR/Admin ยังเข้าถึงงานหลังบ้านเร็ว และคำขอทั้งหมดอยู่ในหมวดเดียวตามที่ต้องการ</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>ข้อเสนอเบื้องต้น</h3>
+  <p>ผมเอนเอียงไปทาง C เพราะแยก mental model ชัด: ดูของตัวเอง, ทำคำขอ, อนุมัติ, และบริหารระบบ โดยไม่ทำให้ workflow แต่ละประเภทหายไปในเมนูที่ลึกเกินไป</p>
+</div>

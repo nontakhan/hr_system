@@ -448,8 +448,6 @@ require_once 'includes/header.php';
                             <tr>
                                 <th>วันที่อบรม</th>
                                 <th>หลักสูตร</th>
-                                <th>ผู้จัด/สถาบัน</th>
-                                <th>ประเภท</th>
                                 <th>ผลลัพธ์</th>
                                 <th>ใบรับรองหมดอายุ</th>
                                 <th>เอกสาร</th>
@@ -458,7 +456,7 @@ require_once 'includes/header.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -488,14 +486,6 @@ require_once 'includes/header.php';
                         <div class="col-md-6">
                             <label class="form-label fw-bold">ชื่อหลักสูตร <span class="text-danger">*</span></label>
                             <input type="text" name="course_name" id="trainingCourseName" class="form-control" required maxlength="255">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">ผู้จัด/สถาบัน</label>
-                            <input type="text" name="provider" id="trainingProvider" class="form-control" maxlength="255">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">ประเภทอบรม</label>
-                            <input type="text" name="training_type" id="trainingType" class="form-control" maxlength="100" placeholder="เช่น ภายใน, ภายนอก, Online">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">ผลลัพธ์/สถานะ</label>

@@ -99,13 +99,10 @@ function createTrainingRequest(mysqli $mysqli, int $employeeId): void
     }
 
     $courseName = trainingRequestTrim((string)($_POST['course_name'] ?? ''), 255);
-    $provider = trainingRequestTrim((string)($_POST['provider'] ?? ''), 255);
-    $trainingType = trainingRequestTrim((string)($_POST['training_type'] ?? ''), 100);
     $startDate = trainingRequestNormalizeDate((string)($_POST['start_date'] ?? ''), 'กรุณาระบุวันที่เริ่มอบรม');
     $endDate = trainingRequestNormalizeDate((string)($_POST['end_date'] ?? ''), 'กรุณาระบุวันที่สิ้นสุดอบรม');
     $location = trainingRequestTrim((string)($_POST['location'] ?? ''), 255);
     $objective = trim((string)($_POST['objective'] ?? ''));
-    $estimatedCost = trim((string)($_POST['estimated_cost'] ?? ''));
 
     if ($courseName === '') {
         sendTrainingRequestError('กรุณาระบุชื่อหลักสูตร');
@@ -116,17 +113,15 @@ function createTrainingRequest(mysqli $mysqli, int $employeeId): void
     if ($endDate < $startDate) {
         sendTrainingRequestError('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มอบรม');
     }
-    $cost = $estimatedCost === '' ? null : max(0, (float)$estimatedCost);
-
     $attachmentPath = '';
     if (isset($_FILES['attachment']) && ($_FILES['attachment']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         $attachmentPath = saveEmployeeTrainingAttachment($_FILES['attachment'], $employeeId);
     }
 
     $stmt = $mysqli->prepare("INSERT INTO training_requests
-        (employee_id, course_name, provider, training_type, start_date, end_date, location, estimated_cost, objective, attachment_path, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_manager')");
-    $stmt->bind_param('issssssdss', $employeeId, $courseName, $provider, $trainingType, $startDate, $endDate, $location, $cost, $objective, $attachmentPath);
+        (employee_id, course_name, start_date, end_date, location, objective, attachment_path, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_manager')");
+    $stmt->bind_param('issssss', $employeeId, $courseName, $startDate, $endDate, $location, $objective, $attachmentPath);
     if (!$stmt->execute()) {
         throw new RuntimeException($stmt->error ?: 'Cannot save training request');
     }

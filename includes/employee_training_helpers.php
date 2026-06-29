@@ -7,8 +7,6 @@ function ensureEmployeeTrainingRecordsTable(mysqli $mysqli): void
         employee_id INT NOT NULL,
         training_date DATE NOT NULL,
         course_name VARCHAR(255) NOT NULL,
-        provider VARCHAR(255) NULL,
-        training_type VARCHAR(100) NULL,
         result_status VARCHAR(100) NULL,
         certificate_expiry_date DATE NULL,
         attachment_path VARCHAR(255) NULL,

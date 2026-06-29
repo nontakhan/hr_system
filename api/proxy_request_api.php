@@ -332,16 +332,12 @@ function proxyRequestCreateTraining(mysqli $mysqli): void {
     $employeeId = (int)($_POST['employee_id'] ?? 0);
     proxyRequestRequireEmployee($mysqli, $employeeId);
     $courseName = trainingRequestTrim((string)($_POST['course_name'] ?? ''), 255);
-    $provider = trainingRequestTrim((string)($_POST['provider'] ?? ''), 255);
-    $trainingType = trainingRequestTrim((string)($_POST['training_type'] ?? ''), 100);
     $startDate = trainingRequestNormalizeDate((string)($_POST['start_date'] ?? ''), 'กรุณาระบุวันที่เริ่มอบรม');
     $endDate = trainingRequestNormalizeDate((string)($_POST['end_date'] ?? ''), 'กรุณาระบุวันที่สิ้นสุดอบรม');
     $location = trainingRequestTrim((string)($_POST['location'] ?? ''), 255);
     $objective = trim((string)($_POST['objective'] ?? ''));
-    $estimatedCost = trim((string)($_POST['estimated_cost'] ?? ''));
     if ($courseName === '' || $objective === '') throw new InvalidArgumentException('กรุณากรอกข้อมูลให้ครบถ้วน');
     if ($endDate < $startDate) throw new InvalidArgumentException('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มอบรม');
-    $cost = $estimatedCost === '' ? null : max(0, (float)$estimatedCost);
     $attachmentPath = '';
     if (isset($_FILES['attachment']) && ($_FILES['attachment']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         $attachmentPath = saveEmployeeTrainingAttachment($_FILES['attachment'], $employeeId);
@@ -353,21 +349,18 @@ function proxyRequestCreateTraining(mysqli $mysqli): void {
     $mysqli->begin_transaction();
     try {
         $stmt = $mysqli->prepare("INSERT INTO training_requests
-            (employee_id, course_name, provider, training_type, start_date, end_date, location, estimated_cost, objective, attachment_path, status, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, approver_id, approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param('issssssdssisisiisssss', $employeeId, $courseName, $provider, $trainingType, $startDate, $endDate, $location, $cost, $objective, $attachmentPath, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
+            (employee_id, course_name, start_date, end_date, location, objective, attachment_path, status, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, approver_id, approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('issssssisisisiisss', $employeeId, $courseName, $startDate, $endDate, $location, $objective, $attachmentPath, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
         if (!$stmt->execute()) throw new RuntimeException($stmt->error ?: 'Cannot save proxy training request');
         $requestId = (int)$stmt->insert_id;
         $request = [
             'id' => $requestId,
             'employee_id' => $employeeId,
             'course_name' => $courseName,
-            'provider' => $provider,
-            'training_type' => $trainingType,
             'start_date' => $startDate,
             'end_date' => $endDate,
             'location' => $location,
-            'estimated_cost' => $cost,
             'objective' => $objective,
             'attachment_path' => $attachmentPath,
         ];

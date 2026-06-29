@@ -194,12 +194,9 @@ require_once 'includes/header.php';
     <form class="card shadow-sm border-0 proxy-panel d-none" data-proxy-panel="training" data-action="create_training" enctype="multipart/form-data">
         <div class="card-body row g-3">
             <div class="col-md-6"><label class="form-label">หลักสูตร <span class="text-danger">*</span></label><input type="text" name="course_name" class="form-control" required></div>
-            <div class="col-md-6"><label class="form-label">ผู้จัด/สถาบัน</label><input type="text" name="provider" class="form-control"></div>
-            <div class="col-md-4"><label class="form-label">ประเภทอบรม</label><input type="text" name="training_type" class="form-control"></div>
-            <div class="col-md-4"><label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label><input type="date" name="start_date" class="form-control" data-native-date-picker="true" required></div>
-            <div class="col-md-4"><label class="form-label">วันที่สิ้นสุด <span class="text-danger">*</span></label><input type="date" name="end_date" class="form-control" data-native-date-picker="true" required></div>
             <div class="col-md-6"><label class="form-label">สถานที่/รูปแบบ</label><input type="text" name="location" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">ค่าใช้จ่ายประมาณ</label><input type="number" name="estimated_cost" class="form-control" min="0" step="0.01"></div>
+            <div class="col-md-6"><label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label><input type="date" name="start_date" class="form-control" data-native-date-picker="true" required></div>
+            <div class="col-md-6"><label class="form-label">วันที่สิ้นสุด <span class="text-danger">*</span></label><input type="date" name="end_date" class="form-control" data-native-date-picker="true" required></div>
             <div class="col-12"><label class="form-label">วัตถุประสงค์ <span class="text-danger">*</span></label><textarea name="objective" class="form-control" rows="3" required></textarea></div>
             <div class="col-12"><label class="form-label">ไฟล์แนบ</label><input type="file" name="attachment" class="form-control"></div>
             <div class="col-12"><label class="form-label">หมายเหตุ HR/Admin</label><textarea name="proxy_note" class="form-control" rows="2"></textarea></div>

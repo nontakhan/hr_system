@@ -45,7 +45,7 @@ require_once 'includes/header.php';
                         <th>วันที่ส่ง</th>
                         <th>หลักสูตร</th>
                         <th>ช่วงอบรม</th>
-                        <th>ผู้จัด/สถานที่</th>
+                        <th>สถานที่/รูปแบบ</th>
                         <th>สถานะ</th>
                         <th>หมายเหตุ</th>
                     </tr>

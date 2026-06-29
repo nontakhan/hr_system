@@ -275,8 +275,10 @@ function daySwapApprovalQuery($type, $role, array $scopes) {
     $sql = "SELECT dsr.*, dsr.created_via, dsr.created_by_role, dsr.proxy_note,
                    CONCAT_WS(' ', re.first_name_th, re.last_name_th) AS requester_name,
                    re.citizen_id AS requester_code,
+                   re.profile_img_url AS requester_profile_img_url,
                    CONCAT_WS(' ', te.first_name_th, te.last_name_th) AS target_name,
                    te.citizen_id AS target_code,
+                   te.profile_img_url AS target_profile_img_url,
                    CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
                    CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
             FROM day_swap_requests dsr

@@ -21,33 +21,21 @@ require_once 'includes/header.php';
             <input type="hidden" name="action" value="create">
 
             <div class="row g-3">
-                <div class="col-md-8">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold">ชื่อหลักสูตร <span class="text-danger">*</span></label>
                     <input type="text" name="course_name" class="form-control" maxlength="255" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">ประเภทอบรม</label>
-                    <input type="text" name="training_type" class="form-control" maxlength="100" placeholder="ภายใน, ภายนอก, Online">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">ผู้จัด/สถาบัน</label>
-                    <input type="text" name="provider" class="form-control" maxlength="255">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">สถานที่/รูปแบบ</label>
                     <input type="text" name="location" class="form-control" maxlength="255" placeholder="สถานที่ หรือ Online">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold">วันที่เริ่ม <span class="text-danger">*</span></label>
                     <input type="date" name="start_date" class="form-control" data-native-date-picker="true" required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold">วันที่สิ้นสุด <span class="text-danger">*</span></label>
                     <input type="date" name="end_date" class="form-control" data-native-date-picker="true" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">ค่าใช้จ่ายโดยประมาณ</label>
-                    <input type="number" name="estimated_cost" class="form-control" min="0" step="0.01">
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold">เหตุผล/วัตถุประสงค์ <span class="text-danger">*</span></label>

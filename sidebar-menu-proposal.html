@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ข้อเสนอการจัด Sidebar HR System</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --ink: #1f2933;
+      --muted: #687587;
+      --line: #dfe4ea;
+      --red: #b91c1c;
+      --red-soft: #fff1f1;
+      --green: #0f766e;
+      --blue: #1d4ed8;
+      --shadow: 0 18px 45px rgba(31, 41, 51, .08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Sarabun", "Segoe UI", Tahoma, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 48px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .intro {
+      margin-bottom: 28px;
+      max-width: 860px;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 100%;
+    }
+
+    .card.recommended {
+      border-color: rgba(15, 118, 110, .45);
+    }
+
+    .card-head {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--red-soft);
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tag.good {
+      background: #ecfdf5;
+      color: var(--green);
+    }
+
+    .mock {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      min-height: 420px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar {
+      padding: 14px 12px;
+      background: #ffffff;
+      border-right: 1px solid var(--line);
+    }
+
+    .brand {
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      background: var(--red);
+      color: #fff;
+      font-weight: 800;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .group {
+      margin: 14px 0 6px;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .item {
+      display: block;
+      margin: 3px 0;
+      padding: 6px 8px;
+      border-radius: 5px;
+      color: #344054;
+      font-size: 12px;
+      background: #f8fafc;
+    }
+
+    .item.active {
+      background: var(--red-soft);
+      color: var(--red);
+      font-weight: 800;
+    }
+
+    .content {
+      padding: 18px;
+      background: linear-gradient(#fff, #f8fafc);
+    }
+
+    .screen-title {
+      height: 18px;
+      width: 64%;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      background: #d7dee8;
+    }
+
+    .screen-row {
+      height: 52px;
+      margin-bottom: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .body {
+      padding: 16px 18px 18px;
+    }
+
+    .pros {
+      margin-top: 12px;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .recommendation {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+      padding: 22px;
+      border: 1px solid rgba(15, 118, 110, .35);
+      border-radius: 8px;
+      background: #f0fdfa;
+      box-shadow: var(--shadow);
+    }
+
+    .menu-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .menu-block {
+      padding: 12px;
+      border: 1px solid rgba(15, 118, 110, .18);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .menu-block strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--green);
+    }
+
+    @media (max-width: 980px) {
+      .options,
+      .recommendation {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      main {
+        width: min(100% - 20px, 1180px);
+        padding-top: 20px;
+      }
+
+      .mock {
+        grid-template-columns: 140px 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="intro">
+      <h1>ข้อเสนอการจัด Menubar ใหม่</h1>
+      <p>แยกให้ชัดว่าอะไรเป็นพื้นที่ของพนักงาน อะไรเป็น workflow คำขอ และอะไรเป็นงาน HR/Admin โดยยังอิงจากหน้าเดิมในระบบปัจจุบัน</p>
+    </section>
+
+    <section class="options">
+      <article class="card">
+        <div class="card-head">
+          <span class="tag">Option A</span>
+          <h2>แยกตามบทบาทก่อน</h2>
+          <p>เริ่มจากพนักงาน แล้วค่อยไปงาน HR/Admin</p>
+        </div>
+        <div class="mock">
+          <div class="sidebar">
+            <div class="brand">HR System</div>
+            <div class="group">ภาพรวม</div>
+            <span class="item active">หน้าหลัก</span>
+            <span class="item">ปฏิทินวันหยุด</span>
+            <div class="group">พื้นที่พนักงาน</div>
+            <span class="item">เวลาทำงานของฉัน</span>
+            <span class="item">ใบเตือนของฉัน</span>
+            <span class="item">โปรไฟล์ของฉัน</span>
+            <div class="group">คำขอของฉัน</div>
+            <span class="item">การลา</span>
+            <span class="item">มาสาย/ออกก่อน</span>
+            <span class="item">OT หลังเลิกงาน</span>
+            <span class="item">สลับวันหยุด</span>
+            <span class="item">อบรม</span>
+            <div class="group">HR & Admin</div>
+            <span class="item">จัดการพนักงาน</span>
+            <span class="item">ลงเวลา</span>
+            <span class="item">ตั้งค่าระบบ</span>
+          </div>
+          <div class="content">
+            <div class="screen-title"></div>
+            <div class="screen-row"></div>
+            <div class="screen-row"></div>
+            <div class="screen-row"></div>
+          </div>
+        </div>
+        <div class="body">
+          <h3>ข้อดี</h3>
+          <ul class="pros">
+            <li>คนทั่วไปเข้าใจง่ายว่าอะไรเป็นของตัวเอง</li>
+            <li>เหมาะกับระบบที่เน้น self-service</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <span class="tag">Option B</span>
+          <h2>Workflow เป็นศูนย์กลาง</h2>
+          <p>รวมคำขอทุกอย่างไว้เด่นที่สุด</p>
+        </div>
+        <div class="mock">
+          <div class="sidebar">
+            <div class="brand">HR System</div>
+            <div class="group">ภาพรวม</div>
+            <span class="item">หน้าหลัก</span>
+            <span class="item">ปฏิทินวันหยุด</span>
+            <div class="group">Workflow คำขอ</div>
+            <span class="item active">การลา</span>
+            <span class="item">มาสาย / ออกก่อน</span>
+            <span class="item">OT หลังเลิกงาน</span>
+            <span class="item">สลับวันหยุด</span>
+            <span class="item">อบรม</span>
+            <span class="item">อนุมัติคำขอทั้งหมด</span>
+            <div class="group">ข้อมูลพนักงาน</div>
+            <span class="item">เวลาทำงานของฉัน</span>
+            <span class="item">ใบเตือนของฉัน</span>
+            <div class="group">งาน HR/Admin</div>
+            <span class="item">จัดการพนักงาน</span>
+            <span class="item">นำเข้า/ปรับแก้เวลาสแกน</span>
+          </div>
+          <div class="content">
+            <div class="screen-title"></div>
+            <div class="screen-row"></div>
+            <div class="screen-row"></div>
+            <div class="screen-row"></div>
+          </div>
+        </div>
+        <div class="body">
+          <h3>ข้อดี</h3>
+          <ul class="pros">
+            <li>ผู้ใช้ที่เข้าเพื่อทำคำขอหาเจอเร็ว</li>
+            <li>badge รออนุมัติรวมได้ชัด</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="card recommended">
+        <div class="card-head">
+          <span class="tag good">Recommended</span>
+          <h2>Hybrid ที่แนะนำ</h2>
+          <p>แยกของฉัน, ศูนย์คำขอ, อนุมัติ, และบริหารบุคลากร</p>
+        </div>
+        <div class="mock">
+          <div class="sidebar">
+            <div class="brand">HR System</div>
+            <div class="group">ภาพรวม</div>
+            <span class="item active">หน้าหลัก</span>
+            <span class="item">ปฏิทินงานและวันหยุด</span>
+            <div class="group">ของฉัน</div>
+            <span class="item">เวลาทำงาน</span>
+            <span class="item">ใบเตือนของฉัน</span>
+            <span class="item">โปรไฟล์</span>
+            <div class="group">ศูนย์คำขอ</div>
+            <span class="item">การลา</span>
+            <span class="item">มาสาย / ออกก่อน</span>
+            <span class="item">OT หลังเลิกงาน</span>
+            <span class="item">สลับวันหยุด</span>
+            <span class="item">อบรม</span>
+            <span class="item">ทำรายการแทนพนักงาน</span>
+            <div class="group">อนุมัติคำขอ</div>
+            <span class="item">รายการรออนุมัติทั้งหมด</span>
+            <div class="group">บริหารบุคลากร</div>
+            <span class="item">พนักงาน</span>
+            <span class="item">ลงเวลา</span>
+            <span class="item">ใบเตือน</span>
+            <span class="item">ตั้งค่าระบบ</span>
+          </div>
+          <div class="content">
+            <div class="screen-title"></div>
+            <div class="screen-row"></div>
+            <div class="screen-row"></div>
+            <div class="screen-row"></div>
+          </div>
+        </div>
+        <div class="body">
+          <h3>ข้อดี</h3>
+          <ul class="pros">
+            <li>ไม่ปนงานพนักงานกับงาน HR/Admin</li>
+            <li>workflow คำขออยู่ด้วยกันตามที่ต้องการ</li>
+            <li>อนุมัติแยกออกมา ทำให้ผู้จัดการ/HR หา queue ได้เร็ว</li>
+          </ul>
+        </div>
+      </article>
+    </section>
+
+    <section class="recommendation">
+      <div>
+        <h2>ข้อเสนอของผม</h2>
+        <p>ใช้แบบ Hybrid เพราะมันตรงกับวิธีคิดของผู้ใช้จริงที่สุด: เข้ามาดูของตัวเอง, ทำคำขอ, อนุมัติคำขอ, หรือบริหารระบบหลังบ้าน โดยไม่ต้องเดาว่าหน้าไหนอยู่หมวดไหน</p>
+      </div>
+      <div class="menu-list">
+        <div class="menu-block">
+          <strong>ศูนย์คำขอ</strong>
+          การลา, มาสาย/ออกก่อน, OT, สลับวันหยุด, อบรม และทำรายการแทนพนักงาน
+        </div>
+        <div class="menu-block">
+          <strong>อนุมัติคำขอ</strong>
+          รวมหน้า approval ของทุก workflow พร้อม badge จำนวนรออนุมัติ
+        </div>
+        <div class="menu-block">
+          <strong>บริหารบุคลากร</strong>
+          จัดการพนักงาน, ลงเวลา, ใบเตือนพนักงาน, ตั้งค่าระบบ
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

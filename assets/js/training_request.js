@@ -67,13 +67,12 @@ async function loadTrainingRequestHistory() {
             return `
             <tr>
                 <td>${formatThaiDate(item.created_at)}</td>
-                <td>
-                    <div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div>
-                    <small class="text-muted">${escapeHtml(item.training_type || '-')}</small>
-                    ${proxyHtml}
-                </td>
-                <td>${formatTrainingRequestDateRange(item)}</td>
-                <td>${escapeHtml(item.provider || '-')}<br><small class="text-muted">${escapeHtml(item.location || '-')}</small></td>
+                  <td>
+                      <div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div>
+                      ${proxyHtml}
+                  </td>
+                  <td>${formatTrainingRequestDateRange(item)}</td>
+                  <td>${escapeHtml(item.location || '-')}</td>
                 <td>${renderTrainingRequestStatus(item.status)}</td>
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || item.objective || '-')}</small>${renderTrainingRequestAttachment(item)}</td>
             </tr>
@@ -102,11 +101,10 @@ async function loadTrainingRequestPendingApprovals() {
         tbody.innerHTML = res.data.map(item => `
             <tr>
                 <td>${escapeHtml(item.employee_name || '-')}<br><small class="text-muted">${escapeHtml(item.employee_code || '')}</small><div class="mt-1">${renderTrainingRequestStatus(item.status)}</div></td>
-                <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div><small class="text-muted">${escapeHtml(item.training_type || '-')}</small></td>
+                <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div></td>
                 <td>${formatTrainingRequestDateRange(item)}</td>
                 <td>
-                    <div>${escapeHtml(item.provider || '-')}</div>
-                    <small class="text-muted">${escapeHtml(item.location || '-')}</small>
+                    <div>${escapeHtml(item.location || '-')}</div>
                     <div class="small text-muted mt-1">${escapeHtml(item.objective || '-')}</div>
                     ${renderTrainingRequestAttachment(item)}
                 </td>

@@ -134,7 +134,6 @@ async function loadPendingLeaves() {
                 const totalDays = Number.parseFloat(item.total_days) || 0;
                 const durationText = formatLeaveDuration(item);
                 item.file_path = escapeAttr(safeUploadPath(item.file_path));
-                item.profile_img_url = escapeAttr(safeUploadPath(item.profile_img_url, 'assets/img/user.png'));
                 item.id = itemId;
                 item.first_name_th = firstName;
                 item.last_name_th = lastName;
@@ -150,8 +149,7 @@ async function loadPendingLeaves() {
                     fileLink = `<a href="${item.file_path}" target="_blank" class="btn btn-sm btn-outline-info ms-1" title="ดูเอกสารแนบ"><i class="fas fa-paperclip"></i></a>`;
                 }
 
-                // รูปโปรไฟล์
-                const img = item.profile_img_url;
+                const avatarHtml = renderEmployeeAvatar(item.profile_img_url);
 
                 const isCancellationRequest = item.status === 'pending_cancel_hr';
                 const reasonHtml = isCancellationRequest
@@ -167,7 +165,7 @@ async function loadPendingLeaves() {
                     <tr>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="${img}" class="rounded-circle me-2" style="width:35px;height:35px;object-fit:cover;">
+                                ${avatarHtml}
                                 <div>
                                     <div class="fw-bold">${item.first_name_th} ${item.last_name_th}</div>
                                     <small class="text-muted">${item.employee_code}</small>

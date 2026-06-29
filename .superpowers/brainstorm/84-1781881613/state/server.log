@@ -1,0 +1,2 @@
+{"type":"owner-pid-invalid","pid":1,"reason":"dead at startup"}
+{"type":"server-started","port":62304,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:62304","screen_dir":"C:\\xampp\\htdocs\\hr_system\\.superpowers\\brainstorm\\84-1781881613\\content","state_dir":"C:\\xampp\\htdocs\\hr_system\\.superpowers\\brainstorm\\84-1781881613\\state"}

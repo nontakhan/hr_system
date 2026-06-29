@@ -45,6 +45,12 @@ body {
     border-right: 1px solid #e8dddd;
     width: var(--sidebar-width);
     flex-shrink: 0; /* (สำคัญ) ห้าม Sidebar หดตัว */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+#sidebar-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
 #sidebar-wrapper .sidebar-heading {
@@ -61,6 +67,15 @@ body {
 
 #sidebar-wrapper .list-group {
     width: var(--sidebar-width);
+}
+
+.sidebar-section-label {
+    padding: 16px 25px 6px;
+    color: #8a5f5f;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
 }
 
 /* รายการเมนูใน Sidebar */

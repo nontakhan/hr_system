@@ -64,17 +64,18 @@ assert_contains_text($js, 'initEmployeeWarningsAdminPage', 'JS must initialize H
 assert_contains_text($js, 'initMyWarningsPage', 'JS must initialize employee page');
 assert_contains_text($header, 'employee_warnings.php', 'Sidebar must link HR/admin warning page');
 assert_contains_text($header, 'my_warnings.php', 'Sidebar must link employee warning page');
-$adminWarningPos = strpos($header, 'employee_warnings.php');
-$employeeWarningPos = strpos($header, 'href="my_warnings.php"', $adminWarningPos);
-$warningElsePos = strpos($header, '<?php else : ?>', $adminWarningPos);
-if ($adminWarningPos === false || $employeeWarningPos === false || $warningElsePos === false || $employeeWarningPos > $warningElsePos) {
-    fwrite(STDERR, "FAIL: HR/admin warning menu must include my_warnings.php before the non-HR else branch\n");
+
+$myWarningPos = strpos($header, 'href="my_warnings.php"');
+$adminWarningPos = strpos($header, 'href="employee_warnings.php"');
+$peopleAdminPos = strpos($header, 'sidebar-section-label">บริหารบุคลากร');
+if ($myWarningPos === false || $adminWarningPos === false || $peopleAdminPos === false || $myWarningPos > $peopleAdminPos || $adminWarningPos < $peopleAdminPos) {
+    fwrite(STDERR, "FAIL: Warning menus must split employee self-service under personal items and HR/admin warnings under people admin\n");
     exit(1);
 }
-$adminWarningMenu = substr($header, $adminWarningPos, $warningElsePos - $adminWarningPos);
+
+$adminWarningMenu = substr($header, $peopleAdminPos);
 assert_not_contains_text($adminWarningMenu, "isActive('employee_warnings.php') || isActive('my_warnings.php')", 'HR/admin warning parent must not become active on my_warnings.php');
-assert_not_contains_text($adminWarningMenu, 'href="my_warnings.php" class="list-group-item list-group-item-action bg-transparent ps-5', 'HR/admin my warnings menu must use normal sidebar sizing');
-assert_not_contains_text($adminWarningMenu, '<small>ใบเตือนของฉัน</small>', 'HR/admin my warnings menu label must not be smaller than other menu items');
-assert_contains_text($adminWarningMenu, '<i class="fas fa-user-shield me-2"></i> ใบเตือนของฉัน', 'HR/admin my warnings menu must include an icon');
+assert_not_contains_text($adminWarningMenu, 'href="my_warnings.php"', 'HR/admin warning section should not duplicate the employee self-service warning link');
+assert_contains_text($header, '<i class="fas fa-user-shield me-2"></i> ใบเตือนของฉัน', 'Employee warning menu must include an icon in the self-service section');
 
 echo "employee warnings contract ok\n";

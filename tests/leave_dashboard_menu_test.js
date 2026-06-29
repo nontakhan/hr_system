@@ -21,12 +21,15 @@ const myLeaves = fs.readFileSync('my_leaves.php', 'utf8');
 const leaveApprovals = fs.readFileSync('leave_approvals.php', 'utf8');
 const styles = fs.readFileSync('assets/style.css', 'utf8');
 
-assertIncludes(header, 'href="my_leaves.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center', 'Leave sidebar entry should link directly to the leave dashboard.');
-assertIncludes(header, "isActive('leave_request.php')", 'Leave sidebar entry should stay active while on the leave request page.');
-assertIncludes(header, "isActive('leave_approvals.php')", 'Leave sidebar entry should stay active while on the leave approval page.');
-assertNotIncludes(header, 'href="#leaveSubmenu"', 'Leave sidebar entry should no longer open a submenu.');
-assertNotIncludes(header, 'id="leaveSubmenu"', 'Leave sidebar submenu should be removed.');
-assertNotIncludes(header, 'data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center">\n                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts[\'leave\']); ?>\n                <i class="fas fa-calendar-alt me-2"></i>', 'Leave sidebar entry should not be a collapse toggle.');
+assertIncludes(header, 'href="#requestCenterSubmenu"', 'Leave workflow should now live inside the request center submenu.');
+assertIncludes(header, 'id="requestCenterSubmenu"', 'Request center submenu should be rendered.');
+assertIncludes(header, 'href="my_leaves.php"', 'Request center should link to the leave dashboard.');
+assertIncludes(header, "isActive('leave_request.php')", 'Request center should stay active while on the leave request page.');
+assertIncludes(header, 'href="#approvalCenterSubmenu"', 'Leave approvals should now live inside the approval center submenu.');
+assertIncludes(header, 'id="approvalCenterSubmenu"', 'Approval center submenu should be rendered.');
+assertIncludes(header, 'href="leave_approvals.php"', 'Approval center should link to leave approvals.');
+assertNotIncludes(header, 'href="#leaveSubmenu"', 'Leave-specific sidebar submenu should remain removed.');
+assertNotIncludes(header, 'id="leaveSubmenu"', 'Leave-specific sidebar submenu should remain removed.');
 
 assertIncludes(myLeaves, 'leave-dashboard-actions', 'My leaves page should render a dashboard action area.');
 assertIncludes(myLeaves, 'leave-dashboard-actions-main', 'Employee leave actions should be grouped together.');

@@ -802,8 +802,6 @@ function saveEmployeeTrainingRecord($mysqli, $data, $files) {
         if ($course_name === '') throw new InvalidArgumentException('กรุณาระบุชื่อหลักสูตร');
 
         $training_date = normalizeTrainingDate(getVal($data, 'training_date', ''), true);
-        $provider = trimTrainingText(getVal($data, 'provider', ''), 255);
-        $training_type = trimTrainingText(getVal($data, 'training_type', ''), 100);
         $result_status = trimTrainingText(getVal($data, 'result_status', ''), 100);
         $certificate_expiry_date = normalizeTrainingDate(getVal($data, 'certificate_expiry_date', ''), false);
         $notes = trim((string)getVal($data, 'notes', ''));
@@ -823,21 +821,21 @@ function saveEmployeeTrainingRecord($mysqli, $data, $files) {
             if ($attachment_path === null) $attachment_path = $current['attachment_path'];
 
             $sql = "UPDATE employee_training_records
-                    SET training_date = ?, course_name = ?, provider = ?, training_type = ?,
+                    SET training_date = ?, course_name = ?,
                         result_status = ?, certificate_expiry_date = ?, attachment_path = ?,
                         notes = ?, updated_by = ?
                     WHERE id = ? AND employee_id = ?";
             $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('ssssssssiii', $training_date, $course_name, $provider, $training_type, $result_status, $certificate_expiry_date, $attachment_path, $notes, $user_id, $training_id, $emp_id);
+            $stmt->bind_param('ssssssiii', $training_date, $course_name, $result_status, $certificate_expiry_date, $attachment_path, $notes, $user_id, $training_id, $emp_id);
             $stmt->execute();
             $message = 'แก้ไขประวัติอบรมสำเร็จ';
         } else {
             $sql = "INSERT INTO employee_training_records
-                    (employee_id, training_date, course_name, provider, training_type,
+                    (employee_id, training_date, course_name,
                      result_status, certificate_expiry_date, attachment_path, notes, created_by, updated_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('issssssssii', $emp_id, $training_date, $course_name, $provider, $training_type, $result_status, $certificate_expiry_date, $attachment_path, $notes, $user_id, $user_id);
+            $stmt->bind_param('issssssii', $emp_id, $training_date, $course_name, $result_status, $certificate_expiry_date, $attachment_path, $notes, $user_id, $user_id);
             $stmt->execute();
             $message = 'บันทึกประวัติอบรมสำเร็จ';
         }

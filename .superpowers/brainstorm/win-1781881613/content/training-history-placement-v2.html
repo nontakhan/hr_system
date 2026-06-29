@@ -1,0 +1,84 @@
+<h2>ระบบประวัติการฝึกอบรมในหน้า Employee View</h2>
+<p class="subtitle">เลือกภาพรวม UX ก่อน: จะให้ HR ใช้งานจากจุดไหน และพนักงานดูประวัติอย่างไร</p>
+
+<div class="cards">
+  <div class="card" data-choice="header-modal-plus-history-card" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Option A: ปุ่มข้างโยกย้าย + ตารางประวัติด้านล่าง</div>
+        <div class="mockup-body">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px">
+            <div>
+              <div style="height:18px;width:180px;background:#dbe4ff;border-radius:4px"></div>
+              <div style="height:10px;width:120px;background:#edf2ff;border-radius:4px;margin-top:6px"></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="mock-button">ย้อนกลับ</button>
+              <button class="mock-button">อบรม</button>
+              <button class="mock-button">โยกย้าย</button>
+              <button class="mock-button">แก้ไข</button>
+            </div>
+          </div>
+          <div class="placeholder" style="height:70px">ข้อมูลพนักงาน</div>
+          <div class="placeholder" style="height:92px;margin-top:12px">Card: ประวัติการฝึกอบรม + ปุ่ม refresh / เพิ่ม</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>แนะนำ: ปุ่มบันทึกอบรมข้างโยกย้าย + ตารางประวัติแยก</h3>
+      <p>เข้ากับหน้าปัจจุบันที่สุด เห็นทั้ง action และ history ชัดเจน เหมาะกับ HR ที่ต้องดูแฟ้มพนักงานทีละคน</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="history-card-only" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Option B: ไม่มีปุ่มบน ใช้ใน Card ประวัติเท่านั้น</div>
+        <div class="mockup-body">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px">
+            <div>
+              <div style="height:18px;width:180px;background:#dbe4ff;border-radius:4px"></div>
+              <div style="height:10px;width:120px;background:#edf2ff;border-radius:4px;margin-top:6px"></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="mock-button">ย้อนกลับ</button>
+              <button class="mock-button">โยกย้าย</button>
+              <button class="mock-button">แก้ไข</button>
+            </div>
+          </div>
+          <div class="placeholder" style="height:70px">ข้อมูลพนักงาน</div>
+          <div class="placeholder" style="height:92px;margin-top:12px">Card: ประวัติการฝึกอบรม มีปุ่ม + เพิ่มอบรม ในหัว card</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>เรียบร้อยกว่า: action อยู่กับประวัติโดยตรง</h3>
+      <p>หัวหน้าหน้าไม่แน่น แต่ผู้ใช้ต้องเลื่อนลงถึงจะเพิ่มรายการอบรมได้</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="modal-only" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Option C: Modal เดียวรวมเพิ่ม/ดูประวัติ</div>
+        <div class="mockup-body">
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
+            <button class="mock-button">ประวัติอบรม</button>
+            <button class="mock-button">โยกย้าย</button>
+            <button class="mock-button">แก้ไข</button>
+          </div>
+          <div class="placeholder" style="height:170px">เปิด modal แล้วเห็นฟอร์ม + รายการย้อนหลังในหน้าต่างเดียว</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>เล็กสุด: ทุกอย่างอยู่ใน modal</h3>
+      <p>เพิ่มไฟล์น้อย แต่ประวัติไม่ visible ในหน้าแฟ้มพนักงาน และใช้งานกับรายการเยอะจะอึดอัดกว่า</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>ข้อมูลที่ผมคิดว่าควรเก็บในรอบแรก</h3>
+  <p>วันที่อบรม, ชื่อหลักสูตร, หน่วยงาน/ผู้จัด, ประเภทอบรม, ผลลัพธ์/สถานะ, วันหมดอายุใบรับรองถ้ามี, หมายเหตุ และผู้บันทึก</p>
+</div>

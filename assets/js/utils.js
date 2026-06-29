@@ -44,6 +44,16 @@ function safeUploadPath(value, fallback = '') {
     return fallback;
 }
 
+function renderEmployeeAvatar(value, options = {}) {
+    const fallback = options.fallback || 'assets/img/user.png';
+    const src = escapeAttr(safeUploadPath(value, fallback));
+    const className = escapeAttr(options.className || 'rounded-circle me-2 border');
+    const size = Number.parseInt(options.size || 35, 10) || 35;
+    const alt = escapeAttr(options.alt || 'Employee profile');
+
+    return `<img src="${src}" alt="${alt}" onerror="this.onerror=null;this.src='${fallback}'" class="${className}" style="width:${size}px;height:${size}px;object-fit:cover;">`;
+}
+
 function parseLocalDate(value) {
     if (!value) return null;
 

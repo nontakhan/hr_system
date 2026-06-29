@@ -8,12 +8,9 @@ function trainingRequestEnsureTable(mysqli $mysqli): void
         id INT AUTO_INCREMENT PRIMARY KEY,
         employee_id INT NOT NULL,
         course_name VARCHAR(255) NOT NULL,
-        provider VARCHAR(255) NULL,
-        training_type VARCHAR(100) NULL,
         start_date DATE NOT NULL,
         end_date DATE NOT NULL,
         location VARCHAR(255) NULL,
-        estimated_cost DECIMAL(10,2) NULL,
         objective TEXT NOT NULL,
         attachment_path VARCHAR(255) NULL,
         status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager',
@@ -45,23 +42,19 @@ function trainingRequestCreateHistoryRecord(mysqli $mysqli, array $request, int 
     $employeeId = (int)($request['employee_id'] ?? 0);
     $trainingDate = (string)($request['start_date'] ?? date('Y-m-d'));
     $courseName = trim((string)($request['course_name'] ?? ''));
-    $provider = trim((string)($request['provider'] ?? ''));
-    $trainingType = trim((string)($request['training_type'] ?? ''));
     $attachmentPath = trim((string)($request['attachment_path'] ?? ''));
     $notes = trainingRequestBuildHistoryNotes($request);
     $resultStatus = 'อนุมัติให้เข้าร่วม';
     $certificateExpiryDate = null;
 
     $stmt = $mysqli->prepare("INSERT INTO employee_training_records
-        (employee_id, training_date, course_name, provider, training_type, result_status, certificate_expiry_date, attachment_path, notes, created_by, updated_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        (employee_id, training_date, course_name, result_status, certificate_expiry_date, attachment_path, notes, created_by, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param(
-        'issssssssii',
+        'issssssii',
         $employeeId,
         $trainingDate,
         $courseName,
-        $provider,
-        $trainingType,
         $resultStatus,
         $certificateExpiryDate,
         $attachmentPath,
@@ -86,11 +79,6 @@ function trainingRequestBuildHistoryNotes(array $request): string
         $lines[] = 'สถานที่/รูปแบบ: ' . $location;
     }
 
-    $cost = $request['estimated_cost'] ?? null;
-    if ($cost !== null && $cost !== '' && (float)$cost > 0) {
-        $lines[] = 'ค่าใช้จ่ายโดยประมาณ: ' . number_format((float)$cost, 2);
-    }
-
     $objective = trim((string)($request['objective'] ?? ''));
     if ($objective !== '') {
         $lines[] = 'วัตถุประสงค์: ' . $objective;
@@ -104,6 +92,7 @@ function trainingRequestApprovalQuery(string $type, string $role, array $scopes)
     $sql = "SELECT tr.*,
                    CONCAT_WS(' ', e.first_name_th, e.last_name_th) AS employee_name,
                    e.citizen_id AS employee_code,
+                   e.profile_img_url AS employee_profile_img_url,
                    e.supervisor_id,
                    CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
                    CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name

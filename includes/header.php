@@ -13,6 +13,15 @@ function isActive($page) {
     return basename($_SERVER['PHP_SELF']) == $page ? 'active' : '';
 }
 
+function isAnyActive(array $pages) {
+    foreach ($pages as $page) {
+        if (basename($_SERVER['PHP_SELF']) == $page) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function renderSidebarApprovalBadge($count) {
     $count = (int)$count;
     if ($count <= 0) {
@@ -74,103 +83,149 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
         </div>
         
         <div class="list-group list-group-flush my-3" id="sidebarMenu">
+            <?php
+            $requestCenterPages = [
+                'my_leaves.php',
+                'leave_request.php',
+                'late_early_history.php',
+                'late_early_request.php',
+                'overtime_history.php',
+                'overtime_request.php',
+                'day_swap_history.php',
+                'day_swap_request.php',
+                'training_history.php',
+                'training_request.php',
+                'request_proxy.php',
+            ];
+            $approvalCenterPages = [
+                'leave_approvals.php',
+                'late_early_approvals.php',
+                'overtime_approvals.php',
+                'day_swap_approvals.php',
+                'training_approvals.php',
+            ];
+            $peopleAdminPages = [
+                'employees.php',
+                'attendance_import.php',
+                'attendance_adjustments.php',
+                'employee_warnings.php',
+                'leave_types.php',
+                'shifts.php',
+                'company_holidays.php',
+                'manage_master_data.php',
+            ];
+            $requestCenterActive = isAnyActive($requestCenterPages);
+            $approvalCenterActive = isAnyActive($approvalCenterPages);
+            $peopleAdminActive = isAnyActive($peopleAdminPages);
+            ?>
             
-            <!-- Dashboard -->
+            <div class="sidebar-section-label">ภาพรวม</div>
             <a href="dashboard.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('dashboard.php'); ?>">
                 <i class="fas fa-home me-2"></i> หน้าหลัก
             </a>
 
             <a href="holiday_calendar.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('holiday_calendar.php'); ?>">
-                <i class="fas fa-calendar-days me-2"></i> ปฏิทินวันหยุด
+                <i class="fas fa-calendar-days me-2"></i> ปฏิทินงานและวันหยุด
             </a>
 
-            <!-- Leave System -->
-            <a href="my_leaves.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('my_leaves.php') || isActive('leave_request.php') || isActive('leave_approvals.php')) ? 'active' : ''; ?>">
-                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
-                <i class="fas fa-calendar-alt me-2"></i> ระบบการลา
-            </a>
-            <!-- Late / Early Time Request System -->
-            <a href="late_early_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('late_early_request.php') || isActive('late_early_history.php') || isActive('late_early_approvals.php')) ? 'active' : ''; ?>">
-                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
-                <i class="fas fa-business-time me-2"></i> ขอมาสาย/ออกก่อนเวลา
-            </a>
-
-            <!-- Overtime Request System -->
-            <a href="overtime_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('overtime_request.php') || isActive('overtime_history.php') || isActive('overtime_approvals.php')) ? 'active' : ''; ?>">
-                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['overtime']); ?>
-                <i class="fas fa-business-time me-2"></i> OT หลังเลิกงาน
-            </a>
-
-            <!-- Day Swap System -->
-            <a href="day_swap_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('day_swap_request.php') || isActive('day_swap_history.php') || isActive('day_swap_approvals.php')) ? 'active' : ''; ?>">
-                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
-                <i class="fas fa-right-left me-2"></i> สลับวันหยุด
-            </a>
-
-            <!-- Training Request System -->
-            <a href="training_history.php" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center <?php echo (isActive('training_request.php') || isActive('training_history.php') || isActive('training_approvals.php')) ? 'active' : ''; ?>">
-                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
-                <i class="fas fa-graduation-cap me-2"></i> อบรม
-            </a>
-
-            <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
-            <a href="request_proxy.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('request_proxy.php'); ?>">
-                <i class="fas fa-user-pen me-2"></i> ทำรายการแทนพนักงาน
-            </a>
-            <?php endif; ?>
-
-            <!-- Employee Warning Records -->
-            <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
-            <a href="employee_warnings.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('employee_warnings.php'); ?>">
-                <i class="fas fa-triangle-exclamation me-2"></i> ใบเตือนพนักงาน
+            <div class="sidebar-section-label">ของฉัน</div>
+            <a href="attendance.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance.php'); ?>">
+                <i class="fas fa-clock me-2"></i> เวลาทำงาน
             </a>
             <a href="my_warnings.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('my_warnings.php'); ?>">
                 <i class="fas fa-user-shield me-2"></i> ใบเตือนของฉัน
             </a>
-            <?php else : ?>
-            <a href="my_warnings.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('my_warnings.php'); ?>">
-                <i class="fas fa-triangle-exclamation me-2"></i> ใบเตือนของฉัน
+            <a href="my_profile.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('my_profile.php'); ?>">
+                <i class="fas fa-id-card me-2"></i> โปรไฟล์
             </a>
+
+            <div class="sidebar-section-label">ศูนย์คำขอ</div>
+            <a href="#requestCenterSubmenu" data-bs-toggle="collapse" aria-expanded="<?php echo $requestCenterActive ? 'true' : 'false'; ?>" class="list-group-item list-group-item-action bg-transparent dropdown-toggle <?php echo $requestCenterActive ? 'active' : ''; ?>">
+                <i class="fas fa-file-signature me-2"></i> รายการคำขอ
+            </a>
+            <div class="collapse sidebar-submenu <?php echo $requestCenterActive ? 'show' : ''; ?>" id="requestCenterSubmenu" data-bs-parent="#sidebarMenu">
+                <a href="my_leaves.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo (isActive('my_leaves.php') || isActive('leave_request.php')) ? 'active' : ''; ?>">
+                    <small><i class="fas fa-calendar-alt me-2"></i> การลา</small>
+                </a>
+                <a href="late_early_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo (isActive('late_early_history.php') || isActive('late_early_request.php')) ? 'active' : ''; ?>">
+                    <small><i class="fas fa-business-time me-2"></i> มาสาย / ออกก่อน</small>
+                </a>
+                <a href="overtime_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo (isActive('overtime_history.php') || isActive('overtime_request.php')) ? 'active' : ''; ?>">
+                    <small><i class="fas fa-clock-rotate-left me-2"></i> OT หลังเลิกงาน</small>
+                </a>
+                <a href="day_swap_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo (isActive('day_swap_history.php') || isActive('day_swap_request.php')) ? 'active' : ''; ?>">
+                    <small><i class="fas fa-right-left me-2"></i> สลับวันหยุด</small>
+                </a>
+                <a href="training_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo (isActive('training_history.php') || isActive('training_request.php')) ? 'active' : ''; ?>">
+                    <small><i class="fas fa-graduation-cap me-2"></i> อบรม</small>
+                </a>
+                <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
+                <a href="request_proxy.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('request_proxy.php'); ?>">
+                    <small><i class="fas fa-user-pen me-2"></i> ทำรายการแทนพนักงาน</small>
+                </a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (in_array($_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)) : ?>
+            <div class="sidebar-section-label">อนุมัติคำขอ</div>
+            <a href="#approvalCenterSubmenu" data-bs-toggle="collapse" aria-expanded="<?php echo $approvalCenterActive ? 'true' : 'false'; ?>" class="list-group-item list-group-item-action bg-transparent dropdown-toggle d-flex align-items-center <?php echo $approvalCenterActive ? 'active' : ''; ?>">
+                <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['total']); ?>
+                <i class="fas fa-clipboard-check me-2"></i> รายการรออนุมัติ
+            </a>
+            <div class="collapse sidebar-submenu <?php echo $approvalCenterActive ? 'show' : ''; ?>" id="approvalCenterSubmenu" data-bs-parent="#sidebarMenu">
+                <a href="leave_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('leave_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['leave']); ?>
+                    <small><i class="fas fa-calendar-check me-2"></i> อนุมัติการลา</small>
+                </a>
+                <a href="late_early_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('late_early_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['time_request']); ?>
+                    <small><i class="fas fa-business-time me-2"></i> อนุมัติมาสาย / ออกก่อน</small>
+                </a>
+                <a href="overtime_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('overtime_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['overtime']); ?>
+                    <small><i class="fas fa-clock-rotate-left me-2"></i> อนุมัติ OT หลังเลิกงาน</small>
+                </a>
+                <a href="day_swap_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('day_swap_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['day_swap']); ?>
+                    <small><i class="fas fa-right-left me-2"></i> อนุมัติสลับวันหยุด</small>
+                </a>
+                <a href="training_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('training_approvals.php'); ?>">
+                    <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
+                    <small><i class="fas fa-graduation-cap me-2"></i> อนุมัติอบรม</small>
+                </a>
+            </div>
             <?php endif; ?>
 
-            <!-- Employee Management -->
             <?php if (in_array($_SESSION['role'], ['admin', 'hr'])) : ?>
-            <a href="employees.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('employees.php'); ?>">
-                <i class="fas fa-users me-2"></i> จัดการพนักงาน
+            <div class="sidebar-section-label">บริหารบุคลากร</div>
+            <a href="#peopleAdminSubmenu" data-bs-toggle="collapse" aria-expanded="<?php echo $peopleAdminActive ? 'true' : 'false'; ?>" class="list-group-item list-group-item-action bg-transparent dropdown-toggle <?php echo $peopleAdminActive ? 'active' : ''; ?>">
+                <i class="fas fa-people-group me-2"></i> งาน HR/Admin
             </a>
-            <?php endif; ?>
-
-            <!-- Time Attendance -->
-            <a href="attendance.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance.php'); ?>">
-                <i class="fas fa-clock me-2"></i> เวลาทำงานของฉัน
-            </a>
-            <?php if (in_array($_SESSION['role'], ['admin', 'hr'])) : ?>
-            <a href="attendance_import.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance_import.php'); ?>">
-                <i class="fas fa-file-import me-2"></i> นำเข้าลงเวลา
-            </a>
-            <a href="attendance_adjustments.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance_adjustments.php'); ?>">
-                <i class="fas fa-pen-to-square me-2"></i> ปรับแก้เวลาสแกน
-            </a>
-            <?php endif; ?>
-
-            <!-- Settings (Dropdown) -->
-            <?php if (in_array($_SESSION['role'], ['admin', 'hr'])) : ?>
-            <a href="#settingsSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="list-group-item list-group-item-action bg-transparent dropdown-toggle">
-                <i class="fas fa-cogs me-2"></i> ตั้งค่าระบบ
-            </a>
-            <div class="collapse sidebar-submenu <?php echo (isActive('leave_types.php') || isActive('shifts.php') || isActive('company_holidays.php') || isActive('manage_master_data.php')) ? 'show' : ''; ?>" id="settingsSubmenu" data-bs-parent="#sidebarMenu">
+            <div class="collapse sidebar-submenu <?php echo $peopleAdminActive ? 'show' : ''; ?>" id="peopleAdminSubmenu" data-bs-parent="#sidebarMenu">
+                <a href="employees.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('employees.php'); ?>">
+                    <small><i class="fas fa-users me-2"></i> พนักงาน</small>
+                </a>
+                <a href="attendance_import.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('attendance_import.php'); ?>">
+                    <small><i class="fas fa-file-import me-2"></i> นำเข้าลงเวลา</small>
+                </a>
+                <a href="attendance_adjustments.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('attendance_adjustments.php'); ?>">
+                    <small><i class="fas fa-pen-to-square me-2"></i> ปรับแก้เวลาสแกน</small>
+                </a>
+                <a href="employee_warnings.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('employee_warnings.php'); ?>">
+                    <small><i class="fas fa-triangle-exclamation me-2"></i> ใบเตือนพนักงาน</small>
+                </a>
                 <a href="leave_types.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_types.php'); ?>">
-                    <small>ประเภทการลา</small>
+                    <small><i class="fas fa-list-check me-2"></i> ประเภทการลา</small>
                 </a>
                 <a href="shifts.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('shifts.php'); ?>">
-                    <small>กะการทำงาน</small>
+                    <small><i class="fas fa-clock me-2"></i> กะการทำงาน</small>
                 </a>
                 <a href="company_holidays.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('company_holidays.php'); ?>">
-                    <small>วันหยุดพิเศษ</small>
+                    <small><i class="fas fa-calendar-plus me-2"></i> วันหยุดพิเศษ</small>
                 </a>
                 <?php if ($_SESSION['role'] === 'admin') : ?>
                 <a href="manage_master_data.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('manage_master_data.php'); ?>">
-                    <small>ข้อมูลพื้นฐาน</small>
+                    <small><i class="fas fa-database me-2"></i> ข้อมูลพื้นฐาน</small>
                 </a>
                 <?php endif; ?>
             </div>
