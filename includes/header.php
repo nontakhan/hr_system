@@ -31,6 +31,21 @@ function renderSidebarApprovalBadge($count) {
     return '<span class="badge rounded-pill bg-danger ms-auto order-2">' . htmlspecialchars($label) . '</span>';
 }
 
+function buildSystemPageTitle($pageTitle = '') {
+    $systemTitle = 'ระบบ NR Backoffice';
+    $pageTitle = trim((string)$pageTitle);
+
+    if ($pageTitle === '') {
+        return $systemTitle;
+    }
+
+    if (strpos($pageTitle, $systemTitle) === 0) {
+        return $pageTitle;
+    }
+
+    return $systemTitle . ' | ' . $pageTitle;
+}
+
 $displayName = trim($_SESSION['full_name'] ?? '') ?: ($_SESSION['username'] ?? '');
 $displayPosition = trim($_SESSION['position_name'] ?? '') ?: ucfirst($_SESSION['role'] ?? '');
 $approvalBadgeCounts = ['leave' => 0, 'time_request' => 0, 'overtime' => 0, 'day_swap' => 0, 'training' => 0, 'total' => 0];
@@ -56,7 +71,8 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title><?php echo isset($page_title) ? htmlspecialchars($page_title) : "HR System"; ?></title>
+    <title><?php echo htmlspecialchars(buildSystemPageTitle($page_title ?? ''), ENT_QUOTES, 'UTF-8'); ?></title>
+    <link rel="icon" type="image/svg+xml" href="assets/img/nr-backoffice-favicon.svg">
 
     <!-- CSS Links -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
