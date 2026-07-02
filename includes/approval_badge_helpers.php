@@ -2,7 +2,7 @@
 
 function approvalBadgePendingStagesForRole($role) {
     if ($role === 'admin') {
-        return ['pending_hr', 'pending_cancel_hr'];
+        return ['pending', 'pending_manager', 'pending_hr', 'pending_cancel_hr'];
     }
     if ($role === 'hr') {
         return ['pending_hr', 'pending_cancel_hr'];
