@@ -155,8 +155,8 @@ async function loadPendingLeaves() {
                 const reasonHtml = isCancellationRequest
                     ? `<small class="d-block text-danger">เหตุผลขอยกเลิก: ${item.cancel_reason || '-'}</small>`
                     : `<small class="d-block text-muted text-truncate" style="max-width: 200px;">${item.reason}</small>`;
-                const otScanHtml = item.time_request_type === 'overtime_after_work'
-                    ? `<small class="d-block text-primary">สแกนออก: ${formatApprovalTime(item.actual_check_out)} | เลิกกะ: ${formatApprovalTime(item.shift_end_time)} | OT ที่อนุมัติได้: ${formatHourMinuteDuration(item.eligible_overtime_minutes || 0)}</small>`
+                const otDetailHtml = item.time_request_type === 'overtime_after_work'
+                    ? `<small class="d-block text-primary">ช่วงเวลา OT: ${formatApprovalTime(item.request_start_time)}-${formatApprovalTime(item.request_end_time)}</small>`
                     : '';
                 const approveLabel = isCancellationRequest ? 'อนุมัติยกเลิก' : 'อนุมัติ';
                 const rejectLabel = isCancellationRequest ? 'ไม่อนุมัติยกเลิก' : 'ไม่';
@@ -178,7 +178,7 @@ async function loadPendingLeaves() {
                         <td><strong>${durationText}</strong></td>
                         <td>
                             ${reasonHtml}
-                            ${otScanHtml}
+                            ${otDetailHtml}
                             ${fileLink}
                         </td>
                         <td>
@@ -309,7 +309,10 @@ function formatLeaveDuration(item) {
         if (item.time_request_type === 'overtime_after_work') {
             const approved = Number.parseInt(item.approved_request_minutes || item.approval_overtime_minutes || 0, 10) || 0;
             const suffix = approved > 0 && approved !== rawMinutes ? `, อนุมัติได้ ${formatHourMinuteDuration(approved)}` : '';
-            return `OT หลังเลิกงาน ${formatHourMinuteDuration(rawMinutes)}${suffix}`;
+            const range = item.request_start_time && item.request_end_time
+                ? `${formatApprovalTime(item.request_start_time)}-${formatApprovalTime(item.request_end_time)} `
+                : '';
+            return `OT หลังเลิกงาน ${range}${formatHourMinuteDuration(rawMinutes)}${suffix}`;
         }
         const minutes = Math.max(1, Math.min(60, rawMinutes || 60));
         return item.time_request_type === 'early_departure'

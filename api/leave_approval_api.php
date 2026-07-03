@@ -38,14 +38,12 @@ try {
                        lr.cancellation_reason AS cancel_reason,
                        e.first_name_th, e.last_name_th, e.citizen_id as employee_code, e.profile_img_url,
                        lt.type_name,
-                       ar.check_out AS raw_check_out,
                        la.file_path, la.file_name,
                        CONCAT_WS(' ', ma.first_name_th, ma.last_name_th) AS manager_approver_name,
                        CONCAT_WS(' ', ha.first_name_th, ha.last_name_th) AS hr_approver_name
                 FROM leave_requests lr
                 JOIN employees e ON lr.employee_id = e.id
                 JOIN leave_types lt ON lr.leave_type_id = lt.id
-                LEFT JOIN attendance_records ar ON ar.employee_id = lr.employee_id AND ar.work_date = lr.start_date
                 LEFT JOIN leave_attachments la ON lr.id = la.leave_request_id
                 LEFT JOIN employees ma ON lr.manager_approver_id = ma.id
                 LEFT JOIN employees ha ON lr.hr_approver_id = ha.id
@@ -99,9 +97,6 @@ try {
         $stmt->execute();
 
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        if ($requestUnitFilter === 'hour') {
-            $rows = leaveApprovalAttachOvertimeScanDetails($mysqli, $rows);
-        }
         echo json_encode(['status' => 'success', 'data' => $rows]);
     } elseif ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
@@ -190,13 +185,7 @@ try {
             }
 
             if ($action === 'approve' && ($request['time_request_type'] ?? '') === 'overtime_after_work') {
-                $shift = leaveApprovalFetchEffectiveShift($mysqli, (int)$request['employee_id'], $request['start_date']);
-                $checkOut = leaveApprovalFetchAttendanceCheckOut($mysqli, (int)$request['employee_id'], $request['start_date']);
-                $ot = attendanceCalculateOvertimeAfterWorkMinutes($request['start_date'], $shift['end_time'] ?? null, $checkOut, (int)$request['request_minutes']);
-                if (!$ot['valid']) {
-                    sendJsonError($ot['message']);
-                }
-                $approvedMinutes = (int)$ot['approved_minutes'];
+                $approvedMinutes = max(1, (int)$request['request_minutes']);
                 $newStatus = 'approved';
                 $rejectReason = null;
                 $stmt = $mysqli->prepare("UPDATE leave_requests
@@ -263,29 +252,6 @@ try {
     sendJsonError('System Error');
 }
 
-function leaveApprovalAttachOvertimeScanDetails(mysqli $mysqli, array $rows) {
-    foreach ($rows as &$row) {
-        if (($row['time_request_type'] ?? '') !== 'overtime_after_work') {
-            continue;
-        }
-
-        $employeeId = (int)($row['employee_id'] ?? 0);
-        $workDate = (string)($row['start_date'] ?? '');
-        $shift = leaveApprovalFetchEffectiveShift($mysqli, $employeeId, $workDate);
-        $checkOut = leaveApprovalFetchAttendanceCheckOut($mysqli, $employeeId, $workDate);
-        $calc = attendanceCalculateOvertimeAfterWorkMinutes($workDate, $shift['end_time'] ?? null, $checkOut, (int)($row['request_minutes'] ?? 0));
-
-        $row['shift_end_time'] = $shift['end_time'] ?? null;
-        $row['actual_check_out'] = $checkOut;
-        $row['eligible_overtime_minutes'] = $calc['eligible_minutes'] ?? 0;
-        $row['approval_overtime_minutes'] = $calc['approved_minutes'] ?? 0;
-        $row['overtime_scan_valid'] = (bool)($calc['valid'] ?? false);
-        $row['overtime_scan_message'] = $calc['message'] ?? '';
-    }
-    unset($row);
-    return $rows;
-}
-
 function leaveApprovalNormalizeTimeRequestTypeFilter($value) {
     if ($value === 'overtime_after_work') {
         return 'overtime_after_work';
@@ -294,101 +260,6 @@ function leaveApprovalNormalizeTimeRequestTypeFilter($value) {
         return 'late_early';
     }
     return '';
-}
-
-function leaveApprovalFetchAttendanceCheckOut(mysqli $mysqli, $employeeId, $workDate) {
-    leaveApprovalEnsureAttendanceOverrideTable($mysqli);
-    $stmt = $mysqli->prepare("SELECT ar.check_out, aro.override_check_out
-                              FROM attendance_records ar
-                              LEFT JOIN attendance_record_overrides aro
-                                ON aro.employee_id = ar.employee_id
-                               AND aro.work_date = ar.work_date
-                              WHERE ar.employee_id = ? AND ar.work_date = ?
-                              LIMIT 1");
-    if (!$stmt) {
-        return null;
-    }
-    $stmt->bind_param('is', $employeeId, $workDate);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-    if (!$row) {
-        return null;
-    }
-    return attendanceNormalizeTime($row['override_check_out'] ?? null) ?? attendanceNormalizeTime($row['check_out'] ?? null);
-}
-
-function leaveApprovalEnsureAttendanceOverrideTable(mysqli $mysqli) {
-    $sql = "CREATE TABLE IF NOT EXISTS attendance_record_overrides (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        employee_id INT NOT NULL,
-        work_date DATE NOT NULL,
-        override_check_in TIME NULL,
-        override_check_out TIME NULL,
-        reason TEXT NOT NULL,
-        created_by INT NOT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_by INT NULL,
-        updated_at DATETIME NULL,
-        UNIQUE KEY uniq_attendance_override_employee_date (employee_id, work_date),
-        KEY idx_attendance_override_work_date (work_date),
-        KEY idx_attendance_override_created_by (created_by)
-    )";
-    $mysqli->query($sql);
-}
-
-function leaveApprovalFetchEffectiveShift(mysqli $mysqli, $employeeId, $workDate) {
-    if ($employeeId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
-        return [];
-    }
-
-    $stmt = $mysqli->prepare("SELECT e.id, ws.start_time, ws.end_time, ws.late_tolerance_mins, ws.work_days
-                              FROM employees e
-                              LEFT JOIN work_shifts ws ON e.default_shift_id = ws.id
-                              WHERE e.id = ?
-                              LIMIT 1");
-    if (!$stmt) {
-        return [];
-    }
-    $stmt->bind_param('i', $employeeId);
-    $stmt->execute();
-    $employee = $stmt->get_result()->fetch_assoc();
-    if (!$employee) {
-        return [];
-    }
-
-    $month = substr($workDate, 0, 7);
-    $baseShift = [
-        'start_time' => $employee['start_time'] ?? null,
-        'end_time' => $employee['end_time'] ?? null,
-        'late_tolerance_mins' => $employee['late_tolerance_mins'] ?? 0,
-        'work_days' => $employee['work_days'] ?? '',
-    ];
-    $assignments = employeeShiftAssignmentsFetchForMonth($mysqli, $employeeId, $month);
-    $assignmentShift = employeeShiftAssignmentsResolveForDate($assignments, $baseShift, $workDate);
-    $effectiveShift = attendanceResolveShiftForDate($assignmentShift, leaveApprovalFetchShiftOverridesForMonth($mysqli, $employeeId, $month), $workDate);
-    $swapMap = attendanceBuildApprovedDaySwapMap(daySwapFetchApprovedRowsForMonth($mysqli, $employeeId, $month), $employeeId, $month);
-    if (isset($swapMap[$workDate])) {
-        $effectiveShift = attendanceApplyDayTypeOverride($effectiveShift, $workDate, $swapMap[$workDate]);
-    }
-    return $effectiveShift;
-}
-
-function leaveApprovalFetchShiftOverridesForMonth(mysqli $mysqli, $employeeId, $month) {
-    $start = $month . '-01';
-    $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
-    $stmt = $mysqli->prepare("SELECT day_of_week, start_time, end_time, late_tolerance_mins, effective_from, effective_to
-                              FROM employee_shift_overrides
-                              WHERE employee_id = ?
-                                AND is_active = 1
-                                AND effective_from <= ?
-                                AND (effective_to IS NULL OR effective_to = '0000-00-00' OR effective_to >= ?)
-                              ORDER BY effective_from DESC, id DESC");
-    if (!$stmt) {
-        return [];
-    }
-    $stmt->bind_param('iss', $employeeId, $end, $start);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
 $mysqli->close();

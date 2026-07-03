@@ -172,8 +172,11 @@ require_once 'includes/header.php';
 
     <form class="card shadow-sm border-0 proxy-panel d-none" data-proxy-panel="overtime" data-action="create_overtime">
         <div class="card-body row g-3">
-            <div class="col-md-6"><label class="form-label">วันที่ทำ OT <span class="text-danger">*</span></label><input type="date" name="work_date" class="form-control" data-native-date-picker="true" required></div>
-            <div class="col-md-6"><label class="form-label">จำนวนนาที <span class="text-danger">*</span></label><input type="number" name="overtime_minutes" class="form-control" min="1" max="480" required></div>
+            <div class="col-md-4"><label class="form-label">วันที่ทำ OT <span class="text-danger">*</span></label><input type="date" name="work_date" class="form-control" data-native-date-picker="true" required></div>
+            <div class="col-md-4"><label class="form-label">เวลาเริ่ม OT <span class="text-danger">*</span></label><input type="time" name="overtime_start_time" class="form-control" required></div>
+            <div class="col-md-4"><label class="form-label">เวลาสิ้นสุด OT <span class="text-danger">*</span></label><input type="time" name="overtime_end_time" class="form-control" required></div>
+            <div class="col-12"><div class="alert alert-light border d-none mb-0" id="proxyOvertimeDateContext"></div></div>
+            <div class="col-12"><div class="alert alert-light border d-none mb-0" id="proxyOvertimeDuration"></div></div>
             <div class="col-12"><label class="form-label">เหตุผล <span class="text-danger">*</span></label><textarea name="reason" class="form-control" rows="3" required></textarea></div>
             <div class="col-12"><label class="form-label">หมายเหตุ HR/Admin</label><textarea name="proxy_note" class="form-control" rows="2"></textarea></div>
             <div class="col-12"><button class="btn btn-primary" type="submit">บันทึกและอนุมัติทันที</button></div>

@@ -14,15 +14,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const typeInputs = Array.from(document.querySelectorAll('input[name="time_request_type"]'));
         const dateInput = document.getElementById('timeRequestDate');
         const timeInput = document.getElementById('timeRequestTime');
-        const overtimeInput = document.getElementById('overtimeMinutes');
+        const overtimeStartInput = document.getElementById('overtimeStartTime');
+        const overtimeEndInput = document.getElementById('overtimeEndTime');
 
-        [...typeInputs, dateInput, timeInput, overtimeInput].forEach(input => {
+        [...typeInputs, dateInput, timeInput, overtimeStartInput, overtimeEndInput].forEach(input => {
             if (!input) return;
             input.addEventListener('change', scheduleTimeRequestCalculation);
             input.addEventListener('input', scheduleTimeRequestCalculation);
         });
+        dateInput?.addEventListener('change', loadOvertimeDateContext);
         typeInputs.forEach(input => input.addEventListener('change', syncTimeRequestFields));
         syncTimeRequestFields();
+        loadOvertimeDateContext();
 
         form.addEventListener('submit', submitLateEarlyRequest);
     }
@@ -37,14 +40,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = document.getElementById('timeRequestCalculationText');
         const dateInput = document.getElementById('timeRequestDate');
         const timeInput = document.getElementById('timeRequestTime');
-        const overtimeInput = document.getElementById('overtimeMinutes');
+        const overtimeStartInput = document.getElementById('overtimeStartTime');
+        const overtimeEndInput = document.getElementById('overtimeEndTime');
         latestCalculation = null;
 
         const requestType = getSelectedTimeRequestType();
-        if (!requestType || !dateInput.value || (!isOvertimeRequest() && !timeInput.value) || (isOvertimeRequest() && !overtimeInput.value)) {
+        const missingOvertimeTime = isOvertimeRequest() && (!overtimeStartInput.value || !overtimeEndInput.value);
+        if (!requestType || !dateInput.value || (!isOvertimeRequest() && !timeInput.value) || missingOvertimeTime) {
+            if (isOvertimeRequest()) showLocalOvertimeDuration();
             box?.classList.add('d-none');
             return;
         }
+        if (isOvertimeRequest()) showLocalOvertimeDuration();
 
         const params = new URLSearchParams({
             action: 'calculate',
@@ -52,7 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
             work_date: dateInput.value,
         });
         if (isOvertimeRequest()) {
-            params.set('overtime_minutes', overtimeInput.value);
+            params.set('overtime_start_time', overtimeStartInput.value);
+            params.set('overtime_end_time', overtimeEndInput.value);
         } else {
             params.set('request_time', timeInput.value);
         }
@@ -66,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.status === 'success') {
                 latestCalculation = result.data;
                 if (isOvertimeRequest()) {
-                    text.textContent = `ขอ OT ${formatHourMinuteDuration(result.data.request_minutes)} หลังเลิกงาน (กะ ${formatTime(result.data.shift_start_time)} - ${formatTime(result.data.shift_end_time)})`;
+                    text.textContent = `ขอ OT ${formatTime(result.data.request_start_time)}-${formatTime(result.data.request_end_time)} รวม ${formatHourMinuteDuration(result.data.request_minutes)}`;
                 } else {
                     text.textContent = `ขอเวลา ${result.data.request_minutes} นาที (กะ ${formatTime(result.data.shift_start_time)} - ${formatTime(result.data.shift_end_time)})`;
                 }
@@ -97,13 +105,74 @@ document.addEventListener('DOMContentLoaded', () => {
     function syncTimeRequestFields() {
         const timeField = document.getElementById('timeRequestTime')?.closest('.col-md-6');
         const timeInput = document.getElementById('timeRequestTime');
-        const overtimeField = document.getElementById('overtimeDurationField');
-        const overtimeInput = document.getElementById('overtimeMinutes');
+        const overtimeStartField = document.getElementById('overtimeStartField');
+        const overtimeEndField = document.getElementById('overtimeEndField');
+        const overtimeStartInput = document.getElementById('overtimeStartTime');
+        const overtimeEndInput = document.getElementById('overtimeEndTime');
         const ot = isOvertimeRequest();
         timeField?.classList.toggle('d-none', ot);
-        overtimeField?.classList.toggle('d-none', !ot);
+        overtimeStartField?.classList.toggle('d-none', !ot);
+        overtimeEndField?.classList.toggle('d-none', !ot);
         if (timeInput) timeInput.required = !ot;
-        if (overtimeInput) overtimeInput.required = ot;
+        if (overtimeStartInput) overtimeStartInput.required = ot;
+        if (overtimeEndInput) overtimeEndInput.required = ot;
+    }
+
+    async function loadOvertimeDateContext() {
+        const target = document.getElementById('timeRequestDateContext');
+        const dateInput = document.getElementById('timeRequestDate');
+        if (!target || !dateInput || !isOvertimeRequest()) return;
+        if (!dateInput.value) {
+            target.classList.add('d-none');
+            target.innerHTML = '';
+            return;
+        }
+
+        target.classList.remove('d-none', 'alert-danger');
+        target.classList.add('alert-light');
+        target.innerHTML = '<span class="text-muted small">กำลังโหลดข้อมูลกะ...</span>';
+
+        try {
+            const params = new URLSearchParams({ action: 'work_date_context', work_date: dateInput.value });
+            const response = await fetch(`api/late_early_request_api.php?${params.toString()}`);
+            const result = await response.json();
+            if (result.status !== 'success') {
+                target.classList.remove('alert-light');
+                target.classList.add('alert-danger');
+                target.textContent = result.message || 'ไม่พบข้อมูลกะของวันที่เลือก';
+                return;
+            }
+            target.classList.remove('alert-danger');
+            target.classList.add('alert-light');
+            target.innerHTML = renderWorkDateContext(result.data || {});
+        } catch (error) {
+            console.error(error);
+            target.classList.remove('alert-light');
+            target.classList.add('alert-danger');
+            target.textContent = 'ไม่สามารถโหลดข้อมูลกะของวันที่เลือกได้';
+        }
+    }
+
+    function renderWorkDateContext(context) {
+        const dayLabel = escapeHtml(context.day_type_label || '-');
+        const holiday = context.holiday_name ? ` <span class="text-muted">(${escapeHtml(context.holiday_name)})</span>` : '';
+        const shift = context.shift_start_time && context.shift_end_time
+            ? `${formatTime(context.shift_start_time)}-${formatTime(context.shift_end_time)}`
+            : '-';
+        return `<div class="small text-muted">ข้อมูลวันที่เลือก</div><div class="fw-semibold">${dayLabel}${holiday} | กะ ${shift}</div>`;
+    }
+
+    function showLocalOvertimeDuration() {
+        const box = document.getElementById('timeRequestCalculation');
+        const text = document.getElementById('timeRequestCalculationText');
+        const startInput = document.getElementById('overtimeStartTime');
+        const endInput = document.getElementById('overtimeEndTime');
+        if (!box || !text || !startInput?.value || !endInput?.value) return;
+
+        const duration = formatLocalOvertimeDuration(startInput.value, endInput.value);
+        box.classList.remove('d-none', 'alert-danger', 'alert-success');
+        box.classList.add(duration.valid ? 'alert-success' : 'alert-danger');
+        text.textContent = duration.valid ? `รวม ${duration.label}` : duration.message;
     }
 
     async function submitLateEarlyRequest(event) {
@@ -112,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await calculateTimeRequest();
         if (!latestCalculation || !latestCalculation.valid) {
             const message = isOvertimeRequest()
-                ? 'กรุณาระบุจำนวนเวลา OT 1-480 นาทีในวันทำงานตามกะ'
+                ? 'กรุณาระบุเวลาเริ่มและเวลาสิ้นสุด OT ให้ถูกต้อง'
                 : 'กรุณาระบุเวลาที่อยู่ภายในช่วง 1-60 นาทีจากกะของวันนั้น';
             Swal.fire('ตรวจสอบเวลา', message, 'warning');
             return;
@@ -146,6 +215,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+function formatLocalOvertimeDuration(startTime, endTime) {
+    const start = parseTimeToMinutes(startTime);
+    const end = parseTimeToMinutes(endTime);
+    if (start === null || end === null) {
+        return { valid: false, message: 'รูปแบบเวลาไม่ถูกต้อง', minutes: 0, label: '' };
+    }
+    const minutes = end - start;
+    if (minutes <= 0) {
+        return { valid: false, message: 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', minutes: 0, label: '' };
+    }
+    return { valid: true, message: '', minutes, label: formatHourMinuteDuration(minutes) };
+}
+
+function parseTimeToMinutes(value) {
+    const match = String(value || '').match(/^(\d{2}):(\d{2})/);
+    if (!match) return null;
+    const hours = Number.parseInt(match[1], 10);
+    const minutes = Number.parseInt(match[2], 10);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+}
 
 async function loadTimeRequestHistory() {
     const tbody = document.getElementById('lateEarlyHistoryBody');
@@ -239,7 +330,10 @@ function formatTimeRequestType(type) {
 
 function formatTimeRequestDuration(item) {
     if (item.time_request_type === 'overtime_after_work') {
-        return `OT หลังเลิกงาน ${formatHourMinuteDuration(item.request_minutes)}`;
+        const range = item.request_start_time && item.request_end_time
+            ? `${formatTime(item.request_start_time)}-${formatTime(item.request_end_time)} `
+            : '';
+        return `OT หลังเลิกงาน ${range}${formatHourMinuteDuration(item.request_minutes)}`;
     }
     const minutes = Math.max(1, Math.min(60, Number.parseInt(item.request_minutes || 0, 10) || 60));
     return `${formatTimeRequestType(item.time_request_type)} ${minutes} นาที`;

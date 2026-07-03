@@ -302,6 +302,19 @@ $otRequestMap = attendanceBuildApprovedHourlyRequestMap([
 ], '2026-01');
 assertSameValue(['OT หลังเลิกงาน 1 ชม. 30 นาที'], $otRequestMap['2026-01-09'], 'Approved OT should use approved_request_minutes in attendance labels.');
 
+$otWindowRequestMap = attendanceBuildApprovedHourlyRequestMap([
+    [
+        'start_date' => '2026-01-10',
+        'request_unit' => 'hour',
+        'time_request_type' => 'overtime_after_work',
+        'request_minutes' => 540,
+        'approved_request_minutes' => 540,
+        'request_start_time' => '08:00:00',
+        'request_end_time' => '17:00:00',
+    ],
+], '2026-01');
+assertSameValue(['OT หลังเลิกงาน 08:00-17:00 9 ชม.'], $otWindowRequestMap['2026-01-10'], 'Approved OT calendar labels should show the requested time window.');
+
 $otFullApproval = attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', '19:15:00', 120);
 assertSameValue(true, $otFullApproval['valid'], 'OT should be valid when check-out is after shift end.');
 assertSameValue(135, $otFullApproval['eligible_minutes'], 'OT eligible minutes should be measured from shift end to check-out.');
@@ -312,12 +325,49 @@ assertSameValue(true, $otPartialApproval['valid'], 'OT should still be valid whe
 assertSameValue(45, $otPartialApproval['eligible_minutes'], 'OT eligible minutes should reflect actual scan-out.');
 assertSameValue(45, $otPartialApproval['approved_minutes'], 'OT approved minutes should not exceed eligible minutes.');
 
+$otWindow = attendanceCalculateOvertimeWindowMinutes('2026-01-09', '17:30', '20:00');
+assertSameValue(true, $otWindow['valid'], 'OT window should be valid when start time is before end time.');
+assertSameValue(150, $otWindow['request_minutes'], 'OT window minutes should be calculated from start and end time.');
+assertSameValue('17:30:00', $otWindow['request_start_time'], 'OT window should normalize start time.');
+assertSameValue('20:00:00', $otWindow['request_end_time'], 'OT window should normalize end time.');
+
+$holidayOtWindow = attendanceCalculateOvertimeWindowMinutes('2026-01-10', '08:00', '17:00');
+assertSameValue(true, $holidayOtWindow['valid'], 'OT window should be allowed on employee holidays.');
+assertSameValue(540, $holidayOtWindow['request_minutes'], 'Holiday OT should support full-day work windows.');
+
+$workDateContext = attendanceBuildWorkDateContext('2026-01-09', [
+    'start_time' => '08:00:00',
+    'end_time' => '17:00:00',
+    'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+], null);
+assertSameValue('workday', $workDateContext['day_type'], 'Work date context should identify shift workdays.');
+assertSameValue('08:00:00', $workDateContext['shift_start_time'], 'Work date context should include shift start time.');
+assertSameValue('17:00:00', $workDateContext['shift_end_time'], 'Work date context should include shift end time.');
+
+$regularHolidayContext = attendanceBuildWorkDateContext('2026-01-10', [
+    'start_time' => '08:00:00',
+    'end_time' => '17:00:00',
+    'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+], null);
+assertSameValue('regular_holiday', $regularHolidayContext['day_type'], 'Work date context should identify regular employee holidays.');
+
+$companyHolidayContext = attendanceBuildWorkDateContext('2026-01-09', [
+    'start_time' => '08:00:00',
+    'end_time' => '17:00:00',
+    'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+], 'Company outing');
+assertSameValue('company_holiday', $companyHolidayContext['day_type'], 'Company holidays should take precedence in work date context.');
+assertSameValue('Company outing', $companyHolidayContext['holiday_name'], 'Work date context should return the company holiday name.');
+
 $invalidOtCases = [
     attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '', '18:00:00', 60),
     attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', null, 60),
     attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', '17:00:00', 60),
     attendanceCalculateOvertimeAfterWorkMinutes('bad-date', '17:00:00', '18:00:00', 60),
     attendanceCalculateOvertimeAfterWorkMinutes('2026-01-09', '17:00:00', '18:00:00', 0),
+    attendanceCalculateOvertimeWindowMinutes('2026-01-09', '20:00', '17:30'),
+    attendanceCalculateOvertimeWindowMinutes('bad-date', '17:30', '20:00'),
+    attendanceCalculateOvertimeWindowMinutes('2026-01-09', 'bad-time', '20:00'),
 ];
 foreach ($invalidOtCases as $case) {
     assertSameValue(false, $case['valid'], 'Invalid OT cases should be rejected.');

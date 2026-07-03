@@ -167,7 +167,7 @@ function leaveBuildHourlyRequestPayload($timeRequestType, $requestMinutes = 60) 
         throw new InvalidArgumentException('Invalid hourly request type');
     }
     $requestMinutes = (int)$requestMinutes;
-    $maxMinutes = $timeRequestType === 'overtime_after_work' ? 480 : 60;
+    $maxMinutes = $timeRequestType === 'overtime_after_work' ? 1440 : 60;
     if ($requestMinutes < 1 || $requestMinutes > $maxMinutes) {
         throw new InvalidArgumentException('Invalid hourly request minutes');
     }
@@ -178,6 +178,15 @@ function leaveBuildHourlyRequestPayload($timeRequestType, $requestMinutes = 60) 
         'request_minutes' => $requestMinutes,
         'total_days' => 0.0,
     ];
+}
+
+function leaveFormatRequestTimeRange(array $row) {
+    $start = $row['request_start_time'] ?? null;
+    $end = $row['request_end_time'] ?? null;
+    if (!$start || !$end) {
+        return '';
+    }
+    return substr((string)$start, 0, 5) . '-' . substr((string)$end, 0, 5);
 }
 
 function leaveBuildHourlyLeavePayload($requestHours, $hoursPerDay = 8, $fullDayThreshold = 0) {
@@ -229,7 +238,8 @@ function leaveFormatRequestDuration(array $row) {
     }
     if ($type === 'overtime_after_work') {
         $minutes = max(1, (int)($row['approved_request_minutes'] ?? $row['request_minutes'] ?? 0));
-        return 'OT หลังเลิกงาน ' . leaveFormatHourMinuteDuration($minutes);
+        $range = leaveFormatRequestTimeRange($row);
+        return 'OT หลังเลิกงาน ' . ($range !== '' ? $range . ' ' : '') . leaveFormatHourMinuteDuration($minutes);
     }
     $minutes = max(1, min(60, (int)($row['request_minutes'] ?? 60)));
     $label = $type === 'early_departure' ? 'ขอออกก่อน' : 'ขอมาสาย';
@@ -1118,6 +1128,14 @@ function leaveEnsureRequestPartColumns(mysqli $mysqli) {
 
     if (!isset($columns['approved_request_minutes'])) {
         $mysqli->query("ALTER TABLE leave_requests ADD COLUMN approved_request_minutes SMALLINT UNSIGNED NULL AFTER request_minutes");
+    }
+
+    if (!isset($columns['request_start_time'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN request_start_time TIME NULL AFTER approved_request_minutes");
+    }
+
+    if (!isset($columns['request_end_time'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN request_end_time TIME NULL AFTER request_start_time");
     }
 }
 

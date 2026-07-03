@@ -78,6 +78,113 @@
         )).join('');
     }
 
+    function formatProxyTime(value) {
+        return value ? String(value).slice(0, 5) : '-';
+    }
+
+    function parseProxyTimeToMinutes(value) {
+        const match = String(value || '').match(/^(\d{2}):(\d{2})/);
+        if (!match) return null;
+        const hours = Number.parseInt(match[1], 10);
+        const minutes = Number.parseInt(match[2], 10);
+        if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+        return hours * 60 + minutes;
+    }
+
+    function formatProxyHourMinuteDuration(minutes) {
+        const safeMinutes = Math.max(0, Number.parseInt(minutes || 0, 10) || 0);
+        const hours = Math.floor(safeMinutes / 60);
+        const remaining = safeMinutes % 60;
+        const parts = [];
+        if (hours > 0) parts.push(`${hours} ชม.`);
+        if (remaining > 0 || !parts.length) parts.push(`${remaining} นาที`);
+        return parts.join(' ');
+    }
+
+    function formatProxyOvertimeDuration(startTime, endTime) {
+        const start = parseProxyTimeToMinutes(startTime);
+        const end = parseProxyTimeToMinutes(endTime);
+        if (start === null || end === null) return { valid: false, message: 'รูปแบบเวลาไม่ถูกต้อง', label: '' };
+        const minutes = end - start;
+        if (minutes <= 0) return { valid: false, message: 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', label: '' };
+        return { valid: true, message: '', label: formatProxyHourMinuteDuration(minutes) };
+    }
+
+    function renderProxyWorkDateContext(context) {
+        const dayLabel = escapeHtml(context.day_type_label || '-');
+        const holiday = context.holiday_name ? ` <span class="text-muted">(${escapeHtml(context.holiday_name)})</span>` : '';
+        const shift = context.shift_start_time && context.shift_end_time
+            ? `${formatProxyTime(context.shift_start_time)}-${formatProxyTime(context.shift_end_time)}`
+            : '-';
+        return `<div class="small text-muted">ข้อมูลวันที่เลือก</div><div class="fw-semibold">${dayLabel}${holiday} | กะ ${shift}</div>`;
+    }
+
+    async function loadProxyOvertimeDateContext() {
+        const form = document.querySelector('[data-action="create_overtime"]');
+        const target = document.getElementById('proxyOvertimeDateContext');
+        const workDate = form?.querySelector('[name="work_date"]')?.value || '';
+        if (!target) return;
+        if (!selectedEmployeeId() || !workDate) {
+            target.classList.add('d-none');
+            target.innerHTML = '';
+            return;
+        }
+        target.classList.remove('d-none', 'alert-danger');
+        target.classList.add('alert-light');
+        target.innerHTML = '<span class="text-muted small">กำลังโหลดข้อมูลกะ...</span>';
+        try {
+            const params = new URLSearchParams({
+                action: 'work_date_context',
+                employee_id: selectedEmployeeId(),
+                work_date: workDate,
+            });
+            const result = await loadJson(`${apiBase}?${params.toString()}`);
+            if (result.status !== 'success') {
+                target.classList.remove('alert-light');
+                target.classList.add('alert-danger');
+                target.textContent = result.message || 'ไม่พบข้อมูลกะของวันที่เลือก';
+                return;
+            }
+            target.classList.remove('alert-danger');
+            target.classList.add('alert-light');
+            target.innerHTML = renderProxyWorkDateContext(result.data || {});
+        } catch (error) {
+            console.error(error);
+            target.classList.remove('alert-light');
+            target.classList.add('alert-danger');
+            target.textContent = 'ไม่สามารถโหลดข้อมูลกะของวันที่เลือกได้';
+        }
+    }
+
+    function renderProxyOvertimeDuration() {
+        const form = document.querySelector('[data-action="create_overtime"]');
+        const target = document.getElementById('proxyOvertimeDuration');
+        if (!form || !target) return;
+        const startTime = form.querySelector('[name="overtime_start_time"]')?.value || '';
+        const endTime = form.querySelector('[name="overtime_end_time"]')?.value || '';
+        if (!startTime || !endTime) {
+            target.classList.add('d-none');
+            target.textContent = '';
+            return;
+        }
+        const duration = formatProxyOvertimeDuration(startTime, endTime);
+        target.classList.remove('d-none', 'alert-danger', 'alert-success');
+        target.classList.add(duration.valid ? 'alert-success' : 'alert-danger');
+        target.textContent = duration.valid ? `รวม ${duration.label}` : duration.message;
+    }
+
+    function initProxyOvertimeHelpers() {
+        const form = document.querySelector('[data-action="create_overtime"]');
+        if (!form) return;
+        form.querySelector('[name="work_date"]')?.addEventListener('change', loadProxyOvertimeDateContext);
+        form.querySelector('[name="overtime_start_time"]')?.addEventListener('input', renderProxyOvertimeDuration);
+        form.querySelector('[name="overtime_end_time"]')?.addEventListener('input', renderProxyOvertimeDuration);
+        employeeSelect?.addEventListener('change', loadProxyOvertimeDateContext);
+        if (window.jQuery && employeeSelect) {
+            jQuery(employeeSelect).on('select2:select.proxyOvertime select2:clear.proxyOvertime', loadProxyOvertimeDateContext);
+        }
+    }
+
     async function submitProxyForm(event) {
         event.preventDefault();
         const form = event.currentTarget;
@@ -108,6 +215,8 @@
             }
             await Swal.fire('สำเร็จ', result.message || 'บันทึกเรียบร้อยแล้ว', 'success');
             form.reset();
+            loadProxyOvertimeDateContext();
+            renderProxyOvertimeDuration();
         } catch (error) {
             console.error(error);
             Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
@@ -123,5 +232,6 @@
 
     loadEmployees().catch((error) => Swal.fire('ไม่สำเร็จ', error.message, 'error'));
     loadLeaveTypes();
+    initProxyOvertimeHelpers();
     showPanel('leave');
 })();

@@ -12,7 +12,7 @@ window.timeRequestFixedType = 'overtime_after_work';
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h3 mb-0 text-gray-800">ขอ OT หลังเลิกงาน</h1>
-        <p class="text-muted small mb-0">เลือกวันที่และจำนวนเวลาที่ต้องการทำ OT หลังเลิกงาน เพื่อส่งให้หัวหน้าและ HR อนุมัติจากผลสแกนออกจริง</p>
+        <p class="text-muted small mb-0">เลือกวันที่ เวลาเริ่ม และเวลาสิ้นสุด เพื่อส่งให้หัวหน้าและ HR อนุมัติ</p>
     </div>
     <a href="overtime_history.php" class="btn btn-outline-secondary overtime-request-back-link">
         <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ OT
@@ -26,9 +26,9 @@ window.timeRequestFixedType = 'overtime_after_work';
                 <div class="d-flex align-items-start justify-content-between gap-3 mb-4">
                     <div>
                         <h2 class="h5 mb-1">ส่งคำขอ OT</h2>
-                        <p class="text-muted small mb-0">ระบบจะให้ HR ตรวจสอบเวลาออกจริงก่อนอนุมัติยอด OT สุดท้าย</p>
+                        <p class="text-muted small mb-0">ทำได้ทั้งหลังเลิกงานและวันหยุด โดยระบบจะคำนวณชั่วโมงจากช่วงเวลาที่ระบุ</p>
                     </div>
-                    <span class="time-request-step">1-480 นาที</span>
+                    <span class="time-request-step">เวลาเริ่ม-สิ้นสุด</span>
                 </div>
 
                 <form id="lateEarlyRequestForm">
@@ -41,12 +41,19 @@ window.timeRequestFixedType = 'overtime_after_work';
                             <input type="date" name="work_date" id="timeRequestDate" class="form-control" data-native-date-picker="true" required>
                         </div>
 
-                        <div class="col-md-6" id="overtimeDurationField">
-                            <label class="form-label">จำนวน OT ที่ขอ (นาที) <span class="text-danger">*</span></label>
-                            <input type="number" name="overtime_minutes" id="overtimeMinutes" class="form-control" min="1" max="480" step="1" placeholder="เช่น 120" required>
+                        <div class="col-md-3" id="overtimeStartField">
+                            <label class="form-label">เวลาเริ่ม OT <span class="text-danger">*</span></label>
+                            <input type="time" name="overtime_start_time" id="overtimeStartTime" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-3" id="overtimeEndField">
+                            <label class="form-label">เวลาสิ้นสุด OT <span class="text-danger">*</span></label>
+                            <input type="time" name="overtime_end_time" id="overtimeEndTime" class="form-control" required>
                         </div>
                     </div>
-                    <div class="form-text mt-2 mb-3">HR จะอนุมัติได้ไม่เกินเวลาที่สแกนออกจริงหลังเวลาเลิกกะ</div>
+                    <div class="form-text mt-2 mb-3">HR จะอนุมัติจากช่วงเวลาที่ขอ ไม่อ้างอิงผลสแกนออก</div>
+
+                    <div class="alert alert-light border d-none" id="timeRequestDateContext"></div>
 
                     <div class="alert alert-light border d-none" id="timeRequestCalculation">
                         <div class="small text-muted">ผลการคำนวณ</div>

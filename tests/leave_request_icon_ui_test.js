@@ -40,7 +40,9 @@ assertNotIncludes(timeRequestPage, '<select name="time_request_type"', 'Late/ear
 assertIncludes(timeRequestPage, 'name="request_time"', 'Late/early request page should collect the requested time.');
 assertNotIncludes(timeRequestPage, 'value="overtime_after_work"', 'Late/early request page should not show after-work OT.');
 assertIncludes(overtimeRequestPage, 'value="overtime_after_work"', 'Overtime request page should submit after-work OT.');
-assertIncludes(overtimeRequestPage, 'name="overtime_minutes"', 'Overtime request page should collect requested OT duration.');
+assertIncludes(overtimeRequestPage, 'name="overtime_start_time"', 'Overtime request page should collect OT start time.');
+assertIncludes(overtimeRequestPage, 'name="overtime_end_time"', 'Overtime request page should collect OT end time.');
+assertNotIncludes(overtimeRequestPage, 'name="overtime_minutes"', 'Overtime request page should not collect manually typed OT duration.');
 assertIncludes(overtimeRequestPage, "window.timeRequestFixedType = 'overtime_after_work';", 'Overtime request page should force OT type.');
 assertIncludes(overtimeHistoryPage, "window.timeRequestHistoryType = 'overtime_after_work';", 'Overtime history page should load only OT history.');
 assertIncludes(timeRequestScript, 'overtime_after_work', 'Time request script should handle after-work OT.');

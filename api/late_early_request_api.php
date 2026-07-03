@@ -36,11 +36,18 @@ try {
             $type = normalizeTimeRequestType($_GET['time_request_type'] ?? '');
             $workDate = trim((string)($_GET['work_date'] ?? ''));
             $requestTime = trim((string)($_GET['request_time'] ?? ''));
-            $overtimeMinutes = (int)($_GET['overtime_minutes'] ?? 0);
+            $overtimeStartTime = trim((string)($_GET['overtime_start_time'] ?? ''));
+            $overtimeEndTime = trim((string)($_GET['overtime_end_time'] ?? ''));
             $calculation = $type === 'overtime_after_work'
-                ? calculateMyOvertimeRequest($mysqli, $workDate, $overtimeMinutes)
+                ? calculateMyOvertimeRequest($mysqli, $workDate, $overtimeStartTime, $overtimeEndTime)
                 : calculateMyTimeRequest($mysqli, $type, $workDate, $requestTime);
             sendJson(['status' => $calculation['valid'] ? 'success' : 'error', 'message' => $calculation['message'], 'data' => $calculation]);
+        }
+
+        if ($action === 'work_date_context') {
+            $workDate = trim((string)($_GET['work_date'] ?? ''));
+            $context = fetchMyWorkDateContext($mysqli, $workDate);
+            sendJson(['status' => $context['valid'] ? 'success' : 'error', 'message' => $context['message'], 'data' => $context]);
         }
 
         sendJsonError('Invalid Action');
@@ -101,15 +108,16 @@ function submitTimeRequest(mysqli $mysqli) {
     $type = normalizeTimeRequestType($_POST['time_request_type'] ?? '');
     $workDate = trim((string)($_POST['work_date'] ?? ''));
     $requestTime = trim((string)($_POST['request_time'] ?? ''));
-    $overtimeMinutes = (int)($_POST['overtime_minutes'] ?? 0);
+    $overtimeStartTime = trim((string)($_POST['overtime_start_time'] ?? ''));
+    $overtimeEndTime = trim((string)($_POST['overtime_end_time'] ?? ''));
     $reason = trim((string)($_POST['reason'] ?? ''));
 
-    if ($type === '' || $workDate === '' || $reason === '' || ($type !== 'overtime_after_work' && $requestTime === '')) {
+    if ($type === '' || $workDate === '' || $reason === '' || ($type !== 'overtime_after_work' && $requestTime === '') || ($type === 'overtime_after_work' && ($overtimeStartTime === '' || $overtimeEndTime === ''))) {
         sendJsonError('กรุณากรอกข้อมูลให้ครบถ้วน');
     }
 
     $calculation = $type === 'overtime_after_work'
-        ? calculateMyOvertimeRequest($mysqli, $workDate, $overtimeMinutes)
+        ? calculateMyOvertimeRequest($mysqli, $workDate, $overtimeStartTime, $overtimeEndTime)
         : calculateMyTimeRequest($mysqli, $type, $workDate, $requestTime);
     if (!$calculation['valid']) {
         sendJsonError($calculation['message']);
@@ -128,13 +136,15 @@ function submitTimeRequest(mysqli $mysqli) {
         $requestUnit = $payload['request_unit'];
         $requestType = $payload['time_request_type'];
         $requestMinutes = (int)$payload['request_minutes'];
+        $requestStartTime = $type === 'overtime_after_work' ? ($calculation['request_start_time'] ?? null) : null;
+        $requestEndTime = $type === 'overtime_after_work' ? ($calculation['request_end_time'] ?? null) : null;
         $totalDays = 0.0;
         $part = 'full';
 
         $stmt = $mysqli->prepare("INSERT INTO leave_requests
-            (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, total_days, reason, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_manager')");
-        $stmt->bind_param('iissssssids', $employeeId, $leaveTypeId, $workDate, $workDate, $part, $part, $requestUnit, $requestType, $requestMinutes, $totalDays, $reason);
+            (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, request_start_time, request_end_time, total_days, reason, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_manager')");
+        $stmt->bind_param('iissssssissds', $employeeId, $leaveTypeId, $workDate, $workDate, $part, $part, $requestUnit, $requestType, $requestMinutes, $requestStartTime, $requestEndTime, $totalDays, $reason);
         if (!$stmt->execute()) {
             throw new RuntimeException($stmt->error ?: 'Cannot save time request');
         }
@@ -169,30 +179,27 @@ function calculateMyTimeRequest(mysqli $mysqli, $type, $workDate, $requestTime) 
     return $calculation;
 }
 
-function calculateMyOvertimeRequest(mysqli $mysqli, $workDate, $requestedMinutes) {
+function calculateMyOvertimeRequest(mysqli $mysqli, $workDate, $startTime, $endTime) {
+    return attendanceCalculateOvertimeWindowMinutes($workDate, $startTime, $endTime);
+}
+
+function fetchMyWorkDateContext(mysqli $mysqli, $workDate) {
     $employeeId = (int)($_SESSION['employee_id'] ?? 0);
     $shift = fetchEffectiveShiftForTimeRequest($mysqli, $employeeId, $workDate);
     if (!$shift) {
-        return ['valid' => false, 'message' => 'ไม่พบข้อมูลกะของพนักงาน', 'request_minutes' => 0];
+        return [
+            'valid' => false,
+            'message' => 'ไม่พบข้อมูลกะของพนักงาน',
+            'day_type' => 'unknown',
+            'day_type_label' => 'ไม่พบข้อมูล',
+            'shift_start_time' => null,
+            'shift_end_time' => null,
+            'holiday_name' => null,
+        ];
     }
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
-        return ['valid' => false, 'message' => 'รูปแบบวันที่ไม่ถูกต้อง', 'request_minutes' => 0];
-    }
-    $workDays = array_filter(array_map('trim', explode(',', (string)($shift['work_days'] ?? ''))));
-    if (!empty($workDays) && !in_array(attendanceDayName($workDate), $workDays, true)) {
-        return ['valid' => false, 'message' => 'วันที่เลือกไม่ใช่วันทำงานตามกะ', 'request_minutes' => 0];
-    }
-    $minutes = (int)$requestedMinutes;
-    if ($minutes < 1 || $minutes > 480) {
-        return ['valid' => false, 'message' => 'จำนวนเวลาโอทีต้องอยู่ระหว่าง 1-480 นาที', 'request_minutes' => $minutes];
-    }
-    return [
-        'valid' => true,
-        'message' => '',
-        'request_minutes' => $minutes,
-        'shift_start_time' => $shift['start_time'] ?? null,
-        'shift_end_time' => $shift['end_time'] ?? null,
-    ];
+
+    $holidays = leaveFetchCompanyHolidays($mysqli, $workDate, $workDate);
+    return attendanceBuildWorkDateContext($workDate, $shift, $holidays[$workDate] ?? null);
 }
 
 function fetchEffectiveShiftForTimeRequest(mysqli $mysqli, $employeeId, $workDate) {

@@ -40,6 +40,7 @@ try {
         if ($action === 'day_swap_holidays') proxyRequestJson(['status' => 'success', 'data' => proxyRequestFetchDaySwapHolidays($mysqli)]);
         if ($action === 'calculate_leave') proxyRequestJson(['status' => 'success', 'data' => proxyRequestCalculateLeave($mysqli)]);
         if ($action === 'calculate_time_request') proxyRequestJson(['status' => 'success', 'data' => proxyRequestCalculateTimeRequest($mysqli)]);
+        if ($action === 'work_date_context') proxyRequestJson(['status' => 'success', 'data' => proxyRequestBuildWorkDateContext($mysqli)]);
         proxyRequestError('Invalid Action');
     }
 
@@ -165,8 +166,29 @@ function proxyRequestCalculateTimeRequest(mysqli $mysqli): array {
         proxyRequestNormalizeTimeType($_GET['time_request_type'] ?? ''),
         trim((string)($_GET['work_date'] ?? '')),
         trim((string)($_GET['request_time'] ?? '')),
-        (int)($_GET['overtime_minutes'] ?? 0)
+        trim((string)($_GET['overtime_start_time'] ?? '')),
+        trim((string)($_GET['overtime_end_time'] ?? ''))
     );
+}
+
+function proxyRequestBuildWorkDateContext(mysqli $mysqli): array {
+    $employeeId = (int)($_GET['employee_id'] ?? 0);
+    proxyRequestRequireEmployee($mysqli, $employeeId);
+    $workDate = trim((string)($_GET['work_date'] ?? ''));
+    $shift = proxyRequestFetchEffectiveShift($mysqli, $employeeId, $workDate);
+    if (!$shift) {
+        return [
+            'valid' => false,
+            'message' => 'ไม่พบข้อมูลกะของพนักงาน',
+            'day_type' => 'unknown',
+            'day_type_label' => 'ไม่พบข้อมูล',
+            'shift_start_time' => null,
+            'shift_end_time' => null,
+            'holiday_name' => null,
+        ];
+    }
+    $holidays = leaveFetchCompanyHolidays($mysqli, $workDate, $workDate);
+    return attendanceBuildWorkDateContext($workDate, $shift, $holidays[$workDate] ?? null);
 }
 
 function proxyRequestNormalizeTimeType($value) {
@@ -195,13 +217,12 @@ function proxyRequestFetchEffectiveShift(mysqli $mysqli, int $employeeId, string
     return isset($swapMap[$workDate]) ? attendanceApplyDayTypeOverride($effective, $workDate, $swapMap[$workDate]) : $effective;
 }
 
-function proxyRequestCalculateTimeRequestFromValues(mysqli $mysqli, int $employeeId, string $type, string $workDate, string $requestTime, int $overtimeMinutes): array {
+function proxyRequestCalculateTimeRequestFromValues(mysqli $mysqli, int $employeeId, string $type, string $workDate, string $requestTime, string $overtimeStartTime, string $overtimeEndTime): array {
+    if ($type === 'overtime_after_work') {
+        return attendanceCalculateOvertimeWindowMinutes($workDate, $overtimeStartTime, $overtimeEndTime);
+    }
     $shift = proxyRequestFetchEffectiveShift($mysqli, $employeeId, $workDate);
     if (!$shift) return ['valid' => false, 'message' => 'ไม่พบข้อมูลกะของพนักงาน', 'request_minutes' => 0];
-    if ($type === 'overtime_after_work') {
-        if ($overtimeMinutes < 1 || $overtimeMinutes > 480) return ['valid' => false, 'message' => 'จำนวน OT ต้องอยู่ระหว่าง 1-480 นาที', 'request_minutes' => $overtimeMinutes];
-        return ['valid' => true, 'message' => '', 'request_minutes' => $overtimeMinutes, 'shift_start_time' => $shift['start_time'] ?? null, 'shift_end_time' => $shift['end_time'] ?? null];
-    }
     $calculation = attendanceCalculateTimeRequestMinutes($type, $workDate, $requestTime, $shift);
     $calculation['shift_start_time'] = $shift['start_time'] ?? null;
     $calculation['shift_end_time'] = $shift['end_time'] ?? null;
@@ -278,17 +299,20 @@ function proxyRequestCreateTimeRequest(mysqli $mysqli, bool $isOvertime): void {
     if ($isOvertime) $type = 'overtime_after_work';
     $workDate = trim((string)($_POST['work_date'] ?? ''));
     $requestTime = trim((string)($_POST['request_time'] ?? ''));
-    $overtimeMinutes = (int)($_POST['overtime_minutes'] ?? 0);
+    $overtimeStartTime = trim((string)($_POST['overtime_start_time'] ?? ''));
+    $overtimeEndTime = trim((string)($_POST['overtime_end_time'] ?? ''));
     $reason = trim((string)($_POST['reason'] ?? ''));
-    if ($type === '' || $workDate === '' || $reason === '' || (!$isOvertime && $requestTime === '')) {
+    if ($type === '' || $workDate === '' || $reason === '' || (!$isOvertime && $requestTime === '') || ($isOvertime && ($overtimeStartTime === '' || $overtimeEndTime === ''))) {
         throw new InvalidArgumentException('กรุณากรอกข้อมูลให้ครบถ้วน');
     }
-    $calc = proxyRequestCalculateTimeRequestFromValues($mysqli, $employeeId, $type, $workDate, $requestTime, $overtimeMinutes);
+    $calc = proxyRequestCalculateTimeRequestFromValues($mysqli, $employeeId, $type, $workDate, $requestTime, $overtimeStartTime, $overtimeEndTime);
     if (!$calc['valid']) throw new InvalidArgumentException($calc['message']);
     $leaveTypeId = proxyRequestFetchHourlyLeaveTypeId($mysqli, proxyRequestTimeTypeName($type));
     if ($leaveTypeId <= 0) throw new RuntimeException('Time request type not found');
 
     $payload = leaveBuildHourlyRequestPayload($type, (int)$calc['request_minutes']);
+    $requestStartTime = $isOvertime ? ($calc['request_start_time'] ?? null) : null;
+    $requestEndTime = $isOvertime ? ($calc['request_end_time'] ?? null) : null;
     $audit = proxyRequestBuildAuditPayload($_POST['proxy_note'] ?? '');
     $now = date('Y-m-d H:i:s');
     $part = 'full';
@@ -296,9 +320,9 @@ function proxyRequestCreateTimeRequest(mysqli $mysqli, bool $isOvertime): void {
     $approverEmployeeId = proxyRequestCurrentEmployeeId() ?: null;
 
     $stmt = $mysqli->prepare("INSERT INTO leave_requests
-        (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, approved_request_minutes, total_days, reason, status, approver_id, approval_date, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param('iissssssiidsisisisiisss', $employeeId, $leaveTypeId, $workDate, $workDate, $part, $part, $payload['request_unit'], $payload['time_request_type'], $payload['request_minutes'], $payload['request_minutes'], $totalDays, $reason, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
+        (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, approved_request_minutes, request_start_time, request_end_time, total_days, reason, status, approver_id, approval_date, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param('iissssssiissdsisisisiisss', $employeeId, $leaveTypeId, $workDate, $workDate, $part, $part, $payload['request_unit'], $payload['time_request_type'], $payload['request_minutes'], $payload['request_minutes'], $requestStartTime, $requestEndTime, $totalDays, $reason, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
     if (!$stmt->execute()) throw new RuntimeException($stmt->error ?: 'Cannot save proxy time request');
     proxyRequestJson(['status' => 'success', 'message' => 'บันทึกและอนุมัติรายการเรียบร้อยแล้ว', 'data' => $calc]);
 }

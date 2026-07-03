@@ -425,7 +425,11 @@ function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
 
         if ($type === 'overtime_after_work') {
             $minutes = max(1, $minutes);
-            $label = 'OT หลังเลิกงาน ' . attendanceFormatHourMinuteDuration($minutes);
+            $range = '';
+            if (!empty($row['request_start_time']) && !empty($row['request_end_time'])) {
+                $range = substr((string)$row['request_start_time'], 0, 5) . '-' . substr((string)$row['request_end_time'], 0, 5) . ' ';
+            }
+            $label = 'OT หลังเลิกงาน ' . $range . attendanceFormatHourMinuteDuration($minutes);
         } else {
             $minutes = max(1, min(60, $minutes ?: 60));
             $label = $type === 'early_departure'
@@ -474,6 +478,74 @@ function attendanceCalculateOvertimeAfterWorkMinutes($workDate, $shiftEndTime, $
         'message' => '',
         'eligible_minutes' => $eligible,
         'approved_minutes' => min($requested, $eligible),
+    ];
+}
+
+function attendanceCalculateOvertimeWindowMinutes($workDate, $startTime, $endTime) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
+        return ['valid' => false, 'message' => 'รูปแบบวันที่ไม่ถูกต้อง', 'request_minutes' => 0, 'request_start_time' => null, 'request_end_time' => null];
+    }
+
+    $start = attendanceNormalizeTime($startTime);
+    $end = attendanceNormalizeTime($endTime);
+    if ($start === null || $end === null) {
+        return ['valid' => false, 'message' => 'รูปแบบเวลาไม่ถูกต้อง', 'request_minutes' => 0, 'request_start_time' => $start, 'request_end_time' => $end];
+    }
+
+    $startTs = strtotime($workDate . ' ' . $start);
+    $endTs = strtotime($workDate . ' ' . $end);
+    $minutes = (int)ceil(($endTs - $startTs) / 60);
+    if ($minutes < 1) {
+        return ['valid' => false, 'message' => 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', 'request_minutes' => 0, 'request_start_time' => $start, 'request_end_time' => $end];
+    }
+    if ($minutes > 1440) {
+        return ['valid' => false, 'message' => 'ช่วงเวลา OT ต้องไม่เกิน 24 ชั่วโมง', 'request_minutes' => $minutes, 'request_start_time' => $start, 'request_end_time' => $end];
+    }
+
+    return [
+        'valid' => true,
+        'message' => '',
+        'request_minutes' => $minutes,
+        'request_start_time' => $start,
+        'request_end_time' => $end,
+    ];
+}
+
+function attendanceBuildWorkDateContext($workDate, array $shift, $companyHolidayName = null) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
+        return [
+            'valid' => false,
+            'message' => 'รูปแบบวันที่ไม่ถูกต้อง',
+            'day_type' => 'unknown',
+            'day_type_label' => 'ไม่พบข้อมูล',
+            'shift_start_time' => null,
+            'shift_end_time' => null,
+            'holiday_name' => null,
+        ];
+    }
+
+    $holidayName = trim((string)($companyHolidayName ?? ''));
+    if ($holidayName !== '') {
+        $dayType = 'company_holiday';
+        $dayTypeLabel = 'วันหยุดบริษัท';
+    } else {
+        $workDays = array_filter(array_map('trim', explode(',', (string)($shift['work_days'] ?? ''))));
+        $isWorkday = empty($workDays) || in_array(attendanceDayName($workDate), $workDays, true);
+        $dayType = $isWorkday ? 'workday' : 'regular_holiday';
+        $dayTypeLabel = $isWorkday ? 'วันทำงานตามกะ' : 'วันหยุดประจำกะ';
+    }
+
+    $start = attendanceNormalizeTime($shift['start_time'] ?? null);
+    $end = attendanceNormalizeTime($shift['end_time'] ?? null);
+
+    return [
+        'valid' => true,
+        'message' => '',
+        'day_type' => $dayType,
+        'day_type_label' => $dayTypeLabel,
+        'shift_start_time' => $start,
+        'shift_end_time' => $end,
+        'holiday_name' => $holidayName !== '' ? $holidayName : null,
     ];
 }
 
