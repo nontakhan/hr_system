@@ -16,6 +16,9 @@ assertIncludes('request_proxy.php', 'proxy-type-btn proxy-type-swap');
 assertIncludes('request_proxy.php', 'proxy-type-btn proxy-type-training');
 assertIncludes('request_proxy.php', 'fas fa-calendar-check');
 assertIncludes('request_proxy.php', 'data-proxy-panel="leave"');
+assertIncludes('request_proxy.php', 'name="request_start_time"');
+assertIncludes('request_proxy.php', 'name="request_end_time"');
+assertIncludes('request_proxy.php', 'id="proxyHourlyLeaveDuration"');
 assertIncludes('request_proxy.php', 'data-proxy-panel="late_early"');
 assertIncludes('request_proxy.php', 'data-proxy-panel="overtime"');
 assertIncludes('request_proxy.php', 'name="overtime_start_time"');
@@ -28,6 +31,8 @@ assertIncludes('assets/js/proxy_request.js', 'api/proxy_request_api.php?action=e
 assertIncludes('assets/js/proxy_request.js', 'select2');
 assertIncludes('assets/js/proxy_request.js', 'aria-pressed');
 assertIncludes('assets/js/proxy_request.js', 'create_leave');
+assertIncludes('assets/js/proxy_request.js', 'function updateProxyLeaveMode');
+assertIncludes('assets/js/proxy_request.js', 'function renderProxyHourlyLeaveDuration');
 assertIncludes('assets/js/proxy_request.js', 'create_late_early');
 assertIncludes('assets/js/proxy_request.js', 'create_overtime');
 assertIncludes('assets/js/proxy_request.js', 'loadProxyOvertimeDateContext');

@@ -300,7 +300,8 @@ function updateLeaveRequestMode() {
     const startPart = document.getElementById('startDayPart');
     const endPart = document.getElementById('endDayPart');
     const hourlyFields = document.getElementById('hourlyLeaveFields');
-    const requestHours = document.getElementById('requestHours');
+    const requestStartTime = document.getElementById('requestStartTime');
+    const requestEndTime = document.getElementById('requestEndTime');
     const ruleText = document.getElementById('hourlyLeaveRuleText');
     const type = getSelectedLeaveType();
 
@@ -315,9 +316,13 @@ function updateLeaveRequestMode() {
     }
     if (startPart) startPart.required = !isHourly;
     if (endPart) endPart.required = !isHourly;
-    if (requestHours) {
-        requestHours.required = !!isHourly;
-        if (!isHourly) requestHours.value = '';
+    if (requestStartTime) {
+        requestStartTime.required = !!isHourly;
+        if (!isHourly) requestStartTime.value = '';
+    }
+    if (requestEndTime) {
+        requestEndTime.required = !!isHourly;
+        if (!isHourly) requestEndTime.value = '';
     }
     if (ruleText && type) {
         const hoursPerDay = formatLeaveDayNumber(type.hours_per_day || 8);
@@ -429,7 +434,8 @@ function setupDateCalculation() {
         document.getElementById('endDate'),
         document.getElementById('startDayPart'),
         document.getElementById('endDayPart'),
-        document.getElementById('requestHours'),
+        document.getElementById('requestStartTime'),
+        document.getElementById('requestEndTime'),
     ].filter(Boolean);
 
     document.querySelectorAll('.leave-date-picker').forEach(input => {
@@ -498,6 +504,36 @@ function updateLeavePartOptions() {
     ], endPart.value);
 }
 
+function parseLeaveTimeToMinutes(value) {
+    const match = String(value || '').match(/^(\d{2}):(\d{2})/);
+    if (!match) return null;
+    const hours = Number.parseInt(match[1], 10);
+    const minutes = Number.parseInt(match[2], 10);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+}
+
+function getHourlyLeaveDuration() {
+    const startValue = document.querySelector('[name="request_start_time"]')?.value || '';
+    const endValue = document.querySelector('[name="request_end_time"]')?.value || '';
+    if (!startValue || !endValue) {
+        return { hasInput: false, valid: false, minutes: 0, message: '' };
+    }
+
+    const start = parseLeaveTimeToMinutes(startValue);
+    const end = parseLeaveTimeToMinutes(endValue);
+    if (start === null || end === null) {
+        return { hasInput: true, valid: false, minutes: 0, message: 'รูปแบบเวลาไม่ถูกต้อง' };
+    }
+
+    const minutes = end - start;
+    if (minutes <= 0) {
+        return { hasInput: true, valid: false, minutes: 0, message: 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม' };
+    }
+
+    return { hasInput: true, valid: true, minutes, message: '' };
+}
+
 function setLeavePartOptions(select, options, preferredValue) {
     const allowedValues = options.map(([value]) => value);
     const nextValue = allowedValues.includes(preferredValue) ? preferredValue : options[0][0];
@@ -518,12 +554,19 @@ async function calculateLeaveDays() {
     totalDisplay.classList.remove('text-danger');
 
     if (isSelectedLeaveTypeHourly()) {
-        const requestHoursInput = document.getElementById('requestHours');
-        const requestHours = Number.parseFloat(requestHoursInput?.value || 0);
+        const duration = getHourlyLeaveDuration();
         const type = getSelectedLeaveType();
 
-        if (!startInput.value || requestHours <= 0) {
+        if (!startInput.value || !duration.hasInput) {
             totalDisplay.textContent = '0';
+            totalInput.value = 0;
+            breakdown.innerHTML = '';
+            renderProjectedLeaveUsageSummary();
+            return;
+        }
+        if (!duration.valid) {
+            totalDisplay.textContent = duration.message;
+            totalDisplay.classList.add('text-danger');
             totalInput.value = 0;
             breakdown.innerHTML = '';
             renderProjectedLeaveUsageSummary();
@@ -532,6 +575,7 @@ async function calculateLeaveDays() {
 
         const hoursPerDay = Number.parseFloat(type?.hours_per_day || 8) || 8;
         const threshold = Number.parseFloat(type?.hour_full_day_threshold || 0) || 0;
+        const requestHours = duration.minutes / 60;
         const totalDays = threshold > 0 && requestHours > threshold
             ? 1
             : requestHours / hoursPerDay;
@@ -641,9 +685,9 @@ async function handleSubmitLeave(e) {
         return;
     }
     if (isSelectedLeaveTypeHourly()) {
-        const requestHours = Number.parseFloat(new FormData(form).get('request_hours') || 0);
-        if (requestHours <= 0) {
-            Swal.fire('ระบุจำนวนชั่วโมง', 'กรุณาระบุจำนวนชั่วโมงที่ต้องการลา', 'warning');
+        const duration = getHourlyLeaveDuration();
+        if (!duration.valid) {
+            Swal.fire('ระบุช่วงเวลา', duration.message || 'กรุณาระบุเวลาเริ่มและเวลาสิ้นสุดการลา', 'warning');
             return;
         }
     }

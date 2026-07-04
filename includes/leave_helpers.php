@@ -220,6 +220,41 @@ function leaveBuildHourlyLeavePayload($requestHours, $hoursPerDay = 8, $fullDayT
     ];
 }
 
+function leaveNormalizeClockTime($value) {
+    $value = trim((string)$value);
+    if (!preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $value, $matches)) {
+        throw new InvalidArgumentException('Invalid time format');
+    }
+
+    $hours = (int)$matches[1];
+    $minutes = (int)$matches[2];
+    $seconds = isset($matches[3]) ? (int)$matches[3] : 0;
+    if ($hours < 0 || $hours > 23 || $minutes < 0 || $minutes > 59 || $seconds < 0 || $seconds > 59) {
+        throw new InvalidArgumentException('Invalid time format');
+    }
+
+    return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+}
+
+function leaveClockTimeToMinutes($time) {
+    $normalized = leaveNormalizeClockTime($time);
+    return ((int)substr($normalized, 0, 2) * 60) + (int)substr($normalized, 3, 2);
+}
+
+function leaveBuildTimedHourlyLeavePayload($startTime, $endTime, $hoursPerDay = 8, $fullDayThreshold = 0) {
+    $normalizedStart = leaveNormalizeClockTime($startTime);
+    $normalizedEnd = leaveNormalizeClockTime($endTime);
+    $requestMinutes = leaveClockTimeToMinutes($normalizedEnd) - leaveClockTimeToMinutes($normalizedStart);
+    if ($requestMinutes <= 0) {
+        throw new InvalidArgumentException('End time must be after start time');
+    }
+
+    $payload = leaveBuildHourlyLeavePayload($requestMinutes / 60, $hoursPerDay, $fullDayThreshold);
+    $payload['request_start_time'] = $normalizedStart;
+    $payload['request_end_time'] = $normalizedEnd;
+    return $payload;
+}
+
 function leaveFormatRequestDuration(array $row) {
     $unit = $row['request_unit'] ?? 'day';
     if ($unit !== 'hour') {

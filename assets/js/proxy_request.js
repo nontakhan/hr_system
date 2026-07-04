@@ -6,6 +6,7 @@
     const panels = Array.from(document.querySelectorAll('[data-proxy-panel]'));
     const allowedActions = new Set(['create_leave', 'create_late_early', 'create_overtime', 'create_day_swap', 'create_training']);
     let employees = [];
+    let proxyLeaveTypes = [];
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -73,9 +74,12 @@
         if (!select) return;
         const result = await loadJson(`${apiBase}?action=leave_types`);
         if (result.status !== 'success') return;
+        proxyLeaveTypes = result.data || [];
         select.innerHTML = '<option value="">เลือกประเภทการลา</option>' + (result.data || []).map((row) => (
             `<option value="${escapeHtml(row.id)}">${escapeHtml(row.type_name)}</option>`
         )).join('');
+        select.addEventListener('change', updateProxyLeaveMode);
+        updateProxyLeaveMode();
     }
 
     function formatProxyTime(value) {
@@ -108,6 +112,59 @@
         const minutes = end - start;
         if (minutes <= 0) return { valid: false, message: 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม', label: '' };
         return { valid: true, message: '', label: formatProxyHourMinuteDuration(minutes) };
+    }
+
+    function selectedProxyLeaveType() {
+        const selectedId = document.getElementById('proxyLeaveTypeId')?.value || '';
+        return proxyLeaveTypes.find((type) => String(type.id) === String(selectedId)) || null;
+    }
+
+    function isSelectedProxyLeaveHourly() {
+        return selectedProxyLeaveType()?.calculation_unit === 'hour';
+    }
+
+    function updateProxyLeaveMode() {
+        const form = document.querySelector('[data-action="create_leave"]');
+        if (!form) return;
+        const isHourly = isSelectedProxyLeaveHourly();
+        const endDate = form.querySelector('[name="end_date"]');
+        const startTime = form.querySelector('[name="request_start_time"]');
+        const endTime = form.querySelector('[name="request_end_time"]');
+
+        form.querySelectorAll('.proxy-day-leave-field').forEach((field) => field.classList.toggle('d-none', isHourly));
+        document.getElementById('proxyHourlyLeaveFields')?.classList.toggle('d-none', !isHourly);
+        if (endDate) {
+            endDate.required = !isHourly;
+            if (isHourly) endDate.value = form.querySelector('[name="start_date"]')?.value || '';
+        }
+        form.querySelector('[name="start_day_part"]') && (form.querySelector('[name="start_day_part"]').required = !isHourly);
+        form.querySelector('[name="end_day_part"]') && (form.querySelector('[name="end_day_part"]').required = !isHourly);
+        if (startTime) {
+            startTime.required = isHourly;
+            if (!isHourly) startTime.value = '';
+        }
+        if (endTime) {
+            endTime.required = isHourly;
+            if (!isHourly) endTime.value = '';
+        }
+        renderProxyHourlyLeaveDuration();
+    }
+
+    function renderProxyHourlyLeaveDuration() {
+        const form = document.querySelector('[data-action="create_leave"]');
+        const target = document.getElementById('proxyHourlyLeaveDuration');
+        if (!form || !target || !isSelectedProxyLeaveHourly()) return;
+        const startTime = form.querySelector('[name="request_start_time"]')?.value || '';
+        const endTime = form.querySelector('[name="request_end_time"]')?.value || '';
+        if (!startTime || !endTime) {
+            target.classList.add('d-none');
+            target.textContent = '';
+            return;
+        }
+        const duration = formatProxyOvertimeDuration(startTime, endTime);
+        target.classList.remove('d-none', 'alert-danger', 'alert-success');
+        target.classList.add(duration.valid ? 'alert-success' : 'alert-danger');
+        target.textContent = duration.valid ? `รวม ${duration.label}` : duration.message;
     }
 
     function renderProxyWorkDateContext(context) {
@@ -185,6 +242,14 @@
         }
     }
 
+    function initProxyLeaveHelpers() {
+        const form = document.querySelector('[data-action="create_leave"]');
+        if (!form) return;
+        form.querySelector('[name="start_date"]')?.addEventListener('change', updateProxyLeaveMode);
+        form.querySelector('[name="request_start_time"]')?.addEventListener('input', renderProxyHourlyLeaveDuration);
+        form.querySelector('[name="request_end_time"]')?.addEventListener('input', renderProxyHourlyLeaveDuration);
+    }
+
     async function submitProxyForm(event) {
         event.preventDefault();
         const form = event.currentTarget;
@@ -232,6 +297,7 @@
 
     loadEmployees().catch((error) => Swal.fire('ไม่สำเร็จ', error.message, 'error'));
     loadLeaveTypes();
+    initProxyLeaveHelpers();
     initProxyOvertimeHelpers();
     showPanel('leave');
 })();

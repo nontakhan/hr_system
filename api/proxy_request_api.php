@@ -246,17 +246,33 @@ function proxyRequestCreateLeave(mysqli $mysqli): void {
     $startPart = leaveNormalizeDayPart($_POST['start_day_part'] ?? 'full');
     $endPart = leaveNormalizeDayPart($_POST['end_day_part'] ?? 'full');
     $reason = trim((string)($_POST['reason'] ?? ''));
-    if ($typeId <= 0 || $start === '' || $end === '' || $reason === '') {
+    if ($typeId <= 0 || $start === '' || $reason === '') {
+        throw new InvalidArgumentException('กรุณากรอกข้อมูลให้ครบถ้วน');
+    }
+    $stmtType = $mysqli->prepare("SELECT id, type_name, calculation_unit, hours_per_day, hour_full_day_threshold FROM leave_types WHERE id = ? AND is_actual_leave = 1 LIMIT 1");
+    $stmtType->bind_param('i', $typeId);
+    $stmtType->execute();
+    $typeInfo = $stmtType->get_result()->fetch_assoc();
+    if (!$typeInfo) {
+        throw new InvalidArgumentException('ประเภทการลานี้ไม่ใช่การลาจริง');
+    }
+    $isHourlyLeaveType = ($typeInfo['calculation_unit'] ?? 'day') === 'hour';
+    $hourlyPayload = null;
+    if ($isHourlyLeaveType) {
+        $end = $start;
+        $startPart = 'full';
+        $endPart = 'full';
+        $hourlyPayload = leaveBuildTimedHourlyLeavePayload(
+            $_POST['request_start_time'] ?? '',
+            $_POST['request_end_time'] ?? '',
+            $typeInfo['hours_per_day'] ?? 8,
+            $typeInfo['hour_full_day_threshold'] ?? 0
+        );
+    } elseif ($end === '') {
         throw new InvalidArgumentException('กรุณากรอกข้อมูลให้ครบถ้วน');
     }
     if ($end < $start) {
         throw new InvalidArgumentException('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
-    }
-    $stmtType = $mysqli->prepare("SELECT id FROM leave_types WHERE id = ? AND is_actual_leave = 1 LIMIT 1");
-    $stmtType->bind_param('i', $typeId);
-    $stmtType->execute();
-    if ($stmtType->get_result()->num_rows !== 1) {
-        throw new InvalidArgumentException('ประเภทการลานี้ไม่ใช่การลาจริง');
     }
 
     $summary = leaveBuildDateSummary($start, $end, $startPart, $endPart, leaveFetchEmployeeWorkDays($mysqli, $employeeId), leaveFetchCompanyHolidays($mysqli, $start, $end));
@@ -264,25 +280,31 @@ function proxyRequestCreateLeave(mysqli $mysqli): void {
         throw new InvalidArgumentException($summary['message']);
     }
     $requestedDates = array_column($summary['included_dates'] ?? [], 'date');
-    $conflicts = leaveFetchConflictingLeaveDates($mysqli, $employeeId, $start, $end, $requestedDates);
-    if ($conflicts) {
-        throw new InvalidArgumentException('มีใบลาในวันที่เลือกอยู่แล้ว: ' . implode(', ', $conflicts));
+    if (!$isHourlyLeaveType) {
+        $conflicts = leaveFetchConflictingLeaveDates($mysqli, $employeeId, $start, $end, $requestedDates);
+        if ($conflicts) {
+            throw new InvalidArgumentException('มีใบลาในวันที่เลือกอยู่แล้ว: ' . implode(', ', $conflicts));
+        }
+    } elseif ((float)$summary['total_days'] <= 0) {
+        throw new InvalidArgumentException('Selected date is not a work day');
     }
 
     $audit = proxyRequestBuildAuditPayload($_POST['proxy_note'] ?? '');
     $now = date('Y-m-d H:i:s');
-    $totalDays = (float)$summary['total_days'];
-    $requestUnit = 'day';
-    $timeType = null;
-    $requestMinutes = 0;
+    $totalDays = $hourlyPayload ? (float)$hourlyPayload['total_days'] : (float)$summary['total_days'];
+    $requestUnit = $hourlyPayload['request_unit'] ?? 'day';
+    $timeType = $hourlyPayload['time_request_type'] ?? null;
+    $requestMinutes = (int)($hourlyPayload['request_minutes'] ?? 0);
+    $requestStartTime = $hourlyPayload['request_start_time'] ?? null;
+    $requestEndTime = $hourlyPayload['request_end_time'] ?? null;
     $approverEmployeeId = proxyRequestCurrentEmployeeId() ?: null;
 
     $mysqli->begin_transaction();
     try {
         $stmt = $mysqli->prepare("INSERT INTO leave_requests
-            (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, total_days, reason, status, approver_id, approval_date, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param('iissssssidsisisisiisss', $employeeId, $typeId, $start, $end, $startPart, $endPart, $requestUnit, $timeType, $requestMinutes, $totalDays, $reason, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
+            (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, request_start_time, request_end_time, total_days, reason, status, approver_id, approval_date, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('iissssssissdsisisisiisss', $employeeId, $typeId, $start, $end, $startPart, $endPart, $requestUnit, $timeType, $requestMinutes, $requestStartTime, $requestEndTime, $totalDays, $reason, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
         if (!$stmt->execute()) throw new RuntimeException($stmt->error ?: 'Cannot save proxy leave request');
         $mysqli->commit();
         proxyRequestJson(['status' => 'success', 'message' => 'บันทึกและอนุมัติรายการเรียบร้อยแล้ว', 'data' => $summary]);

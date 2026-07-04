@@ -131,8 +131,9 @@ function submitLeaveRequest($mysqli, $data, $files) {
             $end = $start;
             $start_part = 'full';
             $end_part = 'full';
-            $hourlyPayload = leaveBuildHourlyLeavePayload(
-                $data['request_hours'] ?? 0,
+            $hourlyPayload = leaveBuildTimedHourlyLeavePayload(
+                $data['request_start_time'] ?? '',
+                $data['request_end_time'] ?? '',
                 $type_info['hours_per_day'] ?? 8,
                 $type_info['hour_full_day_threshold'] ?? 0
             );
@@ -178,10 +179,12 @@ function submitLeaveRequest($mysqli, $data, $files) {
         $requestUnit = $hourlyPayload['request_unit'] ?? 'day';
         $timeRequestTypeValue = $hourlyPayload['time_request_type'] ?? null;
         $requestMinutes = (int)($hourlyPayload['request_minutes'] ?? 0);
-        $sql = "INSERT INTO leave_requests (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, total_days, reason, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_manager')";
+        $requestStartTime = $hourlyPayload['request_start_time'] ?? null;
+        $requestEndTime = $hourlyPayload['request_end_time'] ?? null;
+        $sql = "INSERT INTO leave_requests (employee_id, leave_type_id, start_date, end_date, start_day_part, end_day_part, request_unit, time_request_type, request_minutes, request_start_time, request_end_time, total_days, reason, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_manager')";
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('iissssssids', $emp_id, $type_id, $start, $end, $start_part, $end_part, $requestUnit, $timeRequestTypeValue, $requestMinutes, $total_days, $reason);
+        $stmt->bind_param('iissssssissds', $emp_id, $type_id, $start, $end, $start_part, $end_part, $requestUnit, $timeRequestTypeValue, $requestMinutes, $requestStartTime, $requestEndTime, $total_days, $reason);
 
         if (!$stmt->execute()) {
             throw new Exception('บันทึกข้อมูลไม่สำเร็จ: ' . $stmt->error);

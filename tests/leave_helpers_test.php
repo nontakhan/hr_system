@@ -245,6 +245,20 @@ assertLeaveSame('2.5 ชม. (0.31 วัน)', leaveFormatRequestDuration($hour
 $thresholdHourlyLeavePayload = leaveBuildHourlyLeavePayload(4.5, 8, 4);
 assertLeaveSame(1.0, $thresholdHourlyLeavePayload['total_days'], 'Hourly leave over the configured threshold should count as one full day.');
 
+$timedHourlyLeavePayload = leaveBuildTimedHourlyLeavePayload('09:15', '11:45', 8, 0);
+assertLeaveSame('hour', $timedHourlyLeavePayload['request_unit'], 'Timed hourly leave should use hour request unit.');
+assertLeaveSame(150, $timedHourlyLeavePayload['request_minutes'], 'Timed hourly leave should calculate minutes from the selected time range.');
+assertLeaveSame('09:15:00', $timedHourlyLeavePayload['request_start_time'], 'Timed hourly leave should normalize the start time for storage.');
+assertLeaveSame('11:45:00', $timedHourlyLeavePayload['request_end_time'], 'Timed hourly leave should normalize the end time for storage.');
+assertLeaveSame(0.31, $timedHourlyLeavePayload['total_days'], 'Timed hourly leave should convert calculated hours into quota days.');
+
+try {
+    leaveBuildTimedHourlyLeavePayload('13:00', '12:00', 8, 0);
+    assertLeaveSame(true, false, 'Timed hourly leave should reject an end time before the start time.');
+} catch (InvalidArgumentException $e) {
+    assertLeaveSame(true, strpos($e->getMessage(), 'time') !== false, 'Timed hourly leave validation should mention time.');
+}
+
 try {
     leaveBuildHourlyRequestPayload('late_arrival', 61);
     assertLeaveSame(true, false, 'Hourly requests over 60 minutes should be rejected.');

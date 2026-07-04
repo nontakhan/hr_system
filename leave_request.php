@@ -73,9 +73,17 @@ require_once 'includes/header.php';
                                 <option value="afternoon">ครึ่งวันบ่าย</option>
                             </select>
                         </div>
-                        <div class="col-md-6 d-none" id="hourlyLeaveFields">
-                            <label class="form-label">จำนวนชั่วโมงที่ลา <span class="text-danger">*</span></label>
-                            <input type="number" name="request_hours" id="requestHours" class="form-control" min="0.25" step="0.25" placeholder="เช่น 2.5">
+                        <div class="col-md-12 d-none" id="hourlyLeaveFields">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">เวลาเริ่มลา <span class="text-danger">*</span></label>
+                                    <input type="time" name="request_start_time" id="requestStartTime" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">เวลาสิ้นสุดลา <span class="text-danger">*</span></label>
+                                    <input type="time" name="request_end_time" id="requestEndTime" class="form-control">
+                                </div>
+                            </div>
                             <div class="form-text" id="hourlyLeaveRuleText"></div>
                         </div>
                     </div>

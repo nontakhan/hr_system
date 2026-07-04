@@ -115,11 +115,24 @@ require_once 'includes/header.php';
                 <label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label>
                 <input type="date" name="start_date" class="form-control" data-native-date-picker="true" required>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 proxy-day-leave-field">
                 <label class="form-label">วันที่สิ้นสุด <span class="text-danger">*</span></label>
                 <input type="date" name="end_date" class="form-control" data-native-date-picker="true" required>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-12 d-none" id="proxyHourlyLeaveFields">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">เวลาเริ่มลา <span class="text-danger">*</span></label>
+                        <input type="time" name="request_start_time" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">เวลาสิ้นสุดลา <span class="text-danger">*</span></label>
+                        <input type="time" name="request_end_time" class="form-control">
+                    </div>
+                    <div class="col-12"><div class="alert alert-light border d-none mb-0" id="proxyHourlyLeaveDuration"></div></div>
+                </div>
+            </div>
+            <div class="col-md-6 proxy-day-leave-field">
                 <label class="form-label">ช่วงวันเริ่ม</label>
                 <select name="start_day_part" class="form-select">
                     <option value="full">เต็มวัน</option>
@@ -127,7 +140,7 @@ require_once 'includes/header.php';
                     <option value="afternoon">ครึ่งวันบ่าย</option>
                 </select>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6 proxy-day-leave-field">
                 <label class="form-label">ช่วงวันสิ้นสุด</label>
                 <select name="end_day_part" class="form-select">
                     <option value="full">เต็มวัน</option>
