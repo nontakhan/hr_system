@@ -49,7 +49,7 @@ require_once 'includes/header.php';
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="startDateField">
                             <label class="form-label" id="startDateLabel">วันที่เริ่มลา <span class="text-danger">*</span></label>
                             <input type="date" name="start_date" id="startDate" class="form-control leave-date-picker" data-native-date-picker="true" required>
                         </div>

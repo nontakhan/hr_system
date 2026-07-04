@@ -295,6 +295,7 @@ function isSelectedLeaveTypeHourly() {
 function updateLeaveRequestMode() {
     const isHourly = isSelectedLeaveTypeHourly();
     const startLabel = document.getElementById('startDateLabel');
+    const startField = document.getElementById('startDateField');
     const endInput = document.getElementById('endDate');
     const startInput = document.getElementById('startDate');
     const startPart = document.getElementById('startDayPart');
@@ -308,6 +309,10 @@ function updateLeaveRequestMode() {
     document.querySelectorAll('.day-leave-field').forEach(field => {
         field.classList.toggle('d-none', isHourly);
     });
+    if (startField) {
+        startField.classList.toggle('col-md-12', isHourly);
+        startField.classList.toggle('col-md-6', !isHourly);
+    }
     if (hourlyFields) hourlyFields.classList.toggle('d-none', !isHourly);
     if (startLabel) startLabel.innerHTML = isHourly ? 'วันที่ลา <span class="text-danger">*</span>' : 'วันที่เริ่มลา <span class="text-danger">*</span>';
     if (endInput) {

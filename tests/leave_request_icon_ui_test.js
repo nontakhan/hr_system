@@ -54,6 +54,7 @@ assertIncludes(leaveTypesPage, 'name="calculation_unit"', 'Leave type form shoul
 assertIncludes(leaveTypesPage, 'name="hours_per_day"', 'Leave type form should configure how many hours equal one quota day.');
 assertIncludes(leaveTypesPage, 'name="hour_full_day_threshold"', 'Leave type form should configure when hourly leave counts as one full day.');
 assertIncludes(page, 'id="hourlyLeaveFields"', 'Leave request page should include fields for hourly leave types.');
+assertIncludes(page, 'id="startDateField"', 'Leave request page should have a stable start-date layout wrapper.');
 assertIncludes(page, 'name="request_start_time"', 'Leave request page should collect the hourly leave start time.');
 assertIncludes(page, 'name="request_end_time"', 'Leave request page should collect the hourly leave end time.');
 assertNotIncludes(page, 'name="request_hours"', 'Leave request page should not let employees manually type hourly leave duration.');
@@ -67,6 +68,7 @@ assertIncludes(leaveSettingsScript, 'toggleLeaveTypeCalculationFields', 'Leave s
 assertIncludes(script, 'function selectLeaveType', 'Leave request JS should select a leave type card and sync the hidden field.');
 assertIncludes(script, 'function isSelectedLeaveTypeHourly', 'Leave request JS should detect admin-configured hourly leave types.');
 assertIncludes(script, 'function updateLeaveRequestMode', 'Leave request JS should switch between day and hour leave inputs.');
+assertIncludes(script, "startField.classList.toggle('col-md-12', isHourly)", 'Hourly leave mode should make the date field span the full row.');
 assertIncludes(script, 'function getHourlyLeaveDuration', 'Leave request JS should calculate hourly leave duration from start and end time.');
 assertIncludes(script, 'request_start_time', 'Leave request JS should submit hourly leave start time.');
 assertIncludes(script, 'request_end_time', 'Leave request JS should submit hourly leave end time.');
