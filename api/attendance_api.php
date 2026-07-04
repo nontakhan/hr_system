@@ -515,13 +515,14 @@ function fetchApprovedTrainingRequestsForMonth($mysqli, $employeeId, $month) {
     trainingRequestEnsureTable($mysqli);
     $start = $month . '-01';
     $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
-    $stmt = $mysqli->prepare("SELECT start_date, end_date, course_name
-                              FROM training_requests
-                              WHERE employee_id = ?
-                                AND status = 'approved'
-                                AND start_date <= ?
-                                AND end_date >= ?
-                              ORDER BY start_date, id");
+    $stmt = $mysqli->prepare("SELECT tr.start_date, tr.end_date, tr.course_name, at.type_name AS activity_type_name
+                              FROM training_requests tr
+                              LEFT JOIN activity_types at ON tr.activity_type_id = at.id
+                              WHERE tr.employee_id = ?
+                                AND tr.status = 'approved'
+                                AND tr.start_date <= ?
+                                AND tr.end_date >= ?
+                              ORDER BY tr.start_date, tr.id");
     $stmt->bind_param('iss', $employeeId, $end, $start);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

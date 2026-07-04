@@ -368,7 +368,7 @@ function attendanceBuildApprovedTrainingMap(array $trainingRows, $month) {
     foreach ($trainingRows as $row) {
         $trainingStart = new DateTimeImmutable($row['start_date']);
         $trainingEnd = new DateTimeImmutable($row['end_date']);
-        $courseName = (string)($row['course_name'] ?? 'อบรม');
+        $courseName = (string)($row['activity_type_name'] ?? $row['course_name'] ?? 'กิจกรรม');
 
         if ($trainingEnd < $start || $trainingStart > $end) {
             continue;
@@ -618,7 +618,7 @@ function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, 
     }
 
     if (isset($trainings[$workDate])) {
-        return ['status' => 'training', 'label' => 'อบรม', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null, 'training_name' => $trainings[$workDate]];
+        return ['status' => 'present', 'label' => 'ปกติ', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null, 'training_name' => $trainings[$workDate]];
     }
 
     if ($checkIn === null && $checkOut === null) {

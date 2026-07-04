@@ -82,6 +82,19 @@
         updateProxyLeaveMode();
     }
 
+    async function loadActivityTypes() {
+        const select = document.getElementById('proxyActivityTypeId');
+        if (!select) return;
+        const result = await loadJson(`${apiBase}?action=activity_types`);
+        if (result.status !== 'success') {
+            select.innerHTML = '<option value="">โหลดประเภทกิจกรรมไม่สำเร็จ</option>';
+            return;
+        }
+        select.innerHTML = '<option value="">เลือกประเภทกิจกรรม</option>' + (result.data || []).map((row) => (
+            `<option value="${escapeHtml(row.id)}">${escapeHtml(row.type_name)}</option>`
+        )).join('');
+    }
+
     function formatProxyTime(value) {
         return value ? String(value).slice(0, 5) : '-';
     }
@@ -297,6 +310,7 @@
 
     loadEmployees().catch((error) => Swal.fire('ไม่สำเร็จ', error.message, 'error'));
     loadLeaveTypes();
+    loadActivityTypes();
     initProxyLeaveHelpers();
     initProxyOvertimeHelpers();
     showPanel('leave');

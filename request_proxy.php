@@ -100,7 +100,7 @@ require_once 'includes/header.php';
         <i class="fas fa-right-left"></i> สลับวันหยุด
     </button>
     <button class="proxy-type-btn proxy-type-training" data-proxy-tab="training" type="button" aria-pressed="false">
-        <i class="fas fa-graduation-cap"></i> อบรม
+        <i class="fas fa-people-arrows"></i> กิจกรรม
     </button>
 </div>
 
@@ -209,12 +209,15 @@ require_once 'includes/header.php';
 
     <form class="card shadow-sm border-0 proxy-panel d-none" data-proxy-panel="training" data-action="create_training" enctype="multipart/form-data">
         <div class="card-body row g-3">
-            <div class="col-md-6"><label class="form-label">หลักสูตร <span class="text-danger">*</span></label><input type="text" name="course_name" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">ประเภทกิจกรรม <span class="text-danger">*</span></label><select name="activity_type_id" id="proxyActivityTypeId" class="form-select" required><option value="">กำลังโหลดประเภทกิจกรรม...</option></select></div>
+            <div class="col-md-6"><label class="form-label">ชื่อกิจกรรม/รายละเอียด <span class="text-danger">*</span></label><input type="text" name="course_name" class="form-control" required></div>
             <div class="col-md-6"><label class="form-label">สถานที่/รูปแบบ</label><input type="text" name="location" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label><input type="date" name="start_date" class="form-control" data-native-date-picker="true" required></div>
             <div class="col-md-6"><label class="form-label">วันที่สิ้นสุด <span class="text-danger">*</span></label><input type="date" name="end_date" class="form-control" data-native-date-picker="true" required></div>
+            <div class="col-md-3"><label class="form-label">ช่วงวันเริ่ม</label><select name="start_day_part" class="form-select"><option value="full">เต็มวัน</option><option value="morning">ครึ่งวันเช้า</option><option value="afternoon">ครึ่งวันบ่าย</option></select></div>
+            <div class="col-md-3"><label class="form-label">ช่วงวันสิ้นสุด</label><select name="end_day_part" class="form-select"><option value="full">เต็มวัน</option><option value="morning">ครึ่งวันเช้า</option><option value="afternoon">ครึ่งวันบ่าย</option></select></div>
             <div class="col-12"><label class="form-label">วัตถุประสงค์ <span class="text-danger">*</span></label><textarea name="objective" class="form-control" rows="3" required></textarea></div>
-            <div class="col-12"><label class="form-label">ไฟล์แนบ</label><input type="file" name="attachment" class="form-control"></div>
+            <div class="col-12"><label class="form-label">ไฟล์แนบ</label><input type="file" name="attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp"></div>
             <div class="col-12"><label class="form-label">หมายเหตุ HR/Admin</label><textarea name="proxy_note" class="form-control" rows="2"></textarea></div>
             <div class="col-12"><button class="btn btn-primary" type="submit">บันทึกและอนุมัติทันที</button></div>
         </div>

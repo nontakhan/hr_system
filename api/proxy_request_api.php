@@ -37,6 +37,7 @@ try {
     if ($method === 'GET') {
         if ($action === 'employees') proxyRequestJson(['status' => 'success', 'data' => proxyRequestFetchEmployees($mysqli)]);
         if ($action === 'leave_types') proxyRequestJson(['status' => 'success', 'data' => proxyRequestFetchLeaveTypes($mysqli)]);
+        if ($action === 'activity_types') proxyRequestJson(['status' => 'success', 'data' => trainingRequestFetchActiveActivityTypes($mysqli)]);
         if ($action === 'day_swap_holidays') proxyRequestJson(['status' => 'success', 'data' => proxyRequestFetchDaySwapHolidays($mysqli)]);
         if ($action === 'calculate_leave') proxyRequestJson(['status' => 'success', 'data' => proxyRequestCalculateLeave($mysqli)]);
         if ($action === 'calculate_time_request') proxyRequestJson(['status' => 'success', 'data' => proxyRequestCalculateTimeRequest($mysqli)]);
@@ -377,13 +378,17 @@ function proxyRequestCreateDaySwap(mysqli $mysqli): void {
 function proxyRequestCreateTraining(mysqli $mysqli): void {
     $employeeId = (int)($_POST['employee_id'] ?? 0);
     proxyRequestRequireEmployee($mysqli, $employeeId);
+    $activityTypeId = (int)($_POST['activity_type_id'] ?? 0);
     $courseName = trainingRequestTrim((string)($_POST['course_name'] ?? ''), 255);
-    $startDate = trainingRequestNormalizeDate((string)($_POST['start_date'] ?? ''), 'กรุณาระบุวันที่เริ่มอบรม');
-    $endDate = trainingRequestNormalizeDate((string)($_POST['end_date'] ?? ''), 'กรุณาระบุวันที่สิ้นสุดอบรม');
+    $startDate = trainingRequestNormalizeDate((string)($_POST['start_date'] ?? ''), 'กรุณาระบุวันที่เริ่มกิจกรรม');
+    $endDate = trainingRequestNormalizeDate((string)($_POST['end_date'] ?? ''), 'กรุณาระบุวันที่สิ้นสุดกิจกรรม');
+    $startDayPart = trainingRequestNormalizeDayPart((string)($_POST['start_day_part'] ?? 'full'));
+    $endDayPart = trainingRequestNormalizeDayPart((string)($_POST['end_day_part'] ?? 'full'));
     $location = trainingRequestTrim((string)($_POST['location'] ?? ''), 255);
     $objective = trim((string)($_POST['objective'] ?? ''));
+    if (!trainingRequestActivityTypeExists($mysqli, $activityTypeId)) throw new InvalidArgumentException('กรุณาเลือกประเภทกิจกรรม');
     if ($courseName === '' || $objective === '') throw new InvalidArgumentException('กรุณากรอกข้อมูลให้ครบถ้วน');
-    if ($endDate < $startDate) throw new InvalidArgumentException('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มอบรม');
+    if ($endDate < $startDate) throw new InvalidArgumentException('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มกิจกรรม');
     $attachmentPath = '';
     if (isset($_FILES['attachment']) && ($_FILES['attachment']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         $attachmentPath = saveEmployeeTrainingAttachment($_FILES['attachment'], $employeeId);
@@ -395,17 +400,21 @@ function proxyRequestCreateTraining(mysqli $mysqli): void {
     $mysqli->begin_transaction();
     try {
         $stmt = $mysqli->prepare("INSERT INTO training_requests
-            (employee_id, course_name, start_date, end_date, location, objective, attachment_path, status, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, approver_id, approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param('issssssisisisiisss', $employeeId, $courseName, $startDate, $endDate, $location, $objective, $attachmentPath, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
+            (employee_id, activity_type_id, course_name, start_date, end_date, start_day_part, end_day_part, location, objective, attachment_path, status, manager_approver_id, manager_approval_date, hr_approver_id, hr_approval_date, approver_id, approval_date, created_by_user_id, created_by_employee_id, created_by_role, created_via, proxy_note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('iissssssssisisisiisss', $employeeId, $activityTypeId, $courseName, $startDate, $endDate, $startDayPart, $endDayPart, $location, $objective, $attachmentPath, $approverEmployeeId, $now, $approverEmployeeId, $now, $approverEmployeeId, $now, $audit['created_by_user_id'], $audit['created_by_employee_id'], $audit['created_by_role'], $audit['created_via'], $audit['proxy_note']);
         if (!$stmt->execute()) throw new RuntimeException($stmt->error ?: 'Cannot save proxy training request');
         $requestId = (int)$stmt->insert_id;
         $request = [
             'id' => $requestId,
             'employee_id' => $employeeId,
+            'activity_type_id' => $activityTypeId,
+            'activity_type_name' => proxyRequestFetchActivityTypeName($mysqli, $activityTypeId),
             'course_name' => $courseName,
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'start_day_part' => $startDayPart,
+            'end_day_part' => $endDayPart,
             'location' => $location,
             'objective' => $objective,
             'attachment_path' => $attachmentPath,
@@ -420,4 +429,12 @@ function proxyRequestCreateTraining(mysqli $mysqli): void {
         $mysqli->rollback();
         throw $e;
     }
+}
+
+function proxyRequestFetchActivityTypeName(mysqli $mysqli, int $activityTypeId): string {
+    $stmt = $mysqli->prepare("SELECT type_name FROM activity_types WHERE id = ? LIMIT 1");
+    $stmt->bind_param('i', $activityTypeId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return (string)($row['type_name'] ?? '');
 }

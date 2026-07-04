@@ -126,6 +126,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 'attendance_adjustments.php',
                 'employee_warnings.php',
                 'leave_types.php',
+                'activity_types.php',
                 'shifts.php',
                 'company_holidays.php',
                 'manage_master_data.php',
@@ -173,7 +174,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                     <small><i class="fas fa-right-left me-2"></i> สลับวันหยุด</small>
                 </a>
                 <a href="training_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo (isActive('training_history.php') || isActive('training_request.php')) ? 'active' : ''; ?>">
-                    <small><i class="fas fa-graduation-cap me-2"></i> อบรม</small>
+                    <small><i class="fas fa-people-arrows me-2"></i> กิจกรรม</small>
                 </a>
                 <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
                 <a href="request_proxy.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('request_proxy.php'); ?>">
@@ -207,7 +208,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 </a>
                 <a href="training_approvals.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 d-flex align-items-center <?php echo isActive('training_approvals.php'); ?>">
                     <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
-                    <small><i class="fas fa-graduation-cap me-2"></i> อนุมัติอบรม</small>
+                    <small><i class="fas fa-people-arrows me-2"></i> อนุมัติกิจกรรม</small>
                 </a>
             </div>
             <?php endif; ?>
@@ -232,6 +233,9 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 </a>
                 <a href="leave_types.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_types.php'); ?>">
                     <small><i class="fas fa-list-check me-2"></i> ประเภทการลา</small>
+                </a>
+                <a href="activity_types.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('activity_types.php'); ?>">
+                    <small><i class="fas fa-people-arrows me-2"></i> ประเภทกิจกรรม</small>
                 </a>
                 <a href="shifts.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('shifts.php'); ?>">
                     <small><i class="fas fa-clock me-2"></i> กะการทำงาน</small>

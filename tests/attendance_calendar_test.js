@@ -112,21 +112,21 @@ assertIncludes(leaveDetails, '08:31', 'Popup details should show check-in time.'
 
 const trainingEvent = buildAttendanceCalendarEvent({
     work_date: '2026-01-12',
-    status: 'training',
-    status_label: 'อบรม',
+    status: 'present',
+    status_label: 'ปกติ',
     training_name: 'Safety Training',
 });
-assertSame('อบรม', trainingEvent.title, 'Training calendar event title should use the training status label.');
-assertSame('#ddd6fe', trainingEvent.backgroundColor, 'Training calendar days should use the approved training color.');
-assertIncludes(trainingEvent.classNames.join(' '), 'attendance-event-training', 'Training events should receive a training class.');
+assertSame('ปกติ', trainingEvent.title, 'Activity days should use the normal attendance title.');
+assertSame('#bbf7d0', trainingEvent.backgroundColor, 'Activity days without scans should use the normal workday color.');
+assertIncludes(trainingEvent.classNames.join(' '), 'attendance-event-present', 'Activity events should receive the normal present class.');
 
 const trainingDetails = buildAttendanceCalendarDetails({
     work_date: '2026-01-12',
     day_name: 'Mon',
     check_in: null,
     check_out: null,
-    status: 'training',
-    status_label: 'อบรม',
+    status: 'present',
+    status_label: 'ปกติ',
     training_name: 'Safety Training',
 });
 assertIncludes(trainingDetails, 'Safety Training', 'Training popup details should include the training course.');
@@ -176,12 +176,12 @@ const counts = countAttendanceReportStatuses([
     { status: 'holiday', holiday_name: 'วันหยุดบริษัท' },
     { status: 'holiday', holiday_name: '' },
     { status: 'present' },
-    { status: 'training' },
+    { status: 'present', training_name: 'Safety Training' },
 ]);
 assertSame(2, counts.regular_holiday, 'Shift holidays should be counted separately from company holidays.');
 assertSame(1, counts.company_holiday, 'Company holidays should be counted separately when holiday_name is present.');
-assertSame(1, counts.present, 'Existing status counts should still work.');
-assertSame(1, counts.training, 'Approved training should be counted separately.');
+assertSame(2, counts.present, 'Approved activity should count as normal attendance.');
+assertSame(1, counts.training, 'Approved activity should still be counted as an activity summary.');
 
 const calendarOptions = buildAttendanceCalendarOptions();
 assertSame(1, calendarOptions.firstDay, 'Attendance calendar should start weeks on Monday.');
@@ -211,13 +211,13 @@ attendanceCalendarDayClassMap = buildAttendanceCalendarDayClassMap([
     { work_date: '2026-01-05', status: 'absent' },
     { work_date: '2026-01-06', status: 'present' },
     { work_date: '2026-01-07', status: 'holiday', holiday_name: 'วันหยุดบริษัท' },
-    { work_date: '2026-01-08', status: 'training', training_name: 'Safety Training' },
+    { work_date: '2026-01-08', status: 'present', training_name: 'Safety Training' },
 ]);
 const absentDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 5) });
 const companyHolidayDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 7) });
 const trainingDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 8) });
 assertIncludes(absentDayClasses.join(' '), 'attendance-day-absent', 'Calendar day cells should receive a status class for full-cell coloring.');
 assertIncludes(companyHolidayDayClasses.join(' '), 'attendance-day-company_holiday', 'Company holiday cells should receive a distinct color class.');
-assertIncludes(trainingDayClasses.join(' '), 'attendance-day-training', 'Training cells should receive a distinct color class.');
+assertIncludes(trainingDayClasses.join(' '), 'attendance-day-present', 'Activity cells should receive the normal present color class.');
 
 console.log('attendance_calendar_test passed');

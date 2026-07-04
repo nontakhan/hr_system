@@ -31,6 +31,10 @@ try {
     $myRole = $_SESSION['role'] ?? 'employee';
 
     if ($method === 'GET') {
+        if ($action === 'activity_types') {
+            sendTrainingRequestJson(['status' => 'success', 'data' => trainingRequestFetchActiveActivityTypes($mysqli)]);
+        }
+
         if ($action === 'my_requests') {
             sendTrainingRequestJson(['status' => 'success', 'data' => fetchMyTrainingRequests($mysqli, $myEmployeeId)]);
         }
@@ -79,9 +83,11 @@ try {
 function fetchMyTrainingRequests(mysqli $mysqli, int $employeeId): array
 {
     $stmt = $mysqli->prepare("SELECT tr.*, tr.created_via, tr.created_by_role, tr.proxy_note,
+                                     at.type_name AS activity_type_name,
                                      CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
                                      CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
                               FROM training_requests tr
+                              LEFT JOIN activity_types at ON tr.activity_type_id = at.id
                               LEFT JOIN employees ae ON tr.approver_id = ae.id
                               LEFT JOIN employees pce ON tr.created_by_employee_id = pce.id
                               WHERE tr.employee_id = ?
@@ -98,20 +104,26 @@ function createTrainingRequest(mysqli $mysqli, int $employeeId): void
         sendTrainingRequestError('ไม่พบข้อมูลพนักงานของผู้ใช้งาน');
     }
 
+    $activityTypeId = (int)($_POST['activity_type_id'] ?? 0);
     $courseName = trainingRequestTrim((string)($_POST['course_name'] ?? ''), 255);
-    $startDate = trainingRequestNormalizeDate((string)($_POST['start_date'] ?? ''), 'กรุณาระบุวันที่เริ่มอบรม');
-    $endDate = trainingRequestNormalizeDate((string)($_POST['end_date'] ?? ''), 'กรุณาระบุวันที่สิ้นสุดอบรม');
+    $startDate = trainingRequestNormalizeDate((string)($_POST['start_date'] ?? ''), 'กรุณาระบุวันที่เริ่มกิจกรรม');
+    $endDate = trainingRequestNormalizeDate((string)($_POST['end_date'] ?? ''), 'กรุณาระบุวันที่สิ้นสุดกิจกรรม');
+    $startDayPart = trainingRequestNormalizeDayPart((string)($_POST['start_day_part'] ?? 'full'));
+    $endDayPart = trainingRequestNormalizeDayPart((string)($_POST['end_day_part'] ?? 'full'));
     $location = trainingRequestTrim((string)($_POST['location'] ?? ''), 255);
     $objective = trim((string)($_POST['objective'] ?? ''));
 
+    if (!trainingRequestActivityTypeExists($mysqli, $activityTypeId)) {
+        sendTrainingRequestError('กรุณาเลือกประเภทกิจกรรม');
+    }
     if ($courseName === '') {
-        sendTrainingRequestError('กรุณาระบุชื่อหลักสูตร');
+        sendTrainingRequestError('กรุณาระบุชื่อกิจกรรม');
     }
     if ($objective === '') {
-        sendTrainingRequestError('กรุณาระบุวัตถุประสงค์การอบรม');
+        sendTrainingRequestError('กรุณาระบุวัตถุประสงค์การทำกิจกรรม');
     }
     if ($endDate < $startDate) {
-        sendTrainingRequestError('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มอบรม');
+        sendTrainingRequestError('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มกิจกรรม');
     }
     $attachmentPath = '';
     if (isset($_FILES['attachment']) && ($_FILES['attachment']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
@@ -119,14 +131,14 @@ function createTrainingRequest(mysqli $mysqli, int $employeeId): void
     }
 
     $stmt = $mysqli->prepare("INSERT INTO training_requests
-        (employee_id, course_name, start_date, end_date, location, objective, attachment_path, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_manager')");
-    $stmt->bind_param('issssss', $employeeId, $courseName, $startDate, $endDate, $location, $objective, $attachmentPath);
+        (employee_id, activity_type_id, course_name, start_date, end_date, start_day_part, end_day_part, location, objective, attachment_path, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_manager')");
+    $stmt->bind_param('iissssssss', $employeeId, $activityTypeId, $courseName, $startDate, $endDate, $startDayPart, $endDayPart, $location, $objective, $attachmentPath);
     if (!$stmt->execute()) {
         throw new RuntimeException($stmt->error ?: 'Cannot save training request');
     }
 
-    sendTrainingRequestJson(['status' => 'success', 'message' => 'ส่งคำขออบรมเรียบร้อยแล้ว รอหัวหน้าอนุมัติ']);
+    sendTrainingRequestJson(['status' => 'success', 'message' => 'ส่งคำขอกิจกรรมเรียบร้อยแล้ว รอหัวหน้าอนุมัติ']);
 }
 
 function processTrainingRequestApproval(mysqli $mysqli, array $input, string $action, string $role, int $employeeId): void

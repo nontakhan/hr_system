@@ -475,6 +475,62 @@ body {
     overflow-wrap: anywhere;
 }
 
+.activity-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    border: 1px solid #e5e7eb;
+    background: #eef2f7;
+    gap: 1px;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.activity-type-card {
+    min-height: 108px;
+    border: 0;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 12px;
+    color: #1f2937;
+    font: inherit;
+    font-weight: 600;
+    transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.activity-type-card:hover,
+.activity-type-card:focus-visible {
+    background: #fff7f7;
+    box-shadow: inset 0 0 0 2px rgba(193, 25, 25, 0.22);
+    outline: none;
+}
+
+.activity-type-card.is-selected {
+    background: #fff1f1;
+    box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+
+.activity-type-icon {
+    font-size: 1.55rem;
+    line-height: 1;
+}
+
+.activity-type-name {
+    text-align: center;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.activity-type-loading {
+    grid-column: 1 / -1;
+    background: #ffffff;
+    padding: 1rem;
+    text-align: center;
+}
+
 .leave-usage-summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

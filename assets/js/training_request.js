@@ -13,7 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
 const trainingRequestDataTables = {};
 
 function initTrainingRequestPage() {
-    document.getElementById('trainingRequestForm').addEventListener('submit', submitTrainingRequest);
+    const form = document.getElementById('trainingRequestForm');
+    form.addEventListener('submit', submitTrainingRequest);
+    form.querySelector('[name="start_date"]')?.addEventListener('change', updateTrainingDayPartVisibility);
+    form.querySelector('[name="end_date"]')?.addEventListener('change', updateTrainingDayPartVisibility);
+    form.querySelector('[name="start_day_part"]')?.addEventListener('change', syncTrainingEndDayPart);
+    loadTrainingActivityTypes();
+    updateTrainingDayPartVisibility();
 }
 
 function initTrainingRequestHistoryPage() {
@@ -31,6 +37,10 @@ function initTrainingRequestApprovalPage() {
 async function submitTrainingRequest(event) {
     event.preventDefault();
     const form = event.target;
+    if (!document.getElementById('activityTypeSelect')?.value) {
+        Swal.fire('เลือกประเภทกิจกรรม', 'กรุณาเลือกประเภทกิจกรรมก่อนส่งคำขอ', 'warning');
+        return;
+    }
     const formData = new FormData(form);
     formData.set('action', 'create');
 
@@ -43,6 +53,8 @@ async function submitTrainingRequest(event) {
         if (res.status !== 'success') throw new Error(res.message || 'Save failed');
         Swal.fire('สำเร็จ', res.message, 'success');
         form.reset();
+        selectTrainingActivityType('');
+        updateTrainingDayPartVisibility();
     } catch (err) {
         Swal.fire('ผิดพลาด', err.message, 'error');
     }
@@ -59,7 +71,7 @@ async function loadTrainingRequestHistory() {
         const res = await response.json();
         if (res.status !== 'success') throw new Error(res.message || 'Load failed');
         if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีคำขออบรม</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีคำขอกิจกรรม</td></tr>';
             return;
         }
         tbody.innerHTML = res.data.map(item => {
@@ -69,9 +81,10 @@ async function loadTrainingRequestHistory() {
                 <td>${formatThaiDate(item.created_at)}</td>
                   <td>
                       <div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div>
+                      <div class="small text-muted">${escapeHtml(item.activity_type_name || 'กิจกรรม')}</div>
                       ${proxyHtml}
                   </td>
-                  <td>${formatTrainingRequestDateRange(item)}</td>
+                  <td>${formatTrainingRequestDateRangeWithParts(item)}</td>
                   <td>${escapeHtml(item.location || '-')}</td>
                 <td>${renderTrainingRequestStatus(item.status)}</td>
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || item.objective || '-')}</small>${renderTrainingRequestAttachment(item)}</td>
@@ -101,8 +114,8 @@ async function loadTrainingRequestPendingApprovals() {
         tbody.innerHTML = res.data.map(item => `
             <tr>
                 <td>${renderTrainingRequestEmployeeCell(item, renderTrainingRequestStatus(item.status))}</td>
-                <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div></td>
-                <td>${formatTrainingRequestDateRange(item)}</td>
+                <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div><div class="small text-muted">${escapeHtml(item.activity_type_name || 'กิจกรรม')}</div></td>
+                <td>${formatTrainingRequestDateRangeWithParts(item)}</td>
                 <td>
                     <div>${escapeHtml(item.location || '-')}</div>
                     <div class="small text-muted mt-1">${escapeHtml(item.objective || '-')}</div>
@@ -157,8 +170,8 @@ async function loadTrainingRequestApprovalHistory() {
             <tr>
                 <td>${item.approval_date ? formatThaiDate(item.approval_date) : '-'}</td>
                 <td>${escapeHtml(item.employee_name || '-')}${proxyHtml}</td>
-                <td>${escapeHtml(item.course_name || '-')}</td>
-                <td>${formatTrainingRequestDateRange(item)}</td>
+                <td>${escapeHtml(item.course_name || '-')}<div class="small text-muted">${escapeHtml(item.activity_type_name || 'กิจกรรม')}</div></td>
+                <td>${formatTrainingRequestDateRangeWithParts(item)}</td>
                 <td>${renderTrainingRequestStatus(item.status)}</td>
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || '-')}</small></td>
             </tr>
@@ -210,7 +223,7 @@ window.openTrainingRequestActionModal = function(id, action, name) {
     document.getElementById('trainingRequestActionType').value = action;
     document.getElementById('trainingRequestActionTitle').textContent = isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ';
     document.getElementById('trainingRequestActionTitle').className = `modal-title ${isApprove ? 'text-success' : 'text-danger'}`;
-    document.getElementById('trainingRequestActionMessage').innerHTML = `ต้องการ${isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ'}คำขออบรมของ <strong>${escapeHtml(name)}</strong> ใช่หรือไม่?`;
+    document.getElementById('trainingRequestActionMessage').innerHTML = `ต้องการ${isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ'}คำขอกิจกรรมของ <strong>${escapeHtml(name)}</strong> ใช่หรือไม่?`;
     document.getElementById('trainingRequestConfirmBtn').className = `btn ${isApprove ? 'btn-success' : 'btn-danger'}`;
     document.getElementById('trainingRequestConfirmBtn').textContent = isApprove ? 'ยืนยันอนุมัติ' : 'ยืนยันไม่อนุมัติ';
     document.getElementById('trainingRequestRejectReasonWrap').style.display = isApprove ? 'none' : 'block';
@@ -257,6 +270,115 @@ function formatTrainingRequestDateRange(item) {
     const start = item.start_date ? formatThaiDate(item.start_date) : '-';
     const end = item.end_date ? formatThaiDate(item.end_date) : '-';
     return start === end ? start : `${start} - ${end}`;
+}
+
+function formatTrainingRequestDateRangeWithParts(item) {
+    const range = formatTrainingRequestDateRange(item);
+    const startPart = trainingRequestDayPartLabel(item.start_day_part || 'full');
+    const endPart = trainingRequestDayPartLabel(item.end_day_part || 'full');
+    if (!item.start_date || !item.end_date) return range;
+    if (item.start_date === item.end_date) {
+        return startPart === endPart ? `${range} (${startPart})` : `${range} (${startPart}-${endPart})`;
+    }
+    return `${range}<div class="small text-muted">${startPart} ถึง ${endPart}</div>`;
+}
+
+function trainingRequestDayPartLabel(value) {
+    if (value === 'morning') return 'ครึ่งวันเช้า';
+    if (value === 'afternoon') return 'ครึ่งวันบ่าย';
+    return 'เต็มวัน';
+}
+
+async function loadTrainingActivityTypes() {
+    const input = document.getElementById('activityTypeSelect');
+    if (!input) return;
+    try {
+        const response = await fetch('api/training_request_api.php?action=activity_types');
+        const res = await response.json();
+        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
+        renderTrainingActivityTypeButtons(res.data || []);
+    } catch (err) {
+        const grid = document.getElementById('activityTypeButtonGrid');
+        if (grid) {
+            grid.innerHTML = '<div class="activity-type-loading text-danger">โหลดประเภทกิจกรรมไม่สำเร็จ</div>';
+        }
+    }
+}
+
+function renderTrainingActivityTypeButtons(types) {
+    const grid = document.getElementById('activityTypeButtonGrid');
+    if (!grid) return;
+    if (!types.length) {
+        grid.innerHTML = '<div class="activity-type-loading text-muted">ยังไม่มีประเภทกิจกรรมที่เปิดใช้งาน</div>';
+        return;
+    }
+
+    grid.innerHTML = types.map((item) => {
+        const presentation = getTrainingActivityTypePresentation(item.type_name || '');
+        return `
+            <button type="button" class="activity-type-card" data-activity-type-id="${escapeAttr(item.id)}" role="radio" aria-checked="false">
+                <span class="activity-type-icon text-${presentation.color}">
+                    <i class="fas ${presentation.icon}"></i>
+                </span>
+                <span class="activity-type-name">${escapeHtml(item.type_name || '-')}</span>
+            </button>
+        `;
+    }).join('');
+
+    grid.querySelectorAll('.activity-type-card').forEach((button) => {
+        button.addEventListener('click', () => selectTrainingActivityType(button.dataset.activityTypeId));
+    });
+}
+
+function selectTrainingActivityType(selectedId) {
+    const input = document.getElementById('activityTypeSelect');
+    const grid = document.getElementById('activityTypeButtonGrid');
+    if (!input || !grid) return;
+
+    input.value = selectedId || '';
+    grid.querySelectorAll('.activity-type-card').forEach((button) => {
+        const isSelected = button.dataset.activityTypeId === String(selectedId);
+        button.classList.toggle('is-selected', isSelected);
+        button.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+    });
+}
+
+function getTrainingActivityTypePresentation(typeName) {
+    const name = String(typeName || '').toLowerCase();
+    const rules = [
+        { match: ['อบรม', 'training', 'ฝึก'], icon: 'fa-graduation-cap', color: 'primary' },
+        { match: ['สัมมนา', 'seminar', 'ประชุม'], icon: 'fa-users-viewfinder', color: 'info' },
+        { match: ['บุญ', 'ศาสนา'], icon: 'fa-hands-praying', color: 'warning' },
+        { match: ['อาสา', 'ช่วย', 'สังคม'], icon: 'fa-hand-holding-heart', color: 'success' },
+    ];
+    const found = rules.find((rule) => rule.match.some((keyword) => name.includes(keyword)));
+    return found || { icon: 'fa-people-arrows', color: 'danger' };
+}
+
+function updateTrainingDayPartVisibility() {
+    const form = document.getElementById('trainingRequestForm');
+    if (!form) return;
+    const startDate = form.querySelector('[name="start_date"]')?.value || '';
+    const endDate = form.querySelector('[name="end_date"]')?.value || '';
+    const isMultiDay = Boolean(startDate && endDate && startDate !== endDate);
+    const startPart = form.querySelector('[name="start_day_part"]');
+
+    form.querySelectorAll('.training-day-part-field').forEach((field) => {
+        field.classList.toggle('d-none', isMultiDay);
+    });
+    if (isMultiDay && startPart) {
+        startPart.value = 'full';
+    }
+    syncTrainingEndDayPart();
+}
+
+function syncTrainingEndDayPart() {
+    const form = document.getElementById('trainingRequestForm');
+    if (!form) return;
+    const startPart = form.querySelector('[name="start_day_part"]');
+    const endPart = form.querySelector('[name="end_day_part"]');
+    if (!startPart || !endPart) return;
+    endPart.value = startPart.value || 'full';
 }
 
 function renderTrainingRequestAttachment(item) {

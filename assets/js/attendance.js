@@ -958,7 +958,7 @@ function renderAttendanceReport(res) {
             ${attendanceSummaryCard('ขาด', counts.absent || 0, 'danger', 'fa-circle-xmark')}
             ${attendanceSummaryCard('สแกนไม่ครบ', incompleteTotal, 'attendance-incomplete', 'fa-triangle-exclamation')}
             ${attendanceSummaryCard('ลา', counts.leave || 0, 'info', 'fa-file-signature')}
-            ${attendanceSummaryCard('อบรม', counts.training || 0, 'attendance-training', 'fa-graduation-cap')}
+            ${attendanceSummaryCard('กิจกรรม', counts.training || 0, 'attendance-training', 'fa-people-arrows')}
             ${attendanceSummaryCard('วันหยุดปกติ', counts.regular_holiday || 0, 'attendance-holiday', 'fa-calendar-day')}
             ${attendanceSummaryCard('วันหยุดบริษัท', counts.company_holiday || 0, 'attendance-company-holiday', 'fa-building-circle-check')}
         </div>`;
@@ -971,6 +971,9 @@ function countAttendanceReportStatuses(rows) {
 
     rows.forEach(row => {
         counts[row.status] = (counts[row.status] || 0) + 1;
+        if (row.training_name && row.status !== 'training') {
+            counts.training += 1;
+        }
         if (row.status === 'holiday') {
             if (String(row.holiday_name || '').trim()) {
                 counts.company_holiday += 1;

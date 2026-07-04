@@ -438,8 +438,9 @@ $approvedTraining = attendanceEvaluateStatus(
     [],
     $trainingMap
 );
-assertSameValue('training', $approvedTraining['status'], 'Approved training should be shown instead of absent.');
-assertSameValue('Safety Training', $approvedTraining['training_name'], 'Approved training course should be returned for reports.');
+assertSameValue('present', $approvedTraining['status'], 'Approved activity should count as a normal workday instead of absent.');
+assertSameValue('ปกติ', $approvedTraining['label'], 'Approved activity should keep the normal attendance label.');
+assertSameValue('Safety Training', $approvedTraining['training_name'], 'Approved activity name should still be returned for reports.');
 
 $specialHoliday = attendanceEvaluateStatus(
     '2026-01-05',

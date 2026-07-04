@@ -4,12 +4,17 @@ require_once __DIR__ . '/proxy_request_helpers.php';
 
 function trainingRequestEnsureTable(mysqli $mysqli): void
 {
+    trainingRequestEnsureActivityTypesTable($mysqli);
+
     $mysqli->query("CREATE TABLE IF NOT EXISTS training_requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
         employee_id INT NOT NULL,
+        activity_type_id INT NULL,
         course_name VARCHAR(255) NOT NULL,
         start_date DATE NOT NULL,
         end_date DATE NOT NULL,
+        start_day_part ENUM('full','morning','afternoon') NOT NULL DEFAULT 'full',
+        end_day_part ENUM('full','morning','afternoon') NOT NULL DEFAULT 'full',
         location VARCHAR(255) NULL,
         objective TEXT NOT NULL,
         attachment_path VARCHAR(255) NULL,
@@ -25,11 +30,95 @@ function trainingRequestEnsureTable(mysqli $mysqli): void
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_training_requests_employee (employee_id),
+        INDEX idx_training_requests_activity_type (activity_type_id),
         INDEX idx_training_requests_status (status),
         INDEX idx_training_requests_dates (start_date, end_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    trainingRequestEnsureActivityColumns($mysqli);
     proxyRequestEnsureAuditColumns($mysqli, 'training_requests');
+}
+
+function trainingRequestEnsureActivityTypesTable(mysqli $mysqli): void
+{
+    $mysqli->query("CREATE TABLE IF NOT EXISTS activity_types (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        type_name VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_activity_types_name (type_name),
+        INDEX idx_activity_types_active (is_active)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $result = $mysqli->query("SELECT COUNT(*) AS total FROM activity_types");
+    $row = $result ? $result->fetch_assoc() : ['total' => 0];
+    if ((int)($row['total'] ?? 0) > 0) {
+        return;
+    }
+
+    $defaults = [
+        ['ไปอบรม', 'กิจกรรมฝึกอบรมหรือพัฒนาความรู้'],
+        ['สัมมนา', 'เข้าร่วมสัมมนาหรือประชุมภายนอก'],
+        ['งานบุญ', 'กิจกรรมงานบุญหรืองานสังคมขององค์กร'],
+    ];
+    $stmt = $mysqli->prepare("INSERT INTO activity_types (type_name, description, is_active) VALUES (?, ?, 1)");
+    foreach ($defaults as $item) {
+        $stmt->bind_param('ss', $item[0], $item[1]);
+        $stmt->execute();
+    }
+}
+
+function trainingRequestEnsureActivityColumns(mysqli $mysqli): void
+{
+    $columns = [];
+    $result = $mysqli->query("SHOW COLUMNS FROM training_requests");
+    while ($result && ($row = $result->fetch_assoc())) {
+        $columns[$row['Field']] = true;
+    }
+
+    if (!isset($columns['activity_type_id'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN activity_type_id INT NULL AFTER employee_id");
+        $mysqli->query("ALTER TABLE training_requests ADD INDEX idx_training_requests_activity_type (activity_type_id)");
+    }
+    if (!isset($columns['start_day_part'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN start_day_part ENUM('full','morning','afternoon') NOT NULL DEFAULT 'full' AFTER end_date");
+    }
+    if (!isset($columns['end_day_part'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN end_day_part ENUM('full','morning','afternoon') NOT NULL DEFAULT 'full' AFTER start_day_part");
+    }
+}
+
+function trainingRequestFetchActiveActivityTypes(mysqli $mysqli): array
+{
+    trainingRequestEnsureActivityTypesTable($mysqli);
+    $result = $mysqli->query("SELECT id, type_name, description, is_active
+                              FROM activity_types
+                              WHERE is_active = 1
+                              ORDER BY type_name ASC, id ASC");
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+function trainingRequestFetchActivityTypes(mysqli $mysqli): array
+{
+    trainingRequestEnsureActivityTypesTable($mysqli);
+    $result = $mysqli->query("SELECT id, type_name, description, is_active, created_at, updated_at
+                              FROM activity_types
+                              ORDER BY is_active DESC, type_name ASC, id ASC");
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+function trainingRequestActivityTypeExists(mysqli $mysqli, int $activityTypeId): bool
+{
+    if ($activityTypeId <= 0) {
+        return false;
+    }
+    trainingRequestEnsureActivityTypesTable($mysqli);
+    $stmt = $mysqli->prepare("SELECT id FROM activity_types WHERE id = ? AND is_active = 1 LIMIT 1");
+    $stmt->bind_param('i', $activityTypeId);
+    $stmt->execute();
+    return $stmt->get_result()->num_rows === 1;
 }
 
 function trainingRequestCreateHistoryRecord(mysqli $mysqli, array $request, int $approverId): int
@@ -71,8 +160,12 @@ function trainingRequestCreateHistoryRecord(mysqli $mysqli, array $request, int 
 function trainingRequestBuildHistoryNotes(array $request): string
 {
     $lines = [];
-    $lines[] = 'สร้างจากคำขออบรม #' . (int)($request['id'] ?? 0);
-    $lines[] = 'ช่วงอบรม: ' . (string)($request['start_date'] ?? '-') . ' ถึง ' . (string)($request['end_date'] ?? '-');
+    $activityTypeName = trim((string)($request['activity_type_name'] ?? ''));
+    $lines[] = 'สร้างจากคำขอกิจกรรม #' . (int)($request['id'] ?? 0);
+    if ($activityTypeName !== '') {
+        $lines[] = 'ประเภทกิจกรรม: ' . $activityTypeName;
+    }
+    $lines[] = 'ช่วงกิจกรรม: ' . trainingRequestFormatDateRangeForNotes($request);
 
     $location = trim((string)($request['location'] ?? ''));
     if ($location !== '') {
@@ -87,6 +180,30 @@ function trainingRequestBuildHistoryNotes(array $request): string
     return implode("\n", $lines);
 }
 
+function trainingRequestFormatDateRangeForNotes(array $request): string
+{
+    $startDate = (string)($request['start_date'] ?? '-');
+    $endDate = (string)($request['end_date'] ?? '-');
+    $startPart = trainingRequestDayPartLabel($request['start_day_part'] ?? 'full');
+    $endPart = trainingRequestDayPartLabel($request['end_day_part'] ?? 'full');
+    if ($startDate === $endDate) {
+        return $startPart === $endPart ? "{$startDate} ({$startPart})" : "{$startDate} ({$startPart}-{$endPart})";
+    }
+    return "{$startDate} ({$startPart}) ถึง {$endDate} ({$endPart})";
+}
+
+function trainingRequestDayPartLabel(string $value): string
+{
+    $value = trainingRequestNormalizeDayPart($value);
+    if ($value === 'morning') {
+        return 'ครึ่งวันเช้า';
+    }
+    if ($value === 'afternoon') {
+        return 'ครึ่งวันบ่าย';
+    }
+    return 'เต็มวัน';
+}
+
 function trainingRequestApprovalQuery(string $type, string $role, array $scopes): string
 {
     $sql = "SELECT tr.*,
@@ -95,9 +212,11 @@ function trainingRequestApprovalQuery(string $type, string $role, array $scopes)
                    e.profile_img_url AS employee_profile_img_url,
                    e.supervisor_id,
                    CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
-                   CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
+                   CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name,
+                   at.type_name AS activity_type_name
             FROM training_requests tr
             JOIN employees e ON tr.employee_id = e.id
+            LEFT JOIN activity_types at ON tr.activity_type_id = at.id
             LEFT JOIN employees ae ON tr.approver_id = ae.id
             LEFT JOIN employees pce ON tr.created_by_employee_id = pce.id
             WHERE 1=1";
@@ -127,9 +246,11 @@ function trainingRequestApprovalQuery(string $type, string $role, array $scopes)
 
 function trainingRequestFetchApprovableRequest(mysqli $mysqli, int $requestId, string $role, int $employeeId, array $scopes): ?array
 {
-    $sql = "SELECT tr.*, e.supervisor_id
+    $sql = "SELECT tr.*, e.supervisor_id,
+                   at.type_name AS activity_type_name
             FROM training_requests tr
             JOIN employees e ON tr.employee_id = e.id
+            LEFT JOIN activity_types at ON tr.activity_type_id = at.id
             WHERE tr.id = ?";
     $types = 'i';
     $params = [$requestId];
@@ -159,6 +280,12 @@ function trainingRequestNormalizeDate(string $value, string $message): string
         throw new InvalidArgumentException($message);
     }
     return $value;
+}
+
+function trainingRequestNormalizeDayPart(string $value): string
+{
+    $value = trim($value);
+    return in_array($value, ['full', 'morning', 'afternoon'], true) ? $value : 'full';
 }
 
 function trainingRequestTrim(string $value, int $maxLength): string

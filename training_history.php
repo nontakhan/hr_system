@@ -1,14 +1,14 @@
 <?php
 require_once 'includes/auth_check.php';
 
-$page_title = 'ประวัติคำขออบรม';
+$page_title = 'ประวัติคำขอกิจกรรม';
 require_once 'includes/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800">ประวัติคำขออบรม</h1>
-        <p class="text-muted small mb-0">ติดตามสถานะคำขออบรมของคุณ</p>
+        <h1 class="h3 mb-0 text-gray-800">ประวัติคำขอกิจกรรม</h1>
+        <p class="text-muted small mb-0">ติดตามสถานะคำขอเข้าร่วมกิจกรรมของคุณ</p>
     </div>
 </div>
 
@@ -16,14 +16,14 @@ require_once 'includes/header.php';
     <div class="training-dashboard-actions-main">
         <a href="training_request.php" class="btn training-menu-button training-menu-button-request">
             <i class="fas fa-plus"></i>
-            <span>ขอไปอบรม</span>
+            <span>ขอไปทำกิจกรรม</span>
         </a>
     </div>
     <?php if (in_array($_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)) : ?>
     <div class="training-dashboard-actions-admin">
         <a href="training_approvals.php" class="btn training-menu-button training-menu-button-approval">
             <i class="fas fa-user-check"></i>
-            <span>อนุมัติคำขออบรม</span>
+            <span>อนุมัติคำขอกิจกรรม</span>
             <?php echo renderSidebarApprovalBadge($approvalBadgeCounts['training']); ?>
         </a>
     </div>
@@ -33,7 +33,7 @@ require_once 'includes/header.php';
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h5 mb-0">รายการคำขออบรม</h2>
+            <h2 class="h5 mb-0">รายการคำขอกิจกรรม</h2>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshTrainingRequestHistoryBtn">
                 <i class="fas fa-rotate"></i> รีเฟรช
             </button>
@@ -43,8 +43,8 @@ require_once 'includes/header.php';
                 <thead class="table-light">
                     <tr>
                         <th>วันที่ส่ง</th>
-                        <th>หลักสูตร</th>
-                        <th>ช่วงอบรม</th>
+                        <th>กิจกรรม</th>
+                        <th>ช่วงกิจกรรม</th>
                         <th>สถานที่/รูปแบบ</th>
                         <th>สถานะ</th>
                         <th>หมายเหตุ</th>

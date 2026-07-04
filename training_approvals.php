@@ -6,14 +6,14 @@ if (!in_array($_SESSION['role'], ['manager', 'hr', 'admin'], true)) {
     exit();
 }
 
-$page_title = 'อนุมัติคำขออบรม';
+$page_title = 'อนุมัติคำขอกิจกรรม';
 require_once 'includes/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800">อนุมัติคำขออบรม</h1>
-        <p class="text-muted small mb-0">หัวหน้าอนุมัติก่อน จากนั้น HR อนุมัติและระบบจะสร้างประวัติอบรมให้อัตโนมัติ</p>
+        <h1 class="h3 mb-0 text-gray-800">อนุมัติคำขอกิจกรรม</h1>
+        <p class="text-muted small mb-0">หัวหน้าอนุมัติก่อน จากนั้น HR อนุมัติและระบบจะสร้างประวัติกิจกรรมให้อัตโนมัติ</p>
     </div>
     <a href="training_history.php" class="btn btn-outline-secondary training-approval-back-link">
         <i class="fas fa-arrow-left me-1"></i> กลับไปประวัติคำขอ
@@ -42,8 +42,8 @@ require_once 'includes/header.php';
                         <thead class="table-light">
                             <tr>
                                 <th>พนักงาน</th>
-                                <th>หลักสูตร</th>
-                                <th>ช่วงอบรม</th>
+                                <th>กิจกรรม</th>
+                                <th>ช่วงกิจกรรม</th>
                                 <th>รายละเอียด</th>
                                 <th style="width: 180px;">จัดการ</th>
                             </tr>
@@ -62,8 +62,8 @@ require_once 'includes/header.php';
                             <tr>
                                 <th>วันที่ทำรายการ</th>
                                 <th>พนักงาน</th>
-                                <th>หลักสูตร</th>
-                                <th>ช่วงอบรม</th>
+                                <th>กิจกรรม</th>
+                                <th>ช่วงกิจกรรม</th>
                                 <th>สถานะ</th>
                                 <th>หมายเหตุ</th>
                             </tr>
