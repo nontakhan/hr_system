@@ -54,6 +54,9 @@ body {
 }
 
 #sidebar-wrapper .sidebar-heading {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     height: var(--header-height); /* (แก้ไข) บังคับความสูงให้เท่า Navbar */
     display: flex;
     align-items: center;

@@ -203,6 +203,11 @@ assertSame(3, multiMonthOptions.duration.months, 'Multi-month calendar should on
 assertSame(3, multiMonthOptions.multiMonthMaxColumns, 'Multi-month calendar should keep a compact column count.');
 assertSame(3, multiMonthOptions.visibleRange().end.getMonth(), 'Visible range should end after the requested final month.');
 
+assertSame('2026-07', getAttendanceCurrentMonth(new Date('2026-07-05T12:00:00')), 'Self-service attendance should be able to default to the current month.');
+assertSame(false, canSubmitAttendanceReport(true, '', '2026-07'), 'Admin and HR attendance reports should require an employee before loading.');
+assertSame(false, canSubmitAttendanceReport(true, '15', ''), 'Admin and HR attendance reports should require a month before loading.');
+assertSame(true, canSubmitAttendanceReport(false, '', '2026-07'), 'Self-service attendance reports should not require an employee selection.');
+
 const loadingHtml = buildAttendanceReportLoadingHtml();
 assertIncludes(loadingHtml, 'spinner-border', 'Attendance loading state should show a spinner.');
 assertIncludes(loadingHtml, 'กำลังโหลด', 'Attendance loading state should explain that data is loading.');

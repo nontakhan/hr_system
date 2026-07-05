@@ -733,22 +733,36 @@ async function initAttendanceReport(canManage) {
 
     if (canManage) {
         await loadAttendanceEmployees(employeeSelect);
+        resetAttendanceMonthSelects([monthStartSelect, monthEndSelect]);
     } else {
         await loadAttendanceMonths([monthStartSelect, monthEndSelect], '');
+        setAttendanceSelfServiceCurrentMonth(monthStartSelect, monthEndSelect);
     }
     initializeAttendanceSelect2();
     if (canManage) {
         bindAttendanceEmployeeChange(employeeSelect, [monthStartSelect, monthEndSelect]);
+    } else {
+        loadAttendanceReport('', monthStartSelect.value, monthEndSelect.value);
     }
 
     loadBtn.addEventListener('click', () => {
         const employeeId = canManage ? employeeSelect.value : '';
+        if (!canSubmitAttendanceReport(canManage, employeeId, monthStartSelect.value)) {
+            Swal.fire('แจ้งเตือน', canManage ? 'กรุณาเลือกพนักงานและเดือนก่อน' : 'กรุณาเลือกเดือนเริ่มต้น', 'warning');
+            return;
+        }
         loadAttendanceReport(employeeId, monthStartSelect.value, monthEndSelect.value);
     });
 }
 
 function bindAttendanceEmployeeChange(employeeSelect, monthSelects) {
-    const loadSelectedEmployeeMonths = () => loadAttendanceMonths(monthSelects, employeeSelect.value);
+    const loadSelectedEmployeeMonths = () => {
+        if (!employeeSelect.value) {
+            resetAttendanceMonthSelects(monthSelects);
+            return;
+        }
+        loadAttendanceMonths(monthSelects, employeeSelect.value);
+    };
     employeeSelect.addEventListener('change', loadSelectedEmployeeMonths);
 
     if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
@@ -760,6 +774,46 @@ function bindAttendanceEmployeeChange(employeeSelect, monthSelects) {
     if (employeeSelect.value) {
         loadSelectedEmployeeMonths();
     }
+}
+
+function canSubmitAttendanceReport(canManage, employeeId, startMonth) {
+    return Boolean(startMonth) && (!canManage || Boolean(employeeId));
+}
+
+function getAttendanceCurrentMonth(date = new Date()) {
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+    ].join('-');
+}
+
+function resetAttendanceMonthSelects(monthSelects) {
+    const selects = Array.isArray(monthSelects) ? monthSelects : [monthSelects];
+    selects.forEach((select, index) => {
+        if (!select) return;
+        renderAttendanceMonthOptions(select, [], index === 1);
+        initializeAttendanceSelect2(select);
+    });
+}
+
+function setAttendanceSelfServiceCurrentMonth(monthStartSelect, monthEndSelect) {
+    const currentMonth = getAttendanceCurrentMonth();
+    ensureAttendanceMonthOption(monthStartSelect, currentMonth);
+    monthStartSelect.value = currentMonth;
+    if (monthEndSelect) monthEndSelect.value = '';
+    initializeAttendanceSelect2(monthStartSelect);
+    if (monthEndSelect) initializeAttendanceSelect2(monthEndSelect);
+}
+
+function ensureAttendanceMonthOption(select, month) {
+    if (!select || !month) return;
+    const exists = Array.from(select.options).some(option => option.value === month);
+    if (exists) return;
+
+    const option = document.createElement('option');
+    option.value = month;
+    option.textContent = formatThaiMonth(month);
+    select.appendChild(option);
 }
 
 async function loadAttendanceEmployees(select) {
