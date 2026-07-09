@@ -67,6 +67,17 @@ $invalid = leaveBuildDateSummary(
 );
 assertLeaveSame(false, $invalid['valid'], 'A single date cannot end before it starts when using half-day parts.');
 
+$buddhistSummary = leaveBuildDateSummary(
+    '2569-07-05',
+    '05/07/2569',
+    'full',
+    'full',
+    'Sun',
+    []
+);
+assertLeaveSame(true, $buddhistSummary['valid'], 'Leave date summary should accept Buddhist Era input from forms.');
+assertLeaveSame(['2026-07-05'], array_column($buddhistSummary['included_dates'], 'date'), 'Leave date summary should normalize Buddhist Era input to Gregorian storage dates.');
+
 $conflictingDates = leaveFindConflictingLeaveDates([
     [
         'start_date' => '2026-01-07',

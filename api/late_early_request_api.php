@@ -34,7 +34,7 @@ try {
 
         if ($action === 'calculate') {
             $type = normalizeTimeRequestType($_GET['time_request_type'] ?? '');
-            $workDate = trim((string)($_GET['work_date'] ?? ''));
+            $workDate = normalizeGregorianDateInput($_GET['work_date'] ?? '');
             $requestTime = trim((string)($_GET['request_time'] ?? ''));
             $overtimeStartTime = trim((string)($_GET['overtime_start_time'] ?? ''));
             $overtimeEndTime = trim((string)($_GET['overtime_end_time'] ?? ''));
@@ -45,7 +45,7 @@ try {
         }
 
         if ($action === 'work_date_context') {
-            $workDate = trim((string)($_GET['work_date'] ?? ''));
+            $workDate = normalizeGregorianDateInput($_GET['work_date'] ?? '');
             $context = fetchMyWorkDateContext($mysqli, $workDate);
             sendJson(['status' => $context['valid'] ? 'success' : 'error', 'message' => $context['message'], 'data' => $context]);
         }
@@ -106,7 +106,7 @@ function fetchMyTimeRequests(mysqli $mysqli, $typeFilter = 'late_early') {
 function submitTimeRequest(mysqli $mysqli) {
     $employeeId = (int)($_SESSION['employee_id'] ?? 0);
     $type = normalizeTimeRequestType($_POST['time_request_type'] ?? '');
-    $workDate = trim((string)($_POST['work_date'] ?? ''));
+    $workDate = normalizeGregorianDateInput($_POST['work_date'] ?? '');
     $requestTime = trim((string)($_POST['request_time'] ?? ''));
     $overtimeStartTime = trim((string)($_POST['overtime_start_time'] ?? ''));
     $overtimeEndTime = trim((string)($_POST['overtime_end_time'] ?? ''));
@@ -167,6 +167,7 @@ function fetchHourlyLeaveTypeId(mysqli $mysqli, $typeName) {
 }
 
 function calculateMyTimeRequest(mysqli $mysqli, $type, $workDate, $requestTime) {
+    $workDate = normalizeGregorianDateInput($workDate);
     $employeeId = (int)($_SESSION['employee_id'] ?? 0);
     $shift = fetchEffectiveShiftForTimeRequest($mysqli, $employeeId, $workDate);
     if (!$shift) {
@@ -180,10 +181,12 @@ function calculateMyTimeRequest(mysqli $mysqli, $type, $workDate, $requestTime) 
 }
 
 function calculateMyOvertimeRequest(mysqli $mysqli, $workDate, $startTime, $endTime) {
+    $workDate = normalizeGregorianDateInput($workDate);
     return attendanceCalculateOvertimeWindowMinutes($workDate, $startTime, $endTime);
 }
 
 function fetchMyWorkDateContext(mysqli $mysqli, $workDate) {
+    $workDate = normalizeGregorianDateInput($workDate);
     $employeeId = (int)($_SESSION['employee_id'] ?? 0);
     $shift = fetchEffectiveShiftForTimeRequest($mysqli, $employeeId, $workDate);
     if (!$shift) {
@@ -203,6 +206,7 @@ function fetchMyWorkDateContext(mysqli $mysqli, $workDate) {
 }
 
 function fetchEffectiveShiftForTimeRequest(mysqli $mysqli, $employeeId, $workDate) {
+    $workDate = normalizeGregorianDateInput($workDate);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$workDate)) {
         return null;
     }

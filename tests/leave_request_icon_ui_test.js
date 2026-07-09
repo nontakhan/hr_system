@@ -25,6 +25,7 @@ const script = fs.readFileSync('assets/js/leave_request.js', 'utf8');
 const myLeavesScript = fs.readFileSync('assets/js/my_leaves.js', 'utf8');
 const timeRequestScript = fs.readFileSync('assets/js/late_early_request.js', 'utf8');
 const leaveSettingsScript = fs.readFileSync('assets/js/leave.js', 'utf8');
+const utilsScript = fs.readFileSync('assets/js/utils.js', 'utf8');
 const styles = fs.readFileSync('assets/style.css', 'utf8');
 
 assertIncludes(page, 'type="hidden" name="leave_type_id" id="leaveTypeSelect"', 'Leave request page should submit leave_type_id through a hidden field.');
@@ -57,6 +58,7 @@ assertIncludes(page, 'id="hourlyLeaveFields"', 'Leave request page should includ
 assertIncludes(page, 'id="startDateField"', 'Leave request page should have a stable start-date layout wrapper.');
 assertIncludes(page, 'name="request_start_time"', 'Leave request page should collect the hourly leave start time.');
 assertIncludes(page, 'name="request_end_time"', 'Leave request page should collect the hourly leave end time.');
+assertNotIncludes(page, 'data-native-date-picker="true"', 'Leave request form dates should use the custom Thai date picker instead of the native browser picker.');
 assertNotIncludes(page, 'name="request_hours"', 'Leave request page should not let employees manually type hourly leave duration.');
 assertIncludes(leaveTypesPage, 'จำนวนวันลาที่ลาได้ต่อปีงบประมาณ', 'Leave policy form should describe the annual quota as leave days.');
 assertIncludes(leaveTypesPage, 'จำนวนวันลา/ปีงบ', 'Leave policy table should describe the annual quota as leave days.');
@@ -68,6 +70,9 @@ assertIncludes(leaveSettingsScript, 'toggleLeaveTypeCalculationFields', 'Leave s
 assertIncludes(script, 'function selectLeaveType', 'Leave request JS should select a leave type card and sync the hidden field.');
 assertIncludes(script, 'function isSelectedLeaveTypeHourly', 'Leave request JS should detect admin-configured hourly leave types.');
 assertIncludes(script, 'function updateLeaveRequestMode', 'Leave request JS should switch between day and hour leave inputs.');
+assertIncludes(script, 'toGregorianDateInputValue(startInput.value)', 'Leave request JS should normalize Buddhist Era date input before comparing or calculating dates.');
+assertIncludes(utilsScript, 'function showThaiDatePicker', 'Shared utilities should provide a custom Thai date picker popup.');
+assertIncludes(utilsScript, 'thai-datepicker-popover', 'Shared utilities should render the Thai date picker popover.');
 assertIncludes(script, "startField.classList.toggle('col-md-12', isHourly)", 'Hourly leave mode should make the date field span the full row.');
 assertIncludes(script, 'function getHourlyLeaveDuration', 'Leave request JS should calculate hourly leave duration from start and end time.');
 assertIncludes(script, 'request_start_time', 'Leave request JS should submit hourly leave start time.');
@@ -101,6 +106,7 @@ assertIncludes(requestApi, 'leaveDetectHourlyRequestType($row', 'Leave request A
 assertIncludes(requestApi, 'is_actual_leave = 1', 'Leave request API should only expose real leave types in leave options.');
 assertIncludes(requestApi, 'calculation_unit', 'Leave request API should expose leave type calculation unit.');
 assertIncludes(requestApi, 'leaveBuildTimedHourlyLeavePayload', 'Leave request API should build quota-counting hourly leave payloads from start and end time.');
+assertIncludes(requestApi, 'normalizeGregorianDateInput($data', 'Leave request API should normalize Buddhist Era form dates before saving.');
 assertNotIncludes(requestApi, "$data['request_hours']", 'Leave request API should not trust manually submitted hourly leave hours.');
 assertIncludes(requestApi, 'leaveBuildVacationEligibilityStatus', 'Leave request API should enforce the active vacation tenure threshold before saving vacation leave.');
 assertIncludes(requestApi, 'employees WHERE id = ?', 'Leave request API should check the employee start date for vacation eligibility.');
@@ -112,5 +118,6 @@ assertIncludes(styles, '.leave-type-card.is-selected', 'Styles should include a 
 assertIncludes(styles, '.leave-usage-card-near', 'Styles should include a near-limit leave usage state.');
 assertIncludes(styles, '.leave-usage-card-over', 'Styles should include an over-limit leave usage state.');
 assertIncludes(styles, '.leave-usage-entry-list', 'Styles should include counted leave entry list styling.');
+assertIncludes(styles, '.thai-datepicker-popover', 'Styles should include the custom Thai date picker popover.');
 
 console.log('leave_request_icon_ui_test passed');

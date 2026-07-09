@@ -1884,3 +1884,104 @@ button.attendance-import-summary-card:focus-visible {
         gap: 0.15rem;
     }
 }
+
+.thai-datepicker-popover {
+    position: absolute;
+    z-index: 2050;
+    width: min(320px, calc(100vw - 24px));
+    padding: 0.75rem;
+    border: 1px solid #d6dee8;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+}
+
+.thai-datepicker-header {
+    display: grid;
+    grid-template-columns: 34px 1fr 34px;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.55rem;
+}
+
+.thai-datepicker-title {
+    font-weight: 700;
+    text-align: center;
+    color: #1f2937;
+}
+
+.thai-datepicker-nav,
+.thai-datepicker-today,
+.thai-datepicker-day {
+    border: 0;
+    background: transparent;
+    color: #1f2937;
+}
+
+.thai-datepicker-nav {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.thai-datepicker-nav:hover,
+.thai-datepicker-day:hover,
+.thai-datepicker-today:hover {
+    background: #eef4ff;
+    color: #0d6efd;
+}
+
+.thai-datepicker-weekdays,
+.thai-datepicker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.2rem;
+}
+
+.thai-datepicker-weekdays {
+    margin-bottom: 0.25rem;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.thai-datepicker-day {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.thai-datepicker-day.is-muted {
+    color: #a0aec0;
+}
+
+.thai-datepicker-day.is-today {
+    outline: 1px solid #0d6efd;
+    outline-offset: -1px;
+}
+
+.thai-datepicker-day.is-selected {
+    background: #0d6efd;
+    color: #fff;
+}
+
+.thai-datepicker-day.is-selected:hover {
+    background: #0b5ed7;
+    color: #fff;
+}
+
+.thai-datepicker-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.55rem;
+}
+
+.thai-datepicker-today {
+    min-height: 32px;
+    padding: 0 0.65rem;
+    border-radius: 6px;
+    font-weight: 600;
+}

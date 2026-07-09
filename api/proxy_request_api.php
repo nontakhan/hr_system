@@ -146,8 +146,8 @@ function proxyRequestFetchDaySwapHolidays(mysqli $mysqli): array {
 function proxyRequestCalculateLeave(mysqli $mysqli): array {
     $employeeId = (int)($_GET['employee_id'] ?? 0);
     proxyRequestRequireEmployee($mysqli, $employeeId);
-    $start = trim((string)($_GET['start_date'] ?? ''));
-    $end = trim((string)($_GET['end_date'] ?? ''));
+    $start = normalizeGregorianDateInput($_GET['start_date'] ?? '');
+    $end = normalizeGregorianDateInput($_GET['end_date'] ?? '');
     return leaveBuildDateSummary(
         $start,
         $end,
@@ -165,7 +165,7 @@ function proxyRequestCalculateTimeRequest(mysqli $mysqli): array {
         $mysqli,
         $employeeId,
         proxyRequestNormalizeTimeType($_GET['time_request_type'] ?? ''),
-        trim((string)($_GET['work_date'] ?? '')),
+        normalizeGregorianDateInput($_GET['work_date'] ?? ''),
         trim((string)($_GET['request_time'] ?? '')),
         trim((string)($_GET['overtime_start_time'] ?? '')),
         trim((string)($_GET['overtime_end_time'] ?? ''))
@@ -175,7 +175,7 @@ function proxyRequestCalculateTimeRequest(mysqli $mysqli): array {
 function proxyRequestBuildWorkDateContext(mysqli $mysqli): array {
     $employeeId = (int)($_GET['employee_id'] ?? 0);
     proxyRequestRequireEmployee($mysqli, $employeeId);
-    $workDate = trim((string)($_GET['work_date'] ?? ''));
+    $workDate = normalizeGregorianDateInput($_GET['work_date'] ?? '');
     $shift = proxyRequestFetchEffectiveShift($mysqli, $employeeId, $workDate);
     if (!$shift) {
         return [
@@ -202,6 +202,7 @@ function proxyRequestTimeTypeName($type) {
 }
 
 function proxyRequestFetchEffectiveShift(mysqli $mysqli, int $employeeId, string $workDate): ?array {
+    $workDate = normalizeGregorianDateInput($workDate);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate)) return null;
     $stmt = $mysqli->prepare("SELECT ws.start_time, ws.end_time, ws.late_tolerance_mins, ws.work_days
                               FROM employees e
@@ -219,6 +220,7 @@ function proxyRequestFetchEffectiveShift(mysqli $mysqli, int $employeeId, string
 }
 
 function proxyRequestCalculateTimeRequestFromValues(mysqli $mysqli, int $employeeId, string $type, string $workDate, string $requestTime, string $overtimeStartTime, string $overtimeEndTime): array {
+    $workDate = normalizeGregorianDateInput($workDate);
     if ($type === 'overtime_after_work') {
         return attendanceCalculateOvertimeWindowMinutes($workDate, $overtimeStartTime, $overtimeEndTime);
     }
@@ -242,8 +244,8 @@ function proxyRequestCreateLeave(mysqli $mysqli): void {
     $employeeId = (int)($_POST['employee_id'] ?? 0);
     proxyRequestRequireEmployee($mysqli, $employeeId);
     $typeId = (int)($_POST['leave_type_id'] ?? 0);
-    $start = trim((string)($_POST['start_date'] ?? ''));
-    $end = trim((string)($_POST['end_date'] ?? ''));
+    $start = normalizeGregorianDateInput($_POST['start_date'] ?? '');
+    $end = normalizeGregorianDateInput($_POST['end_date'] ?? '');
     $startPart = leaveNormalizeDayPart($_POST['start_day_part'] ?? 'full');
     $endPart = leaveNormalizeDayPart($_POST['end_day_part'] ?? 'full');
     $reason = trim((string)($_POST['reason'] ?? ''));
@@ -320,7 +322,7 @@ function proxyRequestCreateTimeRequest(mysqli $mysqli, bool $isOvertime): void {
     proxyRequestRequireEmployee($mysqli, $employeeId);
     $type = proxyRequestNormalizeTimeType($_POST['time_request_type'] ?? '');
     if ($isOvertime) $type = 'overtime_after_work';
-    $workDate = trim((string)($_POST['work_date'] ?? ''));
+    $workDate = normalizeGregorianDateInput($_POST['work_date'] ?? '');
     $requestTime = trim((string)($_POST['request_time'] ?? ''));
     $overtimeStartTime = trim((string)($_POST['overtime_start_time'] ?? ''));
     $overtimeEndTime = trim((string)($_POST['overtime_end_time'] ?? ''));
@@ -355,8 +357,8 @@ function proxyRequestCreateDaySwap(mysqli $mysqli): void {
     $targetId = (int)($_POST['target_employee_id'] ?? 0);
     proxyRequestRequireEmployee($mysqli, $requesterId);
     proxyRequestRequireEmployee($mysqli, $targetId);
-    $requesterDate = trim((string)($_POST['requester_date'] ?? ''));
-    $targetDate = trim((string)($_POST['target_date'] ?? ''));
+    $requesterDate = normalizeGregorianDateInput($_POST['requester_date'] ?? '');
+    $targetDate = normalizeGregorianDateInput($_POST['target_date'] ?? '');
     $reason = trim((string)($_POST['reason'] ?? ''));
     if ($targetId <= 0 || $targetId === $requesterId || $reason === '') throw new InvalidArgumentException('กรุณากรอกข้อมูลให้ครบถ้วน');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $requesterDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $targetDate)) throw new InvalidArgumentException('กรุณาเลือกวันที่ให้ครบ');

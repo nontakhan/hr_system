@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/proxy_request_helpers.php';
+require_once __DIR__ . '/date_helpers.php';
 
 function trainingRequestEnsureTable(mysqli $mysqli): void
 {
@@ -275,11 +276,7 @@ function trainingRequestFetchApprovableRequest(mysqli $mysqli, int $requestId, s
 
 function trainingRequestNormalizeDate(string $value, string $message): string
 {
-    $value = trim($value);
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-        throw new InvalidArgumentException($message);
-    }
-    return $value;
+    return requireGregorianDateInput($value, $message);
 }
 
 function trainingRequestNormalizeDayPart(string $value): string

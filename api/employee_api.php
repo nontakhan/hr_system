@@ -4,6 +4,8 @@ ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
+require_once __DIR__ . '/../includes/date_helpers.php';
+
 // Helper Functions
 function getVal($arr, $key, $default = null) {
     return isset($arr[$key]) && $arr[$key] !== '' ? $arr[$key] : $default;
@@ -32,11 +34,21 @@ function normalizeTrainingDate($value, bool $required = false): ?string
         if ($required) throw new InvalidArgumentException('กรุณาระบุวันที่อบรม');
         return null;
     }
-    $dt = DateTime::createFromFormat('Y-m-d', $text);
-    if (!$dt || $dt->format('Y-m-d') !== $text) {
-        throw new InvalidArgumentException('รูปแบบวันที่ไม่ถูกต้อง');
+    return requireGregorianDateInput($text, 'รูปแบบวันที่ไม่ถูกต้อง');
+}
+
+function normalizeEmployeeDateValue($value, $default = null, bool $required = true): ?string
+{
+    $text = trim((string)($value ?? ''));
+    if ($text === '' && $default !== null) {
+        $text = (string)$default;
     }
-    return $text;
+    if ($text === '') {
+        if ($required) throw new InvalidArgumentException('รูปแบบวันที่ไม่ถูกต้อง');
+        return null;
+    }
+
+    return requireGregorianDateInput($text, 'รูปแบบวันที่ไม่ถูกต้อง');
 }
 
 function trimTrainingText($value, int $maxLength): string
@@ -286,6 +298,9 @@ function createEmployee($mysqli, $data, $files) {
         if (isset($files['profile_image']) && $files['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
             $profile_img_url = saveProfileImage($files['profile_image']);
         }
+        $employeeStartDate = normalizeEmployeeDateValue(getVal($data, 'start_date'), date('Y-m-d'));
+        $employeeBirthDate = normalizeEmployeeDateValue(getVal($data, 'birth_date'), date('Y-m-d'));
+        $shiftEffectiveFrom = normalizeEmployeeDateValue(getVal($data, 'shift_effective_from', $employeeStartDate), $employeeStartDate);
 
         // 2. Prepare Variables (31 items)
         $params = [
@@ -293,7 +308,7 @@ function createEmployee($mysqli, $data, $files) {
             getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
             getVal($data, 'nickname'),
             getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
-            getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
+            getVal($data, 'citizen_id'), $employeeBirthDate, getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
             getVal($data, 'phone_number'), getVal($data, 'current_address'), getVal($data, 'district'), getVal($data, 'province'),
             getVal($data, 'postal_code'), getVal($data, 'education_level'), getVal($data, 'emergency_contact_name'), getVal($data, 'emergency_contact_phone'),
@@ -304,7 +319,7 @@ function createEmployee($mysqli, $data, $files) {
             (int)getVal($data, 'supervisor_id', 0),
             (int)getVal($data, 'default_shift_id', 0),
             // Strings (2)
-            getVal($data, 'start_date', date('Y-m-d')), getVal($data, 'status')
+            $employeeStartDate, getVal($data, 'status')
         ];
 
         $sql = "INSERT INTO employees 
@@ -330,11 +345,11 @@ function createEmployee($mysqli, $data, $files) {
             $mysqli,
             $emp_pk,
             (int)getVal($data, 'default_shift_id', 0),
-            getVal($data, 'shift_effective_from', getVal($data, 'start_date', date('Y-m-d'))),
+            $shiftEffectiveFrom,
             getVal($data, 'shift_assignment_reason', 'Initial shift assignment'),
             (int)($_SESSION['user_id'] ?? 0),
             (int)getVal($data, 'default_shift_id', 0),
-            getVal($data, 'start_date', date('Y-m-d'))
+            $employeeStartDate
         );
 
         // Create User
@@ -383,6 +398,8 @@ function updateEmployee($mysqli, $data, $files) {
         if (isset($files['profile_image']) && $files['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
             $profile_img_url = saveProfileImage($files['profile_image']);
         }
+        $employeeStartDate = normalizeEmployeeDateValue(getVal($data, 'start_date'), date('Y-m-d'));
+        $employeeBirthDate = normalizeEmployeeDateValue(getVal($data, 'birth_date'), date('Y-m-d'));
 
         // 2. Prepare Variables (32 items: 31 updates + 1 ID)
         $params = [
@@ -390,7 +407,7 @@ function updateEmployee($mysqli, $data, $files) {
             getEmployeePrefixVal($data, 'title_th', 'prefix_th'), getVal($data, 'first_name_th'), getVal($data, 'last_name_th'),
             getVal($data, 'nickname'),
             getEmployeePrefixVal($data, 'title_en', 'prefix_en'), getVal($data, 'first_name_en'), getVal($data, 'last_name_en'),
-            getVal($data, 'citizen_id'), getVal($data, 'birth_date', date('Y-m-d')), getVal($data, 'gender'),
+            getVal($data, 'citizen_id'), $employeeBirthDate, getVal($data, 'gender'),
             getVal($data, 'religion'), getVal($data, 'blood_group'), getVal($data, 'marital_status'),
             getVal($data, 'phone_number'), getVal($data, 'current_address'), getVal($data, 'district'), getVal($data, 'province'),
             getVal($data, 'postal_code'), getVal($data, 'education_level'), getVal($data, 'emergency_contact_name'), getVal($data, 'emergency_contact_phone'),
@@ -401,7 +418,7 @@ function updateEmployee($mysqli, $data, $files) {
             (int)getVal($data, 'supervisor_id', 0),
             (int)getVal($data, 'default_shift_id', 0),
             // Strings (2)
-            getVal($data, 'start_date', date('Y-m-d')), getVal($data, 'status'),
+            $employeeStartDate, getVal($data, 'status'),
             // ID (1)
             $id
         ];
@@ -428,10 +445,10 @@ function updateEmployee($mysqli, $data, $files) {
         $newShiftId = (int)getVal($data, 'default_shift_id', 0);
         $oldShiftId = (int)($existingShift['default_shift_id'] ?? 0);
         if ($newShiftId === $oldShiftId) {
-            $shiftEffectiveFrom = getVal($data, 'start_date', $existingShift['start_date'] ?? date('Y-m-d'));
+            $shiftEffectiveFrom = normalizeEmployeeDateValue($employeeStartDate, $existingShift['start_date'] ?? date('Y-m-d'));
             $shiftReason = 'Current shift assignment';
         } else {
-            $shiftEffectiveFrom = getVal($data, 'shift_effective_from', date('Y-m-d'));
+            $shiftEffectiveFrom = normalizeEmployeeDateValue(getVal($data, 'shift_effective_from'), date('Y-m-d'));
             $shiftReason = getVal($data, 'shift_assignment_reason', 'Shift assignment updated');
         }
         employeeShiftAssignmentsSyncCurrent(
@@ -442,7 +459,7 @@ function updateEmployee($mysqli, $data, $files) {
             $shiftReason,
             (int)($_SESSION['user_id'] ?? 0),
             $oldShiftId,
-            $existingShift['start_date'] ?? getVal($data, 'start_date', date('Y-m-d'))
+            normalizeEmployeeDateValue($existingShift['start_date'] ?? $employeeStartDate, $employeeStartDate)
         );
 
         // 3. Update User

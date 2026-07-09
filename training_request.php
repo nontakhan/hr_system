@@ -38,11 +38,11 @@ require_once 'includes/header.php';
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">วันที่เริ่ม <span class="text-danger">*</span></label>
-                    <input type="date" name="start_date" class="form-control" data-native-date-picker="true" required>
+                    <input type="date" name="start_date" class="form-control" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">วันที่สิ้นสุด <span class="text-danger">*</span></label>
-                    <input type="date" name="end_date" class="form-control" data-native-date-picker="true" required>
+                    <input type="date" name="end_date" class="form-control" required>
                 </div>
                 <div class="col-12 training-day-part-field">
                     <label class="form-label">ช่วงวันเริ่ม</label>

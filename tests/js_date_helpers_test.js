@@ -34,6 +34,7 @@ const thaiDateInput = {
     value: '2026-01-03',
     inputMode: '',
     placeholder: '',
+    addEventListener() {},
 };
 setupThaiDateInputs({
     querySelectorAll() {
@@ -42,7 +43,65 @@ setupThaiDateInputs({
 });
 assertSame('date', nativeDateInput.type, 'Native date picker inputs should not be converted to text.');
 assertSame('text', thaiDateInput.type, 'Ordinary date inputs should still use Thai date text display.');
+assertSame('true', thaiDateInput.dataset.thaiDatePicker, 'Ordinary date inputs should use the custom Thai date picker.');
 setThaiDateInputValue(nativeDateInput, '03/01/2569');
 assertSame('2026-01-03', nativeDateInput.value, 'Native date picker inputs should receive Gregorian date values.');
+
+let fakePopover = null;
+global.document = {
+    body: {
+        appendChild(node) {
+            fakePopover = node;
+        },
+    },
+    createElement() {
+        return {
+            className: '',
+            hidden: true,
+            style: {},
+            innerHTML: '',
+            handlers: {},
+            addEventListener(type, handler) {
+                this.handlers[type] = handler;
+            },
+            contains() {
+                return false;
+            },
+        };
+    },
+};
+global.window = { scrollX: 0, scrollY: 0 };
+
+const interactiveThaiDateInput = {
+    dataset: { thaiDatePicker: 'true' },
+    value: '03/01/2569',
+    getBoundingClientRect() {
+        return { left: 0, bottom: 0, width: 280 };
+    },
+    dispatchEvent() {},
+};
+showThaiDatePicker(interactiveThaiDateInput);
+assertSame(true, fakePopover.innerHTML.includes('มกราคม 2569') || fakePopover.innerHTML.includes('à¸¡à¸à¸£à¸²à¸„à¸¡ 2569'), 'Thai date picker should open on the current Buddhist Era month.');
+let stoppedPropagation = false;
+fakePopover.handlers.click({
+    stopPropagation() {
+        stoppedPropagation = true;
+    },
+    target: {
+        closest(selector) {
+            if (selector === '[data-thai-datepicker-action]') {
+                return {
+                    getAttribute(name) {
+                        return name === 'data-thai-datepicker-action' ? 'next' : null;
+                    },
+                    dataset: {},
+                };
+            }
+            return null;
+        },
+    },
+});
+assertSame(true, stoppedPropagation, 'Thai date picker navigation clicks should not bubble to the document close handler.');
+assertSame(true, fakePopover.innerHTML.includes('กุมภาพันธ์ 2569') || fakePopover.innerHTML.includes('à¸à¸¸à¸¡à¸ à¸²à¸žà¸±à¸™à¸˜à¹Œ 2569'), 'Thai date picker next button should move to the next Buddhist Era month.');
 
 console.log('js_date_helpers_test passed');

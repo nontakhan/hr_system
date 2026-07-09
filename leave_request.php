@@ -51,11 +51,11 @@ require_once 'includes/header.php';
                     <div class="row g-3 mb-3">
                         <div class="col-md-6" id="startDateField">
                             <label class="form-label" id="startDateLabel">วันที่เริ่มลา <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" id="startDate" class="form-control leave-date-picker" data-native-date-picker="true" required>
+                            <input type="date" name="start_date" id="startDate" class="form-control leave-date-picker" required>
                         </div>
                         <div class="col-md-6 day-leave-field">
                             <label class="form-label">ถึงวันที่ <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" id="endDate" class="form-control leave-date-picker" data-native-date-picker="true" required>
+                            <input type="date" name="end_date" id="endDate" class="form-control leave-date-picker" required>
                         </div>
                         <div class="col-md-6 day-leave-field">
                             <label class="form-label">ช่วงเวลาเริ่มลา <span class="text-danger">*</span></label>

@@ -40,8 +40,8 @@ try {
             ]);
         } elseif ($action === 'calculate_leave') {
             $emp_id = (int)$_SESSION['employee_id'];
-            $start = trim((string)($_GET['start_date'] ?? ''));
-            $end = trim((string)($_GET['end_date'] ?? ''));
+            $start = normalizeGregorianDateInput($_GET['start_date'] ?? '');
+            $end = normalizeGregorianDateInput($_GET['end_date'] ?? '');
             $summary = leaveBuildDateSummary(
                 $start,
                 $end,
@@ -80,8 +80,8 @@ function submitLeaveRequest($mysqli, $data, $files) {
     try {
         $emp_id = (int)$_SESSION['employee_id'];
         $type_id = (int)$data['leave_type_id'];
-        $start = trim((string)($data['start_date'] ?? ''));
-        $end = trim((string)($data['end_date'] ?? ''));
+        $start = normalizeGregorianDateInput($data['start_date'] ?? '');
+        $end = normalizeGregorianDateInput($data['end_date'] ?? '');
         $start_part = leaveNormalizeDayPart($data['start_day_part'] ?? 'full');
         $end_part = leaveNormalizeDayPart($data['end_day_part'] ?? 'full');
         $reason = trim((string)($data['reason'] ?? ''));

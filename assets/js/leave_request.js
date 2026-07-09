@@ -484,7 +484,9 @@ function updateLeavePartOptions() {
     const endPart = document.getElementById('endDayPart');
     if (!startInput || !endInput || !startPart || !endPart) return;
 
-    const isMultiDay = startInput.value && endInput.value && endInput.value > startInput.value;
+    const startDateValue = toGregorianDateInputValue(startInput.value);
+    const endDateValue = toGregorianDateInputValue(endInput.value);
+    const isMultiDay = startDateValue && endDateValue && endDateValue > startDateValue;
     if (isMultiDay) {
         setLeavePartOptions(startPart, [
             ['full', 'เต็มวัน'],
@@ -587,7 +589,7 @@ async function calculateLeaveDays() {
         latestLeaveSummary = {
             valid: true,
             total_days: Number.parseFloat(totalDays.toFixed(2)),
-            included_dates: [{ date: startInput.value, days: Number.parseFloat(totalDays.toFixed(2)), label: `${formatLeaveDayNumber(requestHours)} ชม.` }],
+            included_dates: [{ date: toGregorianDateInputValue(startInput.value), days: Number.parseFloat(totalDays.toFixed(2)), label: `${formatLeaveDayNumber(requestHours)} ชม.` }],
             excluded_dates: [],
         };
         totalDisplay.textContent = `${formatLeaveDayNumber(latestLeaveSummary.total_days)} วัน`;
@@ -606,7 +608,10 @@ async function calculateLeaveDays() {
         return;
     }
 
-    if (endInput.value < startInput.value) {
+    const startDateValue = toGregorianDateInputValue(startInput.value);
+    const endDateValue = toGregorianDateInputValue(endInput.value);
+
+    if (endDateValue < startDateValue) {
         totalDisplay.textContent = 'วันที่ไม่ถูกต้อง';
         totalDisplay.classList.add('text-danger');
         totalInput.value = 0;
@@ -618,8 +623,8 @@ async function calculateLeaveDays() {
     totalDisplay.textContent = 'กำลังคำนวณ...';
     const params = new URLSearchParams({
         action: 'calculate_leave',
-        start_date: startInput.value,
-        end_date: endInput.value,
+        start_date: startDateValue,
+        end_date: endDateValue,
         start_day_part: document.getElementById('startDayPart').value,
         end_day_part: document.getElementById('endDayPart').value,
     });

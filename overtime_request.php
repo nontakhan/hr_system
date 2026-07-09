@@ -38,7 +38,7 @@ window.timeRequestFixedType = 'overtime_after_work';
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">วันที่ทำ OT <span class="text-danger">*</span></label>
-                            <input type="date" name="work_date" id="timeRequestDate" class="form-control" data-native-date-picker="true" required>
+                            <input type="date" name="work_date" id="timeRequestDate" class="form-control" required>
                         </div>
 
                         <div class="col-md-3" id="overtimeStartField">

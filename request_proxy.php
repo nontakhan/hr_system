@@ -113,11 +113,11 @@ require_once 'includes/header.php';
             </div>
             <div class="col-md-3">
                 <label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label>
-                <input type="date" name="start_date" class="form-control" data-native-date-picker="true" required>
+                <input type="date" name="start_date" class="form-control" required>
             </div>
             <div class="col-md-3 proxy-day-leave-field">
                 <label class="form-label">วันที่สิ้นสุด <span class="text-danger">*</span></label>
-                <input type="date" name="end_date" class="form-control" data-native-date-picker="true" required>
+                <input type="date" name="end_date" class="form-control" required>
             </div>
             <div class="col-md-12 d-none" id="proxyHourlyLeaveFields">
                 <div class="row g-3">
@@ -171,7 +171,7 @@ require_once 'includes/header.php';
             </div>
             <div class="col-md-4">
                 <label class="form-label">วันที่ <span class="text-danger">*</span></label>
-                <input type="date" name="work_date" class="form-control" data-native-date-picker="true" required>
+                <input type="date" name="work_date" class="form-control" required>
             </div>
             <div class="col-md-4">
                 <label class="form-label">เวลา <span class="text-danger">*</span></label>
@@ -185,7 +185,7 @@ require_once 'includes/header.php';
 
     <form class="card shadow-sm border-0 proxy-panel d-none" data-proxy-panel="overtime" data-action="create_overtime">
         <div class="card-body row g-3">
-            <div class="col-md-4"><label class="form-label">วันที่ทำ OT <span class="text-danger">*</span></label><input type="date" name="work_date" class="form-control" data-native-date-picker="true" required></div>
+            <div class="col-md-4"><label class="form-label">วันที่ทำ OT <span class="text-danger">*</span></label><input type="date" name="work_date" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">เวลาเริ่ม OT <span class="text-danger">*</span></label><input type="time" name="overtime_start_time" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">เวลาสิ้นสุด OT <span class="text-danger">*</span></label><input type="time" name="overtime_end_time" class="form-control" required></div>
             <div class="col-12"><div class="alert alert-light border d-none mb-0" id="proxyOvertimeDateContext"></div></div>
@@ -199,8 +199,8 @@ require_once 'includes/header.php';
     <form class="card shadow-sm border-0 proxy-panel d-none" data-proxy-panel="day_swap" data-action="create_day_swap">
         <div class="card-body row g-3">
             <div class="col-md-4"><label class="form-label">พนักงานคู่สลับ <span class="text-danger">*</span></label><select name="target_employee_id" id="proxyTargetEmployeeId" class="form-select" required></select></div>
-            <div class="col-md-4"><label class="form-label">วันหยุดของพนักงานหลัก <span class="text-danger">*</span></label><input type="date" name="requester_date" class="form-control" data-native-date-picker="true" required></div>
-            <div class="col-md-4"><label class="form-label">วันหยุดของคู่สลับ <span class="text-danger">*</span></label><input type="date" name="target_date" class="form-control" data-native-date-picker="true" required></div>
+            <div class="col-md-4"><label class="form-label">วันหยุดของพนักงานหลัก <span class="text-danger">*</span></label><input type="date" name="requester_date" class="form-control" required></div>
+            <div class="col-md-4"><label class="form-label">วันหยุดของคู่สลับ <span class="text-danger">*</span></label><input type="date" name="target_date" class="form-control" required></div>
             <div class="col-12"><label class="form-label">เหตุผล <span class="text-danger">*</span></label><textarea name="reason" class="form-control" rows="3" required></textarea></div>
             <div class="col-12"><label class="form-label">หมายเหตุ HR/Admin</label><textarea name="proxy_note" class="form-control" rows="2"></textarea></div>
             <div class="col-12"><button class="btn btn-primary" type="submit">บันทึกและอนุมัติทันที</button></div>
@@ -212,8 +212,8 @@ require_once 'includes/header.php';
             <div class="col-md-6"><label class="form-label">ประเภทกิจกรรม <span class="text-danger">*</span></label><select name="activity_type_id" id="proxyActivityTypeId" class="form-select" required><option value="">กำลังโหลดประเภทกิจกรรม...</option></select></div>
             <div class="col-md-6"><label class="form-label">ชื่อกิจกรรม/รายละเอียด <span class="text-danger">*</span></label><input type="text" name="course_name" class="form-control" required></div>
             <div class="col-md-6"><label class="form-label">สถานที่/รูปแบบ</label><input type="text" name="location" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label><input type="date" name="start_date" class="form-control" data-native-date-picker="true" required></div>
-            <div class="col-md-6"><label class="form-label">วันที่สิ้นสุด <span class="text-danger">*</span></label><input type="date" name="end_date" class="form-control" data-native-date-picker="true" required></div>
+            <div class="col-md-6"><label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label><input type="date" name="start_date" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">วันที่สิ้นสุด <span class="text-danger">*</span></label><input type="date" name="end_date" class="form-control" required></div>
             <div class="col-md-3"><label class="form-label">ช่วงวันเริ่ม</label><select name="start_day_part" class="form-select"><option value="full">เต็มวัน</option><option value="morning">ครึ่งวันเช้า</option><option value="afternoon">ครึ่งวันบ่าย</option></select></div>
             <div class="col-md-3"><label class="form-label">ช่วงวันสิ้นสุด</label><select name="end_day_part" class="form-select"><option value="full">เต็มวัน</option><option value="morning">ครึ่งวันเช้า</option><option value="afternoon">ครึ่งวันบ่าย</option></select></div>
             <div class="col-12"><label class="form-label">วัตถุประสงค์ <span class="text-danger">*</span></label><textarea name="objective" class="form-control" rows="3" required></textarea></div>

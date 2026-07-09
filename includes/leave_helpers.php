@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/proxy_request_helpers.php';
+require_once __DIR__ . '/date_helpers.php';
 
 function leaveDayName($date) {
     return date('D', strtotime($date));
@@ -937,7 +938,10 @@ function leaveFetchUsageSummary(mysqli $mysqli, $employeeId, $referenceDate = nu
 }
 
 function leaveBuildDateSummary($startDate, $endDate, $startPart, $endPart, $workDays, array $companyHolidays) {
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$startDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$endDate)) {
+    $startDate = normalizeGregorianDateInput($startDate);
+    $endDate = normalizeGregorianDateInput($endDate);
+
+    if ($startDate === '' || $endDate === '') {
         return ['valid' => false, 'message' => 'รูปแบบวันที่ไม่ถูกต้อง', 'total_days' => 0.0, 'included_dates' => [], 'excluded_dates' => []];
     }
 
