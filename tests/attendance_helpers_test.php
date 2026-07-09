@@ -291,6 +291,19 @@ $hourlyRequestMap = attendanceBuildApprovedHourlyRequestMap([
 assertSameValue(['ขอมาสาย 35 นาที', 'ขอออกก่อน 40 นาที'], $hourlyRequestMap['2026-01-07'], 'Approved hourly requests should be grouped by work date with requested minutes.');
 assertSameValue(false, isset($hourlyRequestMap['2026-01-08']), 'Day-based leave rows should not be included as hourly requests.');
 
+$hourlyLeaveMap = attendanceBuildApprovedHourlyRequestMap([
+    [
+        'start_date' => '2026-01-09',
+        'request_unit' => 'hour',
+        'time_request_type' => null,
+        'request_minutes' => 120,
+        'request_start_time' => '10:00:00',
+        'request_end_time' => '12:00:00',
+        'type_name' => 'ลากิจ',
+    ],
+], '2026-01');
+assertSameValue(['ลากิจ 10:00-12:00 2 ชม.'], $hourlyLeaveMap['2026-01-09'], 'Approved hourly leave should use the leave type and requested time window instead of late-arrival labels.');
+
 $otRequestMap = attendanceBuildApprovedHourlyRequestMap([
     [
         'start_date' => '2026-01-09',

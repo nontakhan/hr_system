@@ -533,8 +533,9 @@ function fetchApprovedHourlyRequestsForMonth($mysqli, $employeeId, $month) {
     leaveEnsureRequestPartColumns($mysqli);
     $start = $month . '-01';
     $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
-    $stmt = $mysqli->prepare("SELECT lr.start_date, lr.request_unit, lr.time_request_type, lr.request_minutes, lr.approved_request_minutes, lr.request_start_time, lr.request_end_time
+    $stmt = $mysqli->prepare("SELECT lr.start_date, lr.request_unit, lr.time_request_type, lr.request_minutes, lr.approved_request_minutes, lr.request_start_time, lr.request_end_time, lt.type_name
                               FROM leave_requests lr
+                              JOIN leave_types lt ON lr.leave_type_id = lt.id
                               WHERE lr.employee_id = ?
                                 AND lr.status IN ('approved','pending_cancel_hr')
                                 AND lr.request_unit = 'hour'

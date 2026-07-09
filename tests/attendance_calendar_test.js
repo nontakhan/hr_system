@@ -113,6 +113,15 @@ const leaveDetails = buildAttendanceCalendarDetails({
 assertIncludes(leaveDetails, 'ลาป่วย', 'Leave popup details should include the leave type.');
 assertIncludes(leaveDetails, '08:31', 'Popup details should show check-in time.');
 
+const personalLeaveEvent = buildAttendanceCalendarEvent({
+    work_date: '2026-01-10',
+    status: 'leave',
+    status_label: 'ลา',
+    leave_name: 'ลากิจ',
+});
+assertSame('ลา + ลากิจ', personalLeaveEvent.title, 'Leave days should append the leave type in the calendar title.');
+assertIncludes(personalLeaveEvent.title, 'ลากิจ', 'Calendar event title should mention personal leave requests.');
+
 const trainingEvent = buildAttendanceCalendarEvent({
     work_date: '2026-01-12',
     status: 'present',

@@ -1203,6 +1203,11 @@ function attendanceCalendarEventTitle(row) {
     if (status === 'holiday') title = 'วันหยุดปกติ';
 
     const supplements = [];
+    const leaveName = String(row.leave_name || '').trim();
+    if (leaveName) {
+        supplements.push(leaveName);
+    }
+
     const trainingName = String(row.training_name || '').trim();
     if (trainingName) {
         supplements.push(trainingName);

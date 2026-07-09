@@ -430,11 +430,19 @@ function attendanceBuildApprovedHourlyRequestMap(array $leaveRows, $month) {
                 $range = substr((string)$row['request_start_time'], 0, 5) . '-' . substr((string)$row['request_end_time'], 0, 5) . ' ';
             }
             $label = 'OT หลังเลิกงาน ' . $range . attendanceFormatHourMinuteDuration($minutes);
-        } else {
+        } elseif ($type === 'late_arrival' || $type === 'early_departure') {
             $minutes = max(1, min(60, $minutes ?: 60));
             $label = $type === 'early_departure'
                 ? 'ขอออกก่อน ' . $minutes . ' นาที'
                 : 'ขอมาสาย ' . $minutes . ' นาที';
+        } else {
+            $minutes = max(1, $minutes);
+            $range = '';
+            if (!empty($row['request_start_time']) && !empty($row['request_end_time'])) {
+                $range = substr((string)$row['request_start_time'], 0, 5) . '-' . substr((string)$row['request_end_time'], 0, 5) . ' ';
+            }
+            $typeName = trim((string)($row['type_name'] ?? 'ลา'));
+            $label = ($typeName !== '' ? $typeName : 'ลา') . ' ' . $range . attendanceFormatHourMinuteDuration($minutes);
         }
 
         if (!isset($requests[$workDate])) {
