@@ -4,6 +4,9 @@ const vm = require('vm');
 global.document = {
     addEventListener() {},
 };
+global.window = {
+    addEventListener() {},
+};
 
 vm.runInThisContext(fs.readFileSync('assets/js/utils.js', 'utf8'));
 vm.runInThisContext(fs.readFileSync('assets/js/attendance.js', 'utf8'));
@@ -116,7 +119,8 @@ const trainingEvent = buildAttendanceCalendarEvent({
     status_label: 'ปกติ',
     training_name: 'Safety Training',
 });
-assertSame('ปกติ', trainingEvent.title, 'Activity days should use the normal attendance title.');
+assertSame('ปกติ + Safety Training', trainingEvent.title, 'Activity days should keep the normal attendance title and append the approved activity.');
+assertIncludes(trainingEvent.title, 'Safety Training', 'Activity days should mention the approved activity in the calendar title.');
 assertSame('#bbf7d0', trainingEvent.backgroundColor, 'Activity days without scans should use the normal workday color.');
 assertIncludes(trainingEvent.classNames.join(' '), 'attendance-event-present', 'Activity events should receive the normal present class.');
 

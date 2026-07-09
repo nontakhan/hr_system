@@ -1202,9 +1202,19 @@ function attendanceCalendarEventTitle(row) {
     if (status === 'company_holiday') title = 'วันหยุดบริษัท';
     if (status === 'holiday') title = 'วันหยุดปกติ';
 
+    const supplements = [];
+    const trainingName = String(row.training_name || '').trim();
+    if (trainingName) {
+        supplements.push(trainingName);
+    }
+
     const hourly = attendanceHourlyRequestLabels(row);
     if (hourly.length) {
-        title += ` + ${hourly.map(label => label.replace('ไม่เกิน 1 ชม.', '').trim()).join(', ')}`;
+        supplements.push(...hourly.map(label => label.replace('ไม่เกิน 1 ชม.', '').trim()));
+    }
+
+    if (supplements.length) {
+        title += ` + ${supplements.join(', ')}`;
     }
     return title;
 }
