@@ -1595,6 +1595,10 @@ canvas#deptChart {
     margin: 2px 6px 0;
 }
 
+#attendanceCalendar .fc-event-title {
+    white-space: pre-line;
+}
+
 #attendanceCalendar .attendance-event-holiday {
     border-color: #e2e8f0 !important;
 }

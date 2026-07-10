@@ -77,8 +77,8 @@ const companyHolidayEvent = buildAttendanceCalendarEvent({
     status_label: 'วันหยุด',
     holiday_name: 'วันหยุดบริษัท',
 });
-assertSame('วันหยุดปกติ', regularHolidayEvent.title, 'Regular holiday calendar text should be explicit.');
-assertSame('วันหยุดบริษัท', companyHolidayEvent.title, 'Company holiday calendar text should be explicit.');
+assertSame('วันหยุดปกติ', regularHolidayEvent.title, 'Regular holiday calendar text should be explicit when no holiday detail is available.');
+assertSame('วันหยุดบริษัท\nวันหยุดบริษัท', companyHolidayEvent.title, 'Company holidays should show status and detail on separate calendar lines.');
 
 const incompleteCard = attendanceSummaryCard('สแกนไม่ครบ', 1, 'attendance-incomplete', 'fa-triangle-exclamation');
 const holidayCard = attendanceSummaryCard('วันหยุดปกติ', 1, 'attendance-holiday', 'fa-calendar-day');
@@ -119,7 +119,7 @@ const personalLeaveEvent = buildAttendanceCalendarEvent({
     status_label: 'ลา',
     leave_name: 'ลากิจ',
 });
-assertSame('ลากิจ', personalLeaveEvent.title, 'Full-day leave should use the leave type as the calendar title.');
+assertSame('ลา\nลากิจ', personalLeaveEvent.title, 'Full-day leave should show status and leave type on separate calendar lines.');
 assertIncludes(personalLeaveEvent.title, 'ลากิจ', 'Calendar event title should mention personal leave requests.');
 
 const trainingEvent = buildAttendanceCalendarEvent({
@@ -128,7 +128,7 @@ const trainingEvent = buildAttendanceCalendarEvent({
     status_label: 'ปกติ',
     training_name: 'Safety Training',
 });
-assertSame('ปกติ + Safety Training', trainingEvent.title, 'Activity days should keep the normal attendance title and append the approved activity.');
+assertSame('ปกติ\nSafety Training', trainingEvent.title, 'Activity days should show status and activity detail on separate calendar lines.');
 assertIncludes(trainingEvent.title, 'Safety Training', 'Activity days should mention the approved activity in the calendar title.');
 assertSame('#bbf7d0', trainingEvent.backgroundColor, 'Activity days without scans should use the normal workday color.');
 assertIncludes(trainingEvent.classNames.join(' '), 'attendance-event-present', 'Activity events should receive the normal present class.');
@@ -169,6 +169,7 @@ const hourlyRequestEvent = buildAttendanceCalendarEvent({
     status_label: 'ปกติ',
     hourly_requests: ['ขอมาสาย 35 นาที', 'OT หลังเลิกงาน 1 ชม. 30 นาที'],
 });
+assertSame('ปกติ\nขอมาสาย 35 นาที, OT หลังเลิกงาน 1 ชม. 30 นาที', hourlyRequestEvent.title, 'Hourly requests should show normal status and request details on separate calendar lines.');
 assertIncludes(hourlyRequestEvent.title, 'ขอมาสาย 35 นาที', 'Calendar event title should mention approved hourly requests.');
 assertIncludes(hourlyRequestEvent.title, 'OT หลังเลิกงาน 1 ชม. 30 นาที', 'Calendar event title should mention approved OT requests.');
 
@@ -188,7 +189,7 @@ const approvedLateRequestRow = {
     hourly_requests: ['ขอมาสาย 35 นาที'],
 };
 const approvedLateRequestEvent = buildAttendanceCalendarEvent(approvedLateRequestRow);
-assertSame('ปกติ + ขอมาสาย 35 นาที', approvedLateRequestEvent.title, 'Approved late requests should be presented as normal with the request label.');
+assertSame('ปกติ\nขอมาสาย 35 นาที', approvedLateRequestEvent.title, 'Approved late requests should show normal status and request detail on separate calendar lines.');
 assertSame('#bbf7d0', approvedLateRequestEvent.backgroundColor, 'Approved late requests should use the normal green calendar color.');
 assertIncludes(approvedLateRequestEvent.classNames.join(' '), 'attendance-event-present', 'Approved late requests should use the normal calendar class.');
 assertSame('late', approvedLateRequestEvent.extendedProps.row.status, 'Approved late requests should retain the raw late status for details.');

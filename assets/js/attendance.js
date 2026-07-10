@@ -1204,34 +1204,35 @@ function attendanceCalendarPresentationStatus(row) {
 function attendanceCalendarEventTitle(row) {
     const status = attendanceCalendarPresentationStatus(row);
     const leaveName = String(row.leave_name || '').trim();
-    if (row.status === 'leave' && leaveName) {
-        return leaveName;
+
+    let statusTitle = row.status_label || '-';
+    if (status === 'company_holiday') statusTitle = 'วันหยุดบริษัท';
+    if (status === 'holiday') statusTitle = 'วันหยุดปกติ';
+    if (status === 'present' && row.status === 'late') statusTitle = 'ปกติ';
+
+    const details = [];
+    const holidayName = String(row.holiday_name || '').trim();
+    if (holidayName) {
+        details.push(holidayName);
     }
-
-    let title = row.status_label || '-';
-    if (status === 'company_holiday') title = 'วันหยุดบริษัท';
-    if (status === 'holiday') title = 'วันหยุดปกติ';
-    if (status === 'present' && row.status === 'late') title = 'ปกติ';
-
-    const supplements = [];
     if (leaveName) {
-        supplements.push(leaveName);
+        details.push(leaveName);
     }
 
     const trainingName = String(row.training_name || '').trim();
     if (trainingName) {
-        supplements.push(trainingName);
+        details.push(trainingName);
     }
 
     const hourly = attendanceHourlyRequestLabels(row);
     if (hourly.length) {
-        supplements.push(...hourly.map(label => label.replace('ไม่เกิน 1 ชม.', '').trim()));
+        details.push(...hourly.map(label => label.replace('ไม่เกิน 1 ชม.', '').trim()));
     }
 
-    if (supplements.length) {
-        title += ` + ${supplements.join(', ')}`;
+    if (details.length) {
+        return `${statusTitle}\n${details.join(', ')}`;
     }
-    return title;
+    return statusTitle;
 }
 
 function attendanceCalendarStatusColor(status) {
