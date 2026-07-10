@@ -437,6 +437,22 @@ $approvedLeave = attendanceEvaluateStatus(
 assertSameValue('leave', $approvedLeave['status'], 'Approved leave should be shown instead of absent.');
 assertSameValue('Annual leave', $approvedLeave['leave_name'], 'Approved leave type should be returned for reports.');
 
+$fullDayHourlyLeave = attendanceEvaluateStatus(
+    '2026-01-08',
+    '07:44:00',
+    '17:54:00',
+    [
+        'start_time' => '08:00:00',
+        'end_time' => '17:00:00',
+        'late_tolerance_mins' => 15,
+        'work_days' => 'Mon,Tue,Wed,Thu,Fri',
+    ],
+    [],
+    ['2026-01-08' => 'ลากิจ']
+);
+assertSameValue('leave', $fullDayHourlyLeave['status'], 'Hourly leave calculated as a full day should override complete scan data.');
+assertSameValue('ลากิจ', $fullDayHourlyLeave['leave_name'], 'Full-day hourly leave should retain its leave type for the calendar.');
+
 $approvedTraining = attendanceEvaluateStatus(
     '2026-01-12',
     null,
