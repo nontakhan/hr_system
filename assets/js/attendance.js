@@ -363,6 +363,7 @@ function buildAttendanceAdjustmentEmployeeRowHtml(row) {
 function initAttendanceAdjustments() {
     if (typeof $ !== 'undefined' && $.fn.select2) {
         $('.attendance-select2').select2({ width: '100%', allowClear: true });
+        initAttendanceSingleEmployeeSelect();
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -402,6 +403,50 @@ function initAttendanceAdjustments() {
     }
 
     loadAttendanceAdjustmentFilterOptions();
+}
+
+function initAttendanceSingleEmployeeSelect() {
+    const select = document.getElementById('attendanceSingleEmployee');
+    if (!select || typeof $ === 'undefined' || !$.fn.select2) return;
+
+    const $select = $(select);
+    if ($select.hasClass('select2-hidden-accessible')) {
+        $select.select2('destroy');
+    }
+
+    $select.select2({
+        width: '100%',
+        allowClear: true,
+        placeholder: select.dataset.placeholder || '',
+        ajax: {
+            url: 'api/attendance_api.php',
+            dataType: 'json',
+            delay: 200,
+            data(params) {
+                return {
+                    action: 'adjustment_employees',
+                    work_date: document.getElementById('attendanceSingleDate')?.value || new Date().toISOString().slice(0, 10),
+                    search: params.term || '',
+                };
+            },
+            processResults: processAttendanceSingleEmployeeResults,
+            cache: true,
+        },
+    });
+}
+
+function processAttendanceSingleEmployeeResults(response) {
+    const rows = response && response.status === 'success' ? (response.data || []) : [];
+    return {
+        results: rows.map(row => {
+            const fullName = `${row.first_name_th || ''} ${row.last_name_th || ''}`.trim() || '-';
+            const citizenId = row.citizen_id ? ` (${row.citizen_id})` : '';
+            return {
+                id: row.employee_id,
+                text: `${fullName}${citizenId}`,
+            };
+        }),
+    };
 }
 
 function bindAttendanceAdjustmentFilterChange(id, handler) {
