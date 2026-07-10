@@ -119,7 +119,7 @@ const personalLeaveEvent = buildAttendanceCalendarEvent({
     status_label: 'ลา',
     leave_name: 'ลากิจ',
 });
-assertSame('ลา + ลากิจ', personalLeaveEvent.title, 'Leave days should append the leave type in the calendar title.');
+assertSame('ลากิจ', personalLeaveEvent.title, 'Full-day leave should use the leave type as the calendar title.');
 assertIncludes(personalLeaveEvent.title, 'ลากิจ', 'Calendar event title should mention personal leave requests.');
 
 const trainingEvent = buildAttendanceCalendarEvent({
@@ -171,6 +171,34 @@ const hourlyRequestEvent = buildAttendanceCalendarEvent({
 });
 assertIncludes(hourlyRequestEvent.title, 'ขอมาสาย 35 นาที', 'Calendar event title should mention approved hourly requests.');
 assertIncludes(hourlyRequestEvent.title, 'OT หลังเลิกงาน 1 ชม. 30 นาที', 'Calendar event title should mention approved OT requests.');
+
+const lateWithoutRequestEvent = buildAttendanceCalendarEvent({
+    work_date: '2026-01-09',
+    status: 'late',
+    status_label: 'สาย',
+    hourly_requests: [],
+});
+assertSame('สาย', lateWithoutRequestEvent.title, 'Late attendance without an approved late request should stay late.');
+assertSame('#fed7aa', lateWithoutRequestEvent.backgroundColor, 'Late attendance without an approved late request should stay orange.');
+
+const approvedLateRequestRow = {
+    work_date: '2026-01-10',
+    status: 'late',
+    status_label: 'สาย',
+    hourly_requests: ['ขอมาสาย 35 นาที'],
+};
+const approvedLateRequestEvent = buildAttendanceCalendarEvent(approvedLateRequestRow);
+assertSame('ปกติ + ขอมาสาย 35 นาที', approvedLateRequestEvent.title, 'Approved late requests should be presented as normal with the request label.');
+assertSame('#bbf7d0', approvedLateRequestEvent.backgroundColor, 'Approved late requests should use the normal green calendar color.');
+assertIncludes(approvedLateRequestEvent.classNames.join(' '), 'attendance-event-present', 'Approved late requests should use the normal calendar class.');
+assertSame('late', approvedLateRequestEvent.extendedProps.row.status, 'Approved late requests should retain the raw late status for details.');
+
+const lateRequestCounts = countAttendanceReportStatuses([
+    { status: 'late', hourly_requests: [] },
+    approvedLateRequestRow,
+]);
+assertSame(1, lateRequestCounts.late, 'Only late attendance without an approved late request should count as late.');
+assertSame(1, lateRequestCounts.present, 'Approved late requests should count as normal attendance.');
 
 const hourlyRequestDetails = buildAttendanceCalendarDetails({
     work_date: '2026-01-08',

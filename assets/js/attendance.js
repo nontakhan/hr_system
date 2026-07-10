@@ -1024,7 +1024,9 @@ function countAttendanceReportStatuses(rows) {
     const counts = { present: 0, late: 0, absent: 0, missing_in: 0, missing_out: 0, holiday: 0, regular_holiday: 0, company_holiday: 0, leave: 0, training: 0 };
 
     rows.forEach(row => {
-        counts[row.status] = (counts[row.status] || 0) + 1;
+        const presentationStatus = attendanceCalendarPresentationStatus(row);
+        const countStatus = row.status === 'late' ? presentationStatus : row.status;
+        counts[countStatus] = (counts[countStatus] || 0) + 1;
         if (row.training_name && row.status !== 'training') {
             counts.training += 1;
         }
@@ -1193,17 +1195,25 @@ function attendanceCalendarPresentationStatus(row) {
     if (row.status === 'holiday' && String(row.holiday_name || '').trim()) {
         return 'company_holiday';
     }
+    if (row.status === 'late' && attendanceHourlyRequestLabels(row).some(label => label.startsWith('ขอมาสาย'))) {
+        return 'present';
+    }
     return row.status || 'unknown';
 }
 
 function attendanceCalendarEventTitle(row) {
     const status = attendanceCalendarPresentationStatus(row);
+    const leaveName = String(row.leave_name || '').trim();
+    if (row.status === 'leave' && leaveName) {
+        return leaveName;
+    }
+
     let title = row.status_label || '-';
     if (status === 'company_holiday') title = 'วันหยุดบริษัท';
     if (status === 'holiday') title = 'วันหยุดปกติ';
+    if (status === 'present' && row.status === 'late') title = 'ปกติ';
 
     const supplements = [];
-    const leaveName = String(row.leave_name || '').trim();
     if (leaveName) {
         supplements.push(leaveName);
     }
