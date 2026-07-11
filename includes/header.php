@@ -131,8 +131,12 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 'company_holidays.php',
                 'manage_master_data.php',
             ];
+            $reportCenterPages = [
+                'attendance_missing_report.php',
+            ];
             $requestCenterActive = isAnyActive($requestCenterPages);
             $approvalCenterActive = isAnyActive($approvalCenterPages);
+            $reportCenterActive = isAnyActive($reportCenterPages);
             $peopleAdminActive = isAnyActive($peopleAdminPages);
             ?>
             
@@ -214,6 +218,16 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             <?php endif; ?>
 
             <?php if (in_array($_SESSION['role'], ['admin', 'hr'])) : ?>
+            <div class="sidebar-section-label">รายงาน</div>
+            <a href="#reportCenterSubmenu" data-bs-toggle="collapse" aria-expanded="<?php echo $reportCenterActive ? 'true' : 'false'; ?>" class="list-group-item list-group-item-action bg-transparent dropdown-toggle <?php echo $reportCenterActive ? 'active' : ''; ?>">
+                <i class="fas fa-chart-column me-2"></i> รายงาน
+            </a>
+            <div class="collapse sidebar-submenu <?php echo $reportCenterActive ? 'show' : ''; ?>" id="reportCenterSubmenu" data-bs-parent="#sidebarMenu">
+                <a href="attendance_missing_report.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('attendance_missing_report.php'); ?>">
+                    <small><i class="fas fa-triangle-exclamation me-2"></i> ไม่สแกนเข้า/ออก</small>
+                </a>
+            </div>
+
             <div class="sidebar-section-label">บริหารบุคลากร</div>
             <a href="#peopleAdminSubmenu" data-bs-toggle="collapse" aria-expanded="<?php echo $peopleAdminActive ? 'true' : 'false'; ?>" class="list-group-item list-group-item-action bg-transparent dropdown-toggle <?php echo $peopleAdminActive ? 'active' : ''; ?>">
                 <i class="fas fa-people-group me-2"></i> งาน HR/Admin

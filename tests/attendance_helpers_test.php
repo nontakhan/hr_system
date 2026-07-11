@@ -236,6 +236,29 @@ $absent = attendanceEvaluateStatus(
 );
 assertSameValue('absent', $absent['status'], 'A workday with no scans should be absent.');
 
+$missingScanRows = attendanceFilterMissingScanReportRows([
+    ['status' => 'absent', 'employee_id' => 1],
+    ['status' => 'missing_in', 'employee_id' => 2],
+    ['status' => 'missing_out', 'employee_id' => 3],
+    ['status' => 'present', 'employee_id' => 4],
+], 'all');
+assertSameValue(3, count($missingScanRows), 'Missing scan report should include absent, missing-in, and missing-out rows.');
+assertSameValue('absent', $missingScanRows[0]['missing_type'], 'Absent rows should be classified as missing scan rows.');
+
+$missingInOnlyRows = attendanceFilterMissingScanReportRows([
+    ['status' => 'absent', 'employee_id' => 1],
+    ['status' => 'missing_in', 'employee_id' => 2],
+    ['status' => 'missing_out', 'employee_id' => 3],
+], 'missing_in');
+assertSameValue(1, count($missingInOnlyRows), 'Missing-in filter should only return missing-in rows.');
+assertSameValue(2, $missingInOnlyRows[0]['employee_id'], 'Missing-in filter should keep the matching employee row.');
+
+$missingScanCounts = attendanceCountMissingScanRows($missingScanRows);
+assertSameValue(1, $missingScanCounts['absent'], 'Missing scan counts should include no-scan days.');
+assertSameValue(1, $missingScanCounts['missing_in'], 'Missing scan counts should include missing check-in days.');
+assertSameValue(1, $missingScanCounts['missing_out'], 'Missing scan counts should include missing check-out days.');
+assertSameValue(3, $missingScanCounts['total'], 'Missing scan counts should include the total.');
+
 $leaveMap = attendanceBuildApprovedLeaveMap([
     [
         'start_date' => '2026-01-05',

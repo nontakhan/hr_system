@@ -654,6 +654,48 @@ function attendanceEvaluateStatus($workDate, $checkIn, $checkOut, array $shift, 
     return ['status' => 'present', 'label' => 'ปกติ', 'is_late' => false, 'holiday_name' => null, 'leave_name' => null, 'training_name' => null];
 }
 
+function attendanceMissingScanStatuses() {
+    return ['absent', 'missing_in', 'missing_out'];
+}
+
+function attendanceNormalizeMissingScanType($type) {
+    $type = trim((string)$type);
+    return in_array($type, attendanceMissingScanStatuses(), true) ? $type : 'all';
+}
+
+function attendanceFilterMissingScanReportRows(array $rows, $type = 'all') {
+    $type = attendanceNormalizeMissingScanType($type);
+    $statuses = attendanceMissingScanStatuses();
+    $filtered = [];
+
+    foreach ($rows as $row) {
+        $status = (string)($row['status'] ?? '');
+        if (!in_array($status, $statuses, true)) {
+            continue;
+        }
+        if ($type !== 'all' && $status !== $type) {
+            continue;
+        }
+        $row['missing_type'] = $status;
+        $filtered[] = $row;
+    }
+
+    return $filtered;
+}
+
+function attendanceCountMissingScanRows(array $rows) {
+    $counts = ['absent' => 0, 'missing_in' => 0, 'missing_out' => 0, 'total' => 0];
+    foreach ($rows as $row) {
+        $status = (string)($row['missing_type'] ?? $row['status'] ?? '');
+        if (!array_key_exists($status, $counts)) {
+            continue;
+        }
+        $counts[$status]++;
+        $counts['total']++;
+    }
+    return $counts;
+}
+
 function attendanceReadCsvRows($filePath) {
     $rows = [];
     $handle = fopen($filePath, 'r');

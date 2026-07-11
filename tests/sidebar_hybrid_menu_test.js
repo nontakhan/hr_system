@@ -28,6 +28,7 @@ assertInOrder(header, [
     'sidebar-section-label">ของฉัน',
     'sidebar-section-label">ศูนย์คำขอ',
     'sidebar-section-label">อนุมัติคำขอ',
+    'sidebar-section-label">รายงาน',
     'sidebar-section-label">บริหารบุคลากร',
 ], 'Sidebar should present the new hybrid menu sections in the approved order.');
 
@@ -48,6 +49,10 @@ assertIncludes(header, 'href="late_early_approvals.php"', 'Approval center shoul
 assertIncludes(header, 'href="overtime_approvals.php"', 'Approval center should link to overtime approvals.');
 assertIncludes(header, 'href="day_swap_approvals.php"', 'Approval center should link to day-swap approvals.');
 assertIncludes(header, 'href="training_approvals.php"', 'Approval center should link to training approvals.');
+assertIncludes(header, 'href="#reportCenterSubmenu"', 'Reports should be grouped under a dedicated report submenu.');
+assertIncludes(header, 'id="reportCenterSubmenu"', 'Report submenu should have a stable collapse id.');
+assertIncludes(header, 'href="attendance_missing_report.php"', 'Report submenu should link to the missing scan report.');
+assertIncludes(header, "isActive('attendance_missing_report.php')", 'Report submenu should stay active on the missing scan report.');
 
 assertIncludes(header, "$approvalBadgeCounts['total']", 'Approval center should show the total pending approval badge.');
 assertIncludes(header, "$approvalBadgeCounts['leave']", 'Leave approval submenu item should keep its badge.');

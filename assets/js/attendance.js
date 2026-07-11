@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adjustmentPage) {
         initAttendanceAdjustments();
     }
+
+    const missingReportPage = document.getElementById('attendanceMissingReportPage');
+    if (missingReportPage) {
+        initAttendanceMissingReport();
+    }
 });
 
 let attendanceCalendar = null;
@@ -24,6 +29,8 @@ let attendanceAdjustmentRows = [];
 let attendanceAdjustmentDataTable = null;
 let attendanceAdjustmentFilterOptions = { companies: [], branches: [], positions: [] };
 let attendanceAdjustmentSelectedEmployeeIds = new Set();
+let attendanceMissingRows = [];
+let attendanceMissingDataTable = null;
 
 async function handleAttendanceImport(e) {
     e.preventDefault();
@@ -403,6 +410,179 @@ function initAttendanceAdjustments() {
     }
 
     loadAttendanceAdjustmentFilterOptions();
+}
+
+function initAttendanceMissingReport() {
+    const month = document.getElementById('attendanceMissingMonth');
+    const loadBtn = document.getElementById('attendanceMissingLoadBtn');
+    if (month && !month.value) {
+        month.value = getAttendanceCurrentMonth();
+    }
+    initializeAttendanceSelect2();
+
+    const company = document.getElementById('attendanceMissingCompany');
+    const branch = document.getElementById('attendanceMissingBranch');
+    if (company) {
+        company.addEventListener('change', () => {
+            updateAttendanceMissingBranchOptions();
+            loadAttendanceMissingReport();
+        });
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(company)
+                .off('select2:select.attendanceMissing select2:clear.attendanceMissing')
+                .on('select2:select.attendanceMissing select2:clear.attendanceMissing', () => {
+                    updateAttendanceMissingBranchOptions();
+                    loadAttendanceMissingReport();
+                });
+        }
+    }
+    if (branch) {
+        branch.addEventListener('change', loadAttendanceMissingReport);
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(branch)
+                .off('select2:select.attendanceMissing select2:clear.attendanceMissing')
+                .on('select2:select.attendanceMissing select2:clear.attendanceMissing', loadAttendanceMissingReport);
+        }
+    }
+
+    document.getElementById('attendanceMissingType')?.addEventListener('change', loadAttendanceMissingReport);
+    if (month) month.addEventListener('change', loadAttendanceMissingReport);
+    if (loadBtn) loadBtn.addEventListener('click', loadAttendanceMissingReport);
+
+    loadAttendanceMissingFilterOptions();
+}
+
+async function loadAttendanceMissingFilterOptions() {
+    try {
+        const response = await fetch('api/attendance_api.php?action=adjustment_filter_options');
+        const res = await response.json();
+        if (res.status !== 'success') return;
+
+        attendanceAdjustmentFilterOptions = {
+            companies: res.data?.companies || [],
+            branches: res.data?.branches || [],
+            positions: res.data?.positions || [],
+        };
+        fillAttendanceAdjustmentSelect('attendanceMissingCompany', attendanceAdjustmentFilterOptions.companies, 'บริษัททั้งหมด');
+        fillAttendanceAdjustmentSelect('attendanceMissingBranch', attendanceAdjustmentFilterOptions.branches, 'สาขาทั้งหมด');
+        updateAttendanceMissingBranchOptions();
+        loadAttendanceMissingReport();
+    } catch (err) {
+        console.warn(err);
+    }
+}
+
+function updateAttendanceMissingBranchOptions() {
+    const companyId = document.getElementById('attendanceMissingCompany')?.value || '';
+    const branchSelect = document.getElementById('attendanceMissingBranch');
+    fillAttendanceAdjustmentSelect(
+        'attendanceMissingBranch',
+        companyId ? buildAttendanceBranchOptionsForCompany(attendanceAdjustmentFilterOptions.branches, companyId) : attendanceAdjustmentFilterOptions.branches,
+        companyId ? 'สาขาทั้งหมดในบริษัท' : 'สาขาทั้งหมด'
+    );
+    if (branchSelect) {
+        refreshAttendanceAdjustmentSelect2(branchSelect);
+    }
+}
+
+async function loadAttendanceMissingReport() {
+    const rowsEl = document.getElementById('attendanceMissingRows');
+    const month = document.getElementById('attendanceMissingMonth')?.value || '';
+    if (!rowsEl || !month) return;
+
+    const params = new URLSearchParams({
+        action: 'missing_scan_report',
+        month,
+        company_id: document.getElementById('attendanceMissingCompany')?.value || '',
+        branch_id: document.getElementById('attendanceMissingBranch')?.value || '',
+        missing_type: document.getElementById('attendanceMissingType')?.value || 'all',
+    });
+
+    resetAttendanceMissingDataTable();
+    rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
+    try {
+        const response = await fetch(`api/attendance_api.php?${params.toString()}`);
+        const responseText = await response.text();
+        if (!responseText.trim()) {
+            throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับ กรุณาลองใหม่อีกครั้ง');
+        }
+        const res = JSON.parse(responseText);
+        if (res.status !== 'success') {
+            throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
+        }
+        attendanceMissingRows = res.data || [];
+        renderAttendanceMissingSummary(res.summary || {});
+        renderAttendanceMissingRows(attendanceMissingRows);
+    } catch (err) {
+        rowsEl.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function renderAttendanceMissingSummary(summary) {
+    const target = document.getElementById('attendanceMissingSummary');
+    if (!target) return;
+    target.innerHTML = [
+        attendanceSummaryCard('ทั้งหมด', summary.total || 0, 'attendance-incomplete', 'fa-triangle-exclamation'),
+        attendanceSummaryCard('ไม่มีสแกนเข้า/ออก', summary.absent || 0, 'danger', 'fa-circle-xmark'),
+        attendanceSummaryCard('ไม่สแกนเข้า', summary.missing_in || 0, 'warning', 'fa-right-to-bracket'),
+        attendanceSummaryCard('ไม่สแกนออก', summary.missing_out || 0, 'warning', 'fa-right-from-bracket'),
+    ].join('');
+}
+
+function renderAttendanceMissingRows(rows) {
+    const rowsEl = document.getElementById('attendanceMissingRows');
+    if (!rowsEl) return;
+    resetAttendanceMissingDataTable();
+    if (!rows.length) {
+        rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ไม่พบข้อมูลไม่สแกนในเงื่อนไขนี้</td></tr>';
+        return;
+    }
+    rowsEl.innerHTML = rows.map(buildAttendanceMissingRowHtml).join('');
+    const table = typeof $ !== 'undefined' ? $('#attendanceMissingTable') : null;
+    if (rows.length > 10 && table && table.length && $.fn.DataTable) {
+        attendanceMissingDataTable = table.DataTable({
+            pageLength: 25,
+            order: [[0, 'asc'], [1, 'asc']],
+            language: { search: 'ค้นหา:', lengthMenu: 'แสดง _MENU_ รายการ', info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ' },
+        });
+    }
+}
+
+function buildAttendanceMissingRowHtml(row) {
+    return `
+        <tr>
+            <td>${escapeHtml(formatThaiDate(row.work_date))}</td>
+            <td>
+                <div class="fw-semibold">${escapeHtml(row.full_name || '-')}</div>
+                <div class="small text-muted">${escapeHtml(row.citizen_id || '')}</div>
+            </td>
+            <td>${escapeHtml(row.position_name_th || '-')}</td>
+            <td>${escapeHtml(row.company_name_th || '-')}</td>
+            <td>${escapeHtml(row.branch_name_th || '-')}</td>
+            <td>${escapeHtml(formatAttendanceTime(row.check_in))}</td>
+            <td>${escapeHtml(formatAttendanceTime(row.check_out))}</td>
+            <td>${attendanceStatusBadge(row.status, missingScanLabel(row.status))}</td>
+        </tr>
+    `;
+}
+
+function missingScanLabel(status) {
+    const labels = {
+        absent: 'ไม่มีสแกนเข้า/ออก',
+        missing_in: 'ไม่สแกนเข้า',
+        missing_out: 'ไม่สแกนออก',
+    };
+    return labels[status] || '-';
+}
+
+function resetAttendanceMissingDataTable() {
+    const table = document.getElementById('attendanceMissingTable');
+    if (attendanceMissingDataTable) {
+        attendanceMissingDataTable.destroy();
+        attendanceMissingDataTable = null;
+    } else if (window.jQuery && table && $.fn.DataTable.isDataTable(table)) {
+        $(table).DataTable().destroy();
+    }
 }
 
 function initAttendanceSingleEmployeeSelect() {
