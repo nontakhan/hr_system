@@ -277,4 +277,40 @@ try {
     assertLeaveSame(true, strpos($e->getMessage(), 'minutes') !== false, 'Hourly request validation should mention minutes.');
 }
 
+$crossMonthRows = leaveExpandApprovedRequestForMonth([
+    'id' => 71,
+    'employee_id' => 9,
+    'start_date' => '2026-07-30',
+    'end_date' => '2026-08-05',
+    'start_day_part' => 'afternoon',
+    'end_day_part' => 'morning',
+    'reason' => 'family errand',
+], '2026-08', 'Mon,Tue,Wed,Thu,Fri', ['2026-08-05' => 'company holiday']);
+assertLeaveSame(2, count($crossMonthRows), 'Cross-month leave should emit only counted dates inside the selected month.');
+assertLeaveSame('2026-08-03', $crossMonthRows[0]['leave_date'], 'The first in-month counted date should be emitted.');
+assertLeaveSame(1.0, $crossMonthRows[0]['leave_days'], 'A clipped interior date should remain a full day.');
+assertLeaveSame('2026-08-04', $crossMonthRows[1]['leave_date'], 'The second in-month counted date should be emitted.');
+assertLeaveSame('2026-07-30', $crossMonthRows[0]['start_date'], 'The original request range should survive expansion.');
+assertLeaveSame('family errand', $crossMonthRows[0]['reason'], 'The request reason should survive expansion.');
+
+$halfDayRows = leaveExpandApprovedRequestForMonth([
+    'id' => 72,
+    'employee_id' => 10,
+    'start_date' => '2026-07-16',
+    'end_date' => '2026-07-16',
+    'start_day_part' => 'afternoon',
+    'end_day_part' => 'afternoon',
+], '2026-07', 'Mon,Tue,Wed,Thu,Fri', []);
+assertLeaveSame(0.5, $halfDayRows[0]['leave_days'], 'Half-day leave should contribute half a day.');
+assertLeaveSame('afternoon', $halfDayRows[0]['day_part'], 'Half-day expansion should preserve its part.');
+
+$leaveReportSummary = leaveCountApprovedReportRows([
+    ['employee_id' => 9, 'leave_days' => 1.0],
+    ['employee_id' => 9, 'leave_days' => 0.5],
+    ['employee_id' => 10, 'leave_days' => 1.0],
+]);
+assertLeaveSame(3, $leaveReportSummary['total_rows'], 'Summary should count expanded rows.');
+assertLeaveSame(2.5, $leaveReportSummary['total_days'], 'Summary should sum full and half days.');
+assertLeaveSame(2, $leaveReportSummary['employee_count'], 'Summary should count distinct employees.');
+
 echo "leave_helpers_test passed" . PHP_EOL;

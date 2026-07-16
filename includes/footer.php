@@ -24,6 +24,7 @@
 <script src="assets/js/master_data.js"></script>
 <script src="assets/js/employee.js"></script>
 <script src="assets/js/leave.js"></script>
+<script src="assets/js/leave_report.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/leave_report.js'); ?>"></script>
 <script src="assets/js/leave_request.js"></script>
 <script src="assets/js/late_early_request.js"></script>
 <script src="assets/js/my_leaves.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/my_leaves.js'); ?>"></script>

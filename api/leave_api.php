@@ -13,6 +13,7 @@ try {
     if (session_status() == PHP_SESSION_NONE) session_start();
     require_once '../includes/db_connect.php';
     require_once '../includes/leave_helpers.php';
+    require_once '../includes/hr_scope_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -24,6 +25,42 @@ try {
     // --- GET: ดึงข้อมูล ---
     if ($method === 'GET') {
         $action = $_GET['action'] ?? '';
+        $role = $_SESSION['role'] ?? 'employee';
+
+        if (in_array($action, ['approved_leave_report', 'approved_leave_report_filters'], true)) {
+            if (!in_array($role, ['admin', 'hr'], true)) {
+                sendJsonError('Access Denied');
+            }
+
+            if ($action === 'approved_leave_report_filters') {
+                echo json_encode(['status' => 'success', 'data' => fetchApprovedLeaveReportFilters($mysqli, $role)]);
+                exit();
+            }
+
+            $month = $_GET['month'] ?? date('Y-m');
+            if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+                sendJsonError('Invalid month');
+            }
+            foreach (['company_id', 'branch_id', 'leave_type_id'] as $filterKey) {
+                if (isset($_GET[$filterKey]) && $_GET[$filterKey] !== '' && (!ctype_digit((string)$_GET[$filterKey]) || (int)$_GET[$filterKey] <= 0)) {
+                    sendJsonError('Invalid filter');
+                }
+            }
+
+            $rows = fetchApprovedLeaveReportRows($mysqli, $role, [
+                'month' => $month,
+                'company_id' => (int)($_GET['company_id'] ?? 0),
+                'branch_id' => (int)($_GET['branch_id'] ?? 0),
+                'leave_type_id' => (int)($_GET['leave_type_id'] ?? 0),
+            ]);
+            echo json_encode([
+                'status' => 'success',
+                'month' => $month,
+                'summary' => leaveCountApprovedReportRows($rows),
+                'data' => $rows,
+            ]);
+            exit();
+        }
         
         if ($action === 'get_types') {
             leaveEnsureHourlyRequestTypes($mysqli);
@@ -173,3 +210,140 @@ try {
 }
 
 $mysqli->close();
+
+function fetchApprovedLeaveReportFilters(mysqli $mysqli, $role) {
+    $sql = "SELECT e.company_id, c.company_name_th, e.branch_id, b.branch_name_th
+            FROM employees e
+            LEFT JOIN companies c ON e.company_id = c.id
+            LEFT JOIN branches b ON e.branch_id = b.id
+            WHERE e.status IN ('active', 'probation')";
+    $types = '';
+    $params = [];
+    if ($role === 'hr') {
+        $scope = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+        $sql .= $scope['sql'];
+        $types .= $scope['types'];
+        $params = array_merge($params, $scope['params']);
+    }
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+
+    $companies = [];
+    $branches = [];
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        if (!empty($row['company_id'])) {
+            $companies[(int)$row['company_id']] = $row['company_name_th'] ?: '-';
+        }
+        if (!empty($row['branch_id'])) {
+            $branches[(int)$row['branch_id']] = [
+                'label' => $row['branch_name_th'] ?: '-',
+                'company_id' => (int)$row['company_id'],
+            ];
+        }
+    }
+    $stmt->close();
+
+    $leaveTypes = [];
+    $result = $mysqli->query("SELECT id, type_name FROM leave_types WHERE is_actual_leave = 1 ORDER BY type_name");
+    while ($row = $result->fetch_assoc()) {
+        $leaveTypes[] = ['id' => (int)$row['id'], 'label' => $row['type_name']];
+    }
+
+    return [
+        'companies' => leaveReportBuildOptionRows($companies),
+        'branches' => leaveReportBuildOptionRows($branches),
+        'leave_types' => $leaveTypes,
+    ];
+}
+
+function leaveReportBuildOptionRows(array $items) {
+    $rows = [];
+    foreach ($items as $id => $label) {
+        $row = ['id' => (int)$id];
+        if (is_array($label)) {
+            $row['label'] = $label['label'];
+            $row['company_id'] = (int)$label['company_id'];
+        } else {
+            $row['label'] = $label;
+        }
+        $rows[] = $row;
+    }
+    usort($rows, function ($a, $b) {
+        return strnatcasecmp((string)$a['label'], (string)$b['label']);
+    });
+    return $rows;
+}
+
+function fetchApprovedLeaveReportRows(mysqli $mysqli, $role, array $filters) {
+    $month = $filters['month'];
+    $monthStart = $month . '-01';
+    $monthEnd = date('Y-m-t', strtotime($monthStart));
+    $sql = "SELECT lr.id, lr.employee_id, lr.start_date, lr.end_date,
+                   lr.start_day_part, lr.end_day_part, lr.reason,
+                   e.citizen_id, CONCAT(e.first_name_th, ' ', e.last_name_th) AS full_name,
+                   e.company_id, e.branch_id,
+                   p.position_name_th, c.company_name_th, b.branch_name_th,
+                   lt.id AS leave_type_id, lt.type_name AS leave_type_name
+            FROM leave_requests lr
+            JOIN employees e ON lr.employee_id = e.id
+            JOIN leave_types lt ON lr.leave_type_id = lt.id
+            LEFT JOIN positions p ON e.position_id = p.id
+            LEFT JOIN companies c ON e.company_id = c.id
+            LEFT JOIN branches b ON e.branch_id = b.id
+            WHERE lr.status = 'approved'
+              AND lt.is_actual_leave = 1
+              AND (lr.request_unit = 'day' OR (lr.request_unit = 'hour' AND lr.time_request_type IS NULL))
+              AND lr.start_date <= ?
+              AND lr.end_date >= ?
+              AND e.status IN ('active', 'probation')";
+    $types = 'ss';
+    $params = [$monthEnd, $monthStart];
+
+    foreach (['company_id' => 'e.company_id', 'branch_id' => 'e.branch_id', 'leave_type_id' => 'lt.id'] as $key => $column) {
+        $id = (int)($filters[$key] ?? 0);
+        if ($id > 0) {
+            $sql .= " AND {$column} = ?";
+            $types .= 'i';
+            $params[] = $id;
+        }
+    }
+    if ($role === 'hr') {
+        $scope = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+        $sql .= $scope['sql'];
+        $types .= $scope['types'];
+        $params = array_merge($params, $scope['params']);
+    }
+    $sql .= ' ORDER BY lr.start_date, e.first_name_th, e.last_name_th, lr.id';
+
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+    $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $holidays = leaveFetchCompanyHolidays($mysqli, $monthStart, $monthEnd);
+    $workDaysByEmployee = [];
+    $rows = [];
+    foreach ($requests as $request) {
+        $employeeId = (int)$request['employee_id'];
+        if (!array_key_exists($employeeId, $workDaysByEmployee)) {
+            $workDaysByEmployee[$employeeId] = leaveFetchEmployeeWorkDays($mysqli, $employeeId);
+        }
+        $request['id'] = (int)$request['id'];
+        $request['employee_id'] = $employeeId;
+        $request['company_id'] = isset($request['company_id']) ? (int)$request['company_id'] : null;
+        $request['branch_id'] = isset($request['branch_id']) ? (int)$request['branch_id'] : null;
+        $request['leave_type_id'] = (int)$request['leave_type_id'];
+        $rows = array_merge($rows, leaveExpandApprovedRequestForMonth(
+            $request,
+            $month,
+            $workDaysByEmployee[$employeeId],
+            $holidays
+        ));
+    }
+    usort($rows, function ($a, $b) {
+        return [$a['leave_date'], $a['full_name'], $a['id']] <=> [$b['leave_date'], $b['full_name'], $b['id']];
+    });
+    return $rows;
+}
