@@ -57,10 +57,17 @@ require_once 'includes/header.php';
 
     <div class="card shadow-sm border-0">
         <div class="card-body">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                <div class="text-muted">เลือกแล้ว <strong id="attendanceLateEarlyWarningSelectedCount">0</strong> รายการ</div>
+                <button type="button" id="attendanceLateEarlyWarningBulkBtn" class="btn btn-primary" disabled>
+                    <i class="fas fa-triangle-exclamation me-1"></i> เพิ่มใบเตือน
+                </button>
+            </div>
             <div class="table-responsive">
                 <table id="attendanceLateEarlyTable" class="table table-sm table-hover align-middle w-100">
                     <thead>
                         <tr>
+                            <th class="text-center" style="width: 44px;"><input type="checkbox" class="form-check-input" id="attendanceLateEarlyWarningSelectAll" aria-label="เลือกเหตุการณ์ทั้งหมด"></th>
                             <th>วันที่</th>
                             <th>พนักงาน</th>
                             <th>ตำแหน่ง</th>
@@ -76,7 +83,7 @@ require_once 'includes/header.php';
                         </tr>
                     </thead>
                     <tbody id="attendanceLateEarlyRows">
-                        <tr><td colspan="12" class="text-center text-muted py-4">เลือกเดือนแล้วแสดงรายงาน</td></tr>
+                        <tr><td colspan="13" class="text-center text-muted py-4">เลือกเดือนแล้วแสดงรายงาน</td></tr>
                     </tbody>
                 </table>
             </div>

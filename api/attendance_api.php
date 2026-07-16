@@ -21,6 +21,7 @@ try {
     require_once '../includes/hr_scope_helpers.php';
     require_once '../includes/employee_shift_assignment_helpers.php';
     require_once '../includes/training_request_helpers.php';
+    require_once '../includes/employee_warning_helpers.php';
 
     if (!isset($_SESSION['user_id'])) sendJsonError('Login Required');
 
@@ -100,6 +101,16 @@ try {
             $missingType = attendanceNormalizeMissingScanType($_GET['missing_type'] ?? 'all');
             $employees = fetchAttendanceMissingScanEmployees($mysqli, $role, $_GET);
             $rows = buildAttendanceMissingScanReport($mysqli, $employees, $month, $missingType);
+            employeeWarningEnsureTables($mysqli);
+            $rows = employeeWarningAnnotateReportRows(
+                $mysqli,
+                $rows,
+                EMPLOYEE_WARNING_SOURCE_ATTENDANCE_MISSING,
+                fn(array $row): array => [
+                    'employee_id' => $row['employee_id'] ?? 0,
+                    'work_date' => $row['work_date'] ?? '',
+                ]
+            );
             sendJson([
                 'status' => 'success',
                 'month' => $month,
@@ -117,6 +128,16 @@ try {
             $incidentType = attendanceNormalizeLateEarlyIncidentType($_GET['incident_type'] ?? 'all');
             $employees = fetchAttendanceMissingScanEmployees($mysqli, $role, $_GET);
             $rows = buildAttendanceLateEarlyReport($mysqli, $employees, $month, $incidentType);
+            employeeWarningEnsureTables($mysqli);
+            $rows = employeeWarningAnnotateReportRows(
+                $mysqli,
+                $rows,
+                EMPLOYEE_WARNING_SOURCE_ATTENDANCE_LATE_EARLY,
+                fn(array $row): array => [
+                    'employee_id' => $row['employee_id'] ?? 0,
+                    'work_date' => $row['work_date'] ?? '',
+                ]
+            );
             sendJson([
                 'status' => 'success',
                 'month' => $month,

@@ -14,6 +14,7 @@ try {
     require_once '../includes/db_connect.php';
     require_once '../includes/leave_helpers.php';
     require_once '../includes/hr_scope_helpers.php';
+    require_once '../includes/employee_warning_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -53,6 +54,16 @@ try {
                 'branch_id' => (int)($_GET['branch_id'] ?? 0),
                 'leave_type_id' => (int)($_GET['leave_type_id'] ?? 0),
             ]);
+            employeeWarningEnsureTables($mysqli);
+            $rows = employeeWarningAnnotateReportRows(
+                $mysqli,
+                $rows,
+                EMPLOYEE_WARNING_SOURCE_APPROVED_LEAVE,
+                fn(array $row): array => [
+                    'id' => $row['id'] ?? 0,
+                    'leave_date' => $row['leave_date'] ?? '',
+                ]
+            );
             echo json_encode([
                 'status' => 'success',
                 'month' => $month,

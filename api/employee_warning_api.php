@@ -99,6 +99,13 @@ try {
             sendEmployeeWarningJson(['status' => 'success', 'message' => 'บันทึกใบเตือนเรียบร้อยแล้ว']);
         }
 
+        if ($postAction === 'bulk_create') {
+            sendEmployeeWarningJson([
+                'status' => 'success',
+                'data' => employeeWarningCreateBulk($mysqli, $input, $userId, $role, $scopes),
+            ]);
+        }
+
         if ($postAction === 'create_warning_type' || $postAction === 'update_warning_type') {
             $type = employeeWarningSaveType($mysqli, $input, $userId);
             sendEmployeeWarningJson([

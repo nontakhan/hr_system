@@ -49,6 +49,7 @@ foreach ([
     'update_warning_type',
     'delete_warning_type',
     'my_monthly_warnings',
+    'bulk_create',
 ] as $action) {
     assert_contains_text($api, $action, "API must expose {$action}");
 }
@@ -57,6 +58,10 @@ assert_contains_text($api, "in_array(\$role, ['admin', 'hr']", 'API must gate HR
 assert_contains_text($api, "\$_SESSION['employee_id']", 'API self-service action must use session employee id');
 assert_contains_text($helper, 'CREATE TABLE IF NOT EXISTS warning_types', 'Helper must create warning_types table');
 assert_contains_text($helper, 'CREATE TABLE IF NOT EXISTS employee_warnings', 'Helper must create employee_warnings table');
+assert_contains_text($helper, 'source_type', 'Employee warnings must store a report source type');
+assert_contains_text($helper, 'source_key', 'Employee warnings must store a stable report source key');
+assert_contains_text($helper, 'source_event_date', 'Employee warnings must store the original report event date');
+assert_contains_text($helper, 'uq_employee_warnings_source', 'Employee warnings must prevent duplicate report sources');
 assert_contains_text($helper, 'employeeWarningDeleteType', 'Helper must include protected delete function');
 assert_contains_text($helper, 'SELECT id FROM employee_warnings WHERE warning_type_id = ?', 'Delete must check existing warning history');
 

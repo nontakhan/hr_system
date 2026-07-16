@@ -1,5 +1,7 @@
 let approvedLeaveReportOptions = { companies: [], branches: [], leave_types: [] };
 let approvedLeaveReportDataTable = null;
+let approvedLeaveReportRows = [];
+let approvedLeaveWarningBulk = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('approvedLeaveReportPage')) return;
@@ -7,6 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApprovedLeaveReport() {
+    approvedLeaveWarningBulk = window.EmployeeWarningBulk?.create({
+        pageId: 'approvedLeaveReportPage',
+        sourceType: 'approved_leave',
+        actionButtonId: 'approvedLeaveWarningBulkBtn',
+        selectedCountId: 'approvedLeaveWarningSelectedCount',
+        selectAllId: 'approvedLeaveWarningSelectAll',
+        getRows: () => approvedLeaveReportRows,
+        getDataTable: () => approvedLeaveReportDataTable,
+        buildEvent: buildApprovedLeaveWarningEvent,
+        onCompleted: (result) => completeApprovedLeaveWarnings(result),
+    }) || null;
     const month = document.getElementById('approvedLeaveReportMonth');
     if (month && !month.value) month.value = new Date().toISOString().slice(0, 7);
     initializeApprovedLeaveReportSelect2();
@@ -77,6 +90,7 @@ async function loadApprovedLeaveReport() {
     const rowsEl = document.getElementById('approvedLeaveReportRows');
     const month = document.getElementById('approvedLeaveReportMonth')?.value || '';
     if (!rowsEl || !month) return;
+    approvedLeaveWarningBulk?.clearSelection();
 
     const params = new URLSearchParams({
         action: 'approved_leave_report',
@@ -86,15 +100,17 @@ async function loadApprovedLeaveReport() {
         leave_type_id: document.getElementById('approvedLeaveReportType')?.value || '',
     });
     resetApprovedLeaveReportDataTable();
-    rowsEl.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
+    rowsEl.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
     try {
         const response = await fetch(`api/leave_api.php?${params.toString()}`);
         const responseText = await response.text();
         if (!responseText.trim()) throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับ กรุณาลองใหม่อีกครั้ง');
         const res = JSON.parse(responseText);
         if (res.status !== 'success') throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
+        approvedLeaveReportRows = res.data || [];
         renderApprovedLeaveReportSummary(res.summary || {});
-        renderApprovedLeaveReportRows(res.data || []);
+        renderApprovedLeaveReportRows(approvedLeaveReportRows);
+        approvedLeaveWarningBulk?.replaceRows(approvedLeaveReportRows);
     } catch (error) {
         renderApprovedLeaveReportError(error.message);
     }
@@ -120,7 +136,7 @@ function renderApprovedLeaveReportRows(rows) {
     if (!rowsEl) return;
     resetApprovedLeaveReportDataTable();
     if (!rows.length) {
-        rowsEl.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ไม่พบข้อมูลการลาในเงื่อนไขนี้</td></tr>';
+        rowsEl.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">ไม่พบข้อมูลการลาในเงื่อนไขนี้</td></tr>';
         return;
     }
     rowsEl.innerHTML = rows.map((row) => {
@@ -128,13 +144,17 @@ function renderApprovedLeaveReportRows(rows) {
             ? formatThaiDate(row.start_date)
             : `${formatThaiDate(row.start_date)} - ${formatThaiDate(row.end_date)}`;
         const part = row.leave_days === 0.5 && row.day_part_label ? ` (${escapeHtml(row.day_part_label)})` : '';
+        const warningKey = row.warning_source_key || '';
+        const warningDisabled = row.already_warned ? ' disabled' : '';
+        const warningBadge = row.already_warned ? '<span class="badge bg-secondary ms-1">ออกใบเตือนแล้ว</span>' : '';
         return `<tr>
+            <td class="text-center"><input type="checkbox" class="form-check-input employee-warning-row-select" data-warning-source-key="${escapeHtml(warningKey)}" aria-label="เลือกเหตุการณ์เพื่อเพิ่มใบเตือน"${warningDisabled}></td>
             <td data-order="${escapeHtml(row.leave_date || '')}">${escapeHtml(formatThaiDate(row.leave_date))}</td>
             <td>${escapeHtml(row.full_name || '-')}<div class="small text-muted">${escapeHtml(row.citizen_id || '-')}</div></td>
             <td>${escapeHtml(row.position_name_th || '-')}</td>
             <td>${escapeHtml(row.company_name_th || '-')}</td>
             <td>${escapeHtml(row.branch_name_th || '-')}</td>
-            <td>${escapeHtml(row.leave_type_name || '-')}</td>
+            <td>${escapeHtml(row.leave_type_name || '-')}${warningBadge}</td>
             <td>${escapeHtml(dateRange)}</td>
             <td>${Number(row.leave_days || 0).toLocaleString('th-TH')} วัน${part}</td>
             <td>${escapeHtml(row.reason || '-')}</td>
@@ -145,8 +165,10 @@ function renderApprovedLeaveReportRows(rows) {
 
 function renderApprovedLeaveReportError(message) {
     resetApprovedLeaveReportDataTable();
+    approvedLeaveReportRows = [];
+    approvedLeaveWarningBulk?.replaceRows([]);
     const rowsEl = document.getElementById('approvedLeaveReportRows');
-    if (rowsEl) rowsEl.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml(message || 'เกิดข้อผิดพลาด')}</td></tr>`;
+    if (rowsEl) rowsEl.innerHTML = `<tr><td colspan="10" class="text-center text-danger py-4">${escapeHtml(message || 'เกิดข้อผิดพลาด')}</td></tr>`;
 }
 
 function resetApprovedLeaveReportDataTable() {
@@ -164,7 +186,28 @@ function initApprovedLeaveReportDataTable(rowCount) {
     if (!table || rowCount <= 10 || !window.jQuery || !jQuery.fn.DataTable) return;
     approvedLeaveReportDataTable = jQuery(table).DataTable({
         pageLength: 25,
-        order: [[0, 'asc'], [1, 'asc']],
+        order: [[1, 'asc'], [2, 'asc']],
         language: { search: 'ค้นหา:', lengthMenu: 'แสดง _MENU_ รายการ', info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ', paginate: { previous: 'ก่อนหน้า', next: 'ถัดไป' } },
     });
+    jQuery(table).off('draw.dt.warningBulk').on('draw.dt.warningBulk', () => approvedLeaveWarningBulk?.syncCheckboxes());
+}
+
+function buildApprovedLeaveWarningEvent(row) {
+    return {
+        employee_id: Number(row.employee_id || 0),
+        source_type: row.warning_source_type || 'approved_leave',
+        source_key: row.warning_source_key || '',
+        leave_date: row.leave_date || '',
+        already_warned: Boolean(row.already_warned),
+    };
+}
+
+function completeApprovedLeaveWarnings(result) {
+    const completed = new Set([...(result.created_keys || []), ...(result.duplicate_keys || [])].map(String));
+    approvedLeaveReportRows.forEach((row) => {
+        if (completed.has(String(row.warning_source_key || ''))) row.already_warned = true;
+    });
+    approvedLeaveWarningBulk?.clearSelection();
+    renderApprovedLeaveReportRows(approvedLeaveReportRows);
+    approvedLeaveWarningBulk?.replaceRows(approvedLeaveReportRows);
 }

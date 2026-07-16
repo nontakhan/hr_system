@@ -1,5 +1,6 @@
 <?php
-$source = file_get_contents(__DIR__ . '/../api/leave_api.php');
+$source = file_get_contents(__DIR__ . '/../api/leave_api.php')
+    . file_get_contents(__DIR__ . '/../includes/employee_warning_bulk_helpers.php');
 
 function assertLeaveReportSource($condition, $message) {
     if (!$condition) {
@@ -15,5 +16,8 @@ assertLeaveReportSource(strpos($source, 'lr.start_date <= ?') !== false && strpo
 assertLeaveReportSource(strpos($source, 'hrScopeBuildEmployeeWhereClause') !== false, 'HR report results should use employee scope.');
 assertLeaveReportSource(strpos($source, 'leaveExpandApprovedRequestForMonth') !== false, 'API should use the tested date-expansion helper.');
 assertLeaveReportSource(strpos($source, 'leaveCountApprovedReportRows') !== false, 'API should use the tested summary helper.');
+assertLeaveReportSource(strpos($source, 'EMPLOYEE_WARNING_SOURCE_APPROVED_LEAVE') !== false, 'Leave report must use approved-leave warning identity.');
+assertLeaveReportSource(strpos($source, 'warning_source_key') !== false, 'Leave report must expose stable source keys.');
+assertLeaveReportSource(strpos($source, 'already_warned') !== false, 'Leave report must expose duplicate warning state.');
 
 echo "leave_report_api_source_test passed" . PHP_EOL;

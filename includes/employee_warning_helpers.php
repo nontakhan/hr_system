@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/employee_warning_bulk_helpers.php';
+
 function employeeWarningEnsureTables(mysqli $mysqli): void
 {
     $mysqli->query("CREATE TABLE IF NOT EXISTS warning_types (
@@ -19,14 +21,20 @@ function employeeWarningEnsureTables(mysqli $mysqli): void
         warning_type_id INT NOT NULL,
         warning_date DATE NOT NULL,
         detail TEXT NULL,
+        source_type VARCHAR(50) NULL,
+        source_key VARCHAR(100) NULL,
+        source_event_date DATE NULL,
         created_by INT NULL,
         updated_by INT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_employee_warnings_employee_month (employee_id, warning_date),
         INDEX idx_employee_warnings_type (warning_type_id),
-        INDEX idx_employee_warnings_date (warning_date)
+        INDEX idx_employee_warnings_date (warning_date),
+        UNIQUE KEY uq_employee_warnings_source (source_type, source_key)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    employeeWarningEnsureSourceColumns($mysqli);
 }
 
 function employeeWarningTrim(?string $value, int $maxLength = 255): string

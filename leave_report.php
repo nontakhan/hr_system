@@ -53,10 +53,17 @@ require_once 'includes/header.php';
 
     <div class="card shadow-sm border-0">
         <div class="card-body">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+                <div class="text-muted">เลือกแล้ว <strong id="approvedLeaveWarningSelectedCount">0</strong> รายการ</div>
+                <button type="button" id="approvedLeaveWarningBulkBtn" class="btn btn-primary" disabled>
+                    <i class="fas fa-triangle-exclamation me-1"></i> เพิ่มใบเตือน
+                </button>
+            </div>
             <div class="table-responsive">
                 <table id="approvedLeaveReportTable" class="table table-sm table-hover align-middle w-100">
                     <thead>
                         <tr>
+                            <th class="text-center" style="width: 44px;"><input type="checkbox" class="form-check-input" id="approvedLeaveWarningSelectAll" aria-label="เลือกเหตุการณ์ทั้งหมด"></th>
                             <th>วันที่ลา</th>
                             <th>เจ้าหน้าที่</th>
                             <th>ตำแหน่ง</th>
@@ -69,7 +76,7 @@ require_once 'includes/header.php';
                         </tr>
                     </thead>
                     <tbody id="approvedLeaveReportRows">
-                        <tr><td colspan="9" class="text-center text-muted py-4">เลือกเดือนแล้วแสดงรายงาน</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted py-4">เลือกเดือนแล้วแสดงรายงาน</td></tr>
                     </tbody>
                 </table>
             </div>

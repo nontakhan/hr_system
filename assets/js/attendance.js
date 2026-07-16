@@ -36,8 +36,10 @@ let attendanceAdjustmentFilterOptions = { companies: [], branches: [], positions
 let attendanceAdjustmentSelectedEmployeeIds = new Set();
 let attendanceMissingRows = [];
 let attendanceMissingDataTable = null;
+let attendanceMissingWarningBulk = null;
 let attendanceLateEarlyRows = [];
 let attendanceLateEarlyDataTable = null;
+let attendanceLateEarlyWarningBulk = null;
 
 async function handleAttendanceImport(e) {
     e.preventDefault();
@@ -420,6 +422,17 @@ function initAttendanceAdjustments() {
 }
 
 function initAttendanceMissingReport() {
+    attendanceMissingWarningBulk = window.EmployeeWarningBulk?.create({
+        pageId: 'attendanceMissingReportPage',
+        sourceType: 'attendance_missing',
+        actionButtonId: 'attendanceMissingWarningBulkBtn',
+        selectedCountId: 'attendanceMissingWarningSelectedCount',
+        selectAllId: 'attendanceMissingWarningSelectAll',
+        getRows: () => attendanceMissingRows,
+        getDataTable: () => attendanceMissingDataTable,
+        buildEvent: buildAttendanceMissingWarningEvent,
+        onCompleted: (result) => completeAttendanceMissingWarnings(result),
+    }) || null;
     const month = document.getElementById('attendanceMissingMonth');
     const loadBtn = document.getElementById('attendanceMissingLoadBtn');
     if (month && !month.value) {
@@ -496,6 +509,7 @@ async function loadAttendanceMissingReport() {
     const rowsEl = document.getElementById('attendanceMissingRows');
     const month = document.getElementById('attendanceMissingMonth')?.value || '';
     if (!rowsEl || !month) return;
+    attendanceMissingWarningBulk?.clearSelection();
 
     const params = new URLSearchParams({
         action: 'missing_scan_report',
@@ -506,7 +520,7 @@ async function loadAttendanceMissingReport() {
     });
 
     resetAttendanceMissingDataTable();
-    rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
+    rowsEl.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
     try {
         const response = await fetch(`api/attendance_api.php?${params.toString()}`);
         const responseText = await response.text();
@@ -520,8 +534,11 @@ async function loadAttendanceMissingReport() {
         attendanceMissingRows = res.data || [];
         renderAttendanceMissingSummary(res.summary || {});
         renderAttendanceMissingRows(attendanceMissingRows);
+        attendanceMissingWarningBulk?.replaceRows(attendanceMissingRows);
     } catch (err) {
-        rowsEl.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+        attendanceMissingRows = [];
+        attendanceMissingWarningBulk?.replaceRows([]);
+        rowsEl.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
@@ -541,7 +558,7 @@ function renderAttendanceMissingRows(rows) {
     if (!rowsEl) return;
     resetAttendanceMissingDataTable();
     if (!rows.length) {
-        rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ไม่พบข้อมูลไม่สแกนในเงื่อนไขนี้</td></tr>';
+        rowsEl.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">ไม่พบข้อมูลไม่สแกนในเงื่อนไขนี้</td></tr>';
         return;
     }
     rowsEl.innerHTML = rows.map(buildAttendanceMissingRowHtml).join('');
@@ -549,15 +566,20 @@ function renderAttendanceMissingRows(rows) {
     if (rows.length > 10 && table && table.length && $.fn.DataTable) {
         attendanceMissingDataTable = table.DataTable({
             pageLength: 25,
-            order: [[0, 'asc'], [1, 'asc']],
+            order: [[1, 'asc'], [2, 'asc']],
             language: { search: 'ค้นหา:', lengthMenu: 'แสดง _MENU_ รายการ', info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ' },
         });
+        table.off('draw.dt.warningBulk').on('draw.dt.warningBulk', () => attendanceMissingWarningBulk?.syncCheckboxes());
     }
 }
 
 function buildAttendanceMissingRowHtml(row) {
+    const warningKey = row.warning_source_key || '';
+    const warningDisabled = row.already_warned ? ' disabled' : '';
+    const warningBadge = row.already_warned ? '<span class="badge bg-secondary ms-1">ออกใบเตือนแล้ว</span>' : '';
     return `
         <tr>
+            <td class="text-center"><input type="checkbox" class="form-check-input employee-warning-row-select" data-warning-source-key="${escapeAttr(warningKey)}" aria-label="เลือกเหตุการณ์เพื่อเพิ่มใบเตือน"${warningDisabled}></td>
             <td>${escapeHtml(formatThaiDate(row.work_date))}</td>
             <td>
                 <div class="fw-semibold">${escapeHtml(row.full_name || '-')}</div>
@@ -568,9 +590,28 @@ function buildAttendanceMissingRowHtml(row) {
             <td>${escapeHtml(row.branch_name_th || '-')}</td>
             <td>${escapeHtml(formatAttendanceTime(row.check_in))}</td>
             <td>${escapeHtml(formatAttendanceTime(row.check_out))}</td>
-            <td>${attendanceStatusBadge(row.status, missingScanLabel(row.status))}</td>
+            <td>${attendanceStatusBadge(row.status, missingScanLabel(row.status))}${warningBadge}</td>
         </tr>
     `;
+}
+
+function buildAttendanceMissingWarningEvent(row) {
+    return {
+        employee_id: Number(row.employee_id || 0),
+        source_type: row.warning_source_type || 'attendance_missing',
+        source_key: row.warning_source_key || '',
+        already_warned: Boolean(row.already_warned),
+    };
+}
+
+function completeAttendanceMissingWarnings(result) {
+    const completed = new Set([...(result.created_keys || []), ...(result.duplicate_keys || [])].map(String));
+    attendanceMissingRows.forEach((row) => {
+        if (completed.has(String(row.warning_source_key || ''))) row.already_warned = true;
+    });
+    attendanceMissingWarningBulk?.clearSelection();
+    renderAttendanceMissingRows(attendanceMissingRows);
+    attendanceMissingWarningBulk?.replaceRows(attendanceMissingRows);
 }
 
 function missingScanLabel(status) {
@@ -593,6 +634,17 @@ function resetAttendanceMissingDataTable() {
 }
 
 function initAttendanceLateEarlyReport() {
+    attendanceLateEarlyWarningBulk = window.EmployeeWarningBulk?.create({
+        pageId: 'attendanceLateEarlyReportPage',
+        sourceType: 'attendance_late_early',
+        actionButtonId: 'attendanceLateEarlyWarningBulkBtn',
+        selectedCountId: 'attendanceLateEarlyWarningSelectedCount',
+        selectAllId: 'attendanceLateEarlyWarningSelectAll',
+        getRows: () => attendanceLateEarlyRows,
+        getDataTable: () => attendanceLateEarlyDataTable,
+        buildEvent: buildAttendanceLateEarlyWarningEvent,
+        onCompleted: (result) => completeAttendanceLateEarlyWarnings(result),
+    }) || null;
     const month = document.getElementById('attendanceLateEarlyMonth');
     if (month && !month.value) month.value = getAttendanceCurrentMonth();
     initializeAttendanceSelect2();
@@ -652,6 +704,7 @@ async function loadAttendanceLateEarlyReport() {
     const rowsEl = document.getElementById('attendanceLateEarlyRows');
     const month = document.getElementById('attendanceLateEarlyMonth')?.value || '';
     if (!rowsEl || !month) return;
+    attendanceLateEarlyWarningBulk?.clearSelection();
 
     const params = new URLSearchParams({
         action: 'late_early_report',
@@ -661,7 +714,7 @@ async function loadAttendanceLateEarlyReport() {
         incident_type: document.getElementById('attendanceLateEarlyType')?.value || 'all',
     });
     resetAttendanceLateEarlyDataTable();
-    rowsEl.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
+    rowsEl.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
     try {
         const response = await fetch(`api/attendance_api.php?${params.toString()}`);
         const responseText = await response.text();
@@ -671,8 +724,11 @@ async function loadAttendanceLateEarlyReport() {
         attendanceLateEarlyRows = res.data || [];
         renderAttendanceLateEarlySummary(res.summary || {});
         renderAttendanceLateEarlyRows(attendanceLateEarlyRows);
+        attendanceLateEarlyWarningBulk?.replaceRows(attendanceLateEarlyRows);
     } catch (err) {
-        rowsEl.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+        attendanceLateEarlyRows = [];
+        attendanceLateEarlyWarningBulk?.replaceRows([]);
+        rowsEl.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
@@ -691,7 +747,7 @@ function renderAttendanceLateEarlyRows(rows) {
     if (!rowsEl) return;
     resetAttendanceLateEarlyDataTable();
     if (!rows.length) {
-        rowsEl.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">ไม่พบข้อมูลมาสายหรือออกก่อนในเงื่อนไขนี้</td></tr>';
+        rowsEl.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">ไม่พบข้อมูลมาสายหรือออกก่อนในเงื่อนไขนี้</td></tr>';
         return;
     }
     rowsEl.innerHTML = rows.map(buildAttendanceLateEarlyRowHtml).join('');
@@ -699,9 +755,10 @@ function renderAttendanceLateEarlyRows(rows) {
     if (rows.length > 10 && table && table.length && $.fn.DataTable) {
         attendanceLateEarlyDataTable = table.DataTable({
             pageLength: 25,
-            order: [[0, 'asc'], [1, 'asc']],
+            order: [[1, 'asc'], [2, 'asc']],
             language: { search: 'ค้นหา:', lengthMenu: 'แสดง _MENU_ รายการ', info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ' },
         });
+        table.off('draw.dt.warningBulk').on('draw.dt.warningBulk', () => attendanceLateEarlyWarningBulk?.syncCheckboxes());
     }
 }
 
@@ -712,8 +769,12 @@ function buildAttendanceLateEarlyRowHtml(row) {
     ].filter(Boolean).join(' ');
     const lateMinutes = Number(row.late_minutes || 0);
     const earlyMinutes = Number(row.early_minutes || 0);
+    const warningKey = row.warning_source_key || '';
+    const warningDisabled = row.already_warned ? ' disabled' : '';
+    const warningBadge = row.already_warned ? '<span class="badge bg-secondary ms-1">ออกใบเตือนแล้ว</span>' : '';
     return `
         <tr>
+            <td class="text-center"><input type="checkbox" class="form-check-input employee-warning-row-select" data-warning-source-key="${escapeAttr(warningKey)}" aria-label="เลือกเหตุการณ์เพื่อเพิ่มใบเตือน"${warningDisabled}></td>
             <td>${escapeHtml(formatThaiDate(row.work_date))}</td>
             <td><div class="fw-semibold">${escapeHtml(row.full_name || '-')}</div><div class="small text-muted">${escapeHtml(row.citizen_id || '')}</div></td>
             <td>${escapeHtml(row.position_name_th || '-')}</td>
@@ -725,8 +786,27 @@ function buildAttendanceLateEarlyRowHtml(row) {
             <td>${escapeHtml(formatAttendanceTime(row.shift_end_time))}</td>
             <td>${escapeHtml(formatAttendanceTime(row.check_out))}</td>
             <td>${earlyMinutes > 0 ? `${earlyMinutes.toLocaleString('th-TH')} นาที` : '-'}</td>
-            <td>${statusBadges || '-'}</td>
+            <td>${statusBadges || '-'}${warningBadge}</td>
         </tr>`;
+}
+
+function buildAttendanceLateEarlyWarningEvent(row) {
+    return {
+        employee_id: Number(row.employee_id || 0),
+        source_type: row.warning_source_type || 'attendance_late_early',
+        source_key: row.warning_source_key || '',
+        already_warned: Boolean(row.already_warned),
+    };
+}
+
+function completeAttendanceLateEarlyWarnings(result) {
+    const completed = new Set([...(result.created_keys || []), ...(result.duplicate_keys || [])].map(String));
+    attendanceLateEarlyRows.forEach((row) => {
+        if (completed.has(String(row.warning_source_key || ''))) row.already_warned = true;
+    });
+    attendanceLateEarlyWarningBulk?.clearSelection();
+    renderAttendanceLateEarlyRows(attendanceLateEarlyRows);
+    attendanceLateEarlyWarningBulk?.replaceRows(attendanceLateEarlyRows);
 }
 
 function resetAttendanceLateEarlyDataTable() {
