@@ -109,6 +109,23 @@ try {
             ]);
         }
 
+        if ($action === 'late_early_report') {
+            if (!$canManage) sendJsonError('Access Denied');
+            $month = $_GET['month'] ?? date('Y-m');
+            if (!preg_match('/^\d{4}-\d{2}$/', $month)) sendJsonError('Invalid month');
+
+            $incidentType = attendanceNormalizeLateEarlyIncidentType($_GET['incident_type'] ?? 'all');
+            $employees = fetchAttendanceMissingScanEmployees($mysqli, $role, $_GET);
+            $rows = buildAttendanceLateEarlyReport($mysqli, $employees, $month, $incidentType);
+            sendJson([
+                'status' => 'success',
+                'month' => $month,
+                'incident_type' => $incidentType,
+                'summary' => attendanceCountLateEarlyRows($rows),
+                'data' => $rows,
+            ]);
+        }
+
         if ($action === 'import_summary') {
             if (!$canManage) sendJsonError('Access Denied');
             sendJson(['status' => 'success', 'data' => fetchAttendanceImportSummary($mysqli, $role)]);
@@ -479,6 +496,83 @@ function buildAttendanceMissingScanReport(mysqli $mysqli, array $employees, $mon
     return $rows;
 }
 
+function buildAttendanceLateEarlyReport(mysqli $mysqli, array $employees, $month, $incidentType = 'all') {
+    if (!$employees) return [];
+
+    $start = new DateTimeImmutable($month . '-01');
+    $end = $start->modify('last day of this month');
+    $startDate = $start->format('Y-m-d');
+    $endDate = $end->format('Y-m-d');
+    $employeeIds = array_map('intval', array_column($employees, 'id'));
+    $records = fetchAttendanceRecordsForEmployeesMonth($mysqli, $employeeIds, $month);
+    $overrideMap = fetchAttendanceOverridesForEmployeesMonth($mysqli, $employeeIds, $startDate, $endDate);
+    $shiftAssignments = fetchShiftAssignmentsForEmployeesMonth($mysqli, $employeeIds, $startDate, $endDate);
+    $shiftOverrides = fetchShiftOverridesForEmployeesMonth($mysqli, $employeeIds, $startDate, $endDate);
+    $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
+    $leaveMap = fetchApprovedLeaveMapForEmployeesMonth($mysqli, $employeeIds, $month, $startDate, $endDate);
+    $trainingMap = fetchApprovedTrainingMapForEmployeesMonth($mysqli, $employeeIds, $month, $startDate, $endDate);
+    $daySwapMap = fetchApprovedDaySwapMapForEmployeesMonth($mysqli, $employeeIds, $month, $startDate, $endDate);
+    $approvedMinuteMap = fetchApprovedLateEarlyMinutesForEmployeesMonth($mysqli, $employeeIds, $startDate, $endDate);
+
+    $rows = [];
+    foreach ($employees as $employee) {
+        $employeeId = (int)$employee['id'];
+        $baseShift = [
+            'start_time' => $employee['start_time'] ?? null,
+            'end_time' => $employee['end_time'] ?? null,
+            'late_tolerance_mins' => $employee['late_tolerance_mins'] ?? 0,
+            'work_days' => $employee['work_days'] ?? '',
+        ];
+
+        for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
+            $workDate = $date->format('Y-m-d');
+            if (isset($holidays[$workDate]) || isset($leaveMap[$employeeId][$workDate]) || isset($trainingMap[$employeeId][$workDate])) {
+                continue;
+            }
+
+            $rawRecord = $records[$employeeId][$workDate] ?? ['check_in' => null, 'check_out' => null];
+            $record = attendanceApplyRecordOverride($rawRecord, $overrideMap[$employeeId][$workDate] ?? null);
+            $assignmentShift = employeeShiftAssignmentsResolveForDate($shiftAssignments[$employeeId] ?? [], $baseShift, $workDate);
+            $effectiveShift = attendanceResolveShiftForDate($assignmentShift, $shiftOverrides[$employeeId] ?? [], $workDate);
+            if (isset($daySwapMap[$employeeId][$workDate])) {
+                $effectiveShift = attendanceApplyDayTypeOverride($effectiveShift, $workDate, $daySwapMap[$employeeId][$workDate]);
+            }
+
+            $incident = attendanceCalculateLateEarlyIncident(
+                $workDate,
+                $record['check_in'],
+                $record['check_out'],
+                $effectiveShift,
+                $approvedMinuteMap[$employeeId][$workDate] ?? []
+            );
+            if ($incident === null) continue;
+
+            $row = [
+                'employee_id' => $employeeId,
+                'citizen_id' => (string)($employee['citizen_id'] ?? ''),
+                'first_name_th' => (string)($employee['first_name_th'] ?? ''),
+                'last_name_th' => (string)($employee['last_name_th'] ?? ''),
+                'position_name_th' => (string)($employee['position_name_th'] ?? ''),
+                'branch_id' => isset($employee['branch_id']) ? (int)$employee['branch_id'] : null,
+                'branch_name_th' => (string)($employee['branch_name_th'] ?? ''),
+                'company_id' => isset($employee['company_id']) ? (int)$employee['company_id'] : null,
+                'company_name_th' => (string)($employee['company_name_th'] ?? ''),
+                'work_date' => $workDate,
+                'check_in' => $record['check_in'],
+                'check_out' => $record['check_out'],
+            ];
+            $row['full_name'] = trim($row['first_name_th'] . ' ' . $row['last_name_th']);
+            $rows[] = array_merge($row, $incident);
+        }
+    }
+
+    $rows = attendanceFilterLateEarlyReportRows($rows, $incidentType);
+    usort($rows, function ($a, $b) {
+        return strcmp(($a['work_date'] ?? '') . ($a['full_name'] ?? ''), ($b['work_date'] ?? '') . ($b['full_name'] ?? ''));
+    });
+    return $rows;
+}
+
 function fetchAttendanceMissingScanReportRows(mysqli $mysqli, array $employees, $month) {
     if (!$employees) {
         return [];
@@ -589,6 +683,32 @@ function fetchAttendanceRecordsForEmployeesMonth(mysqli $mysqli, array $employee
             'check_in' => attendanceNormalizeTime($row['check_in'] ?? null),
             'check_out' => attendanceNormalizeTime($row['check_out'] ?? null),
         ];
+    }
+    return $map;
+}
+
+function fetchApprovedLateEarlyMinutesForEmployeesMonth(mysqli $mysqli, array $employeeIds, $startDate, $endDate) {
+    if (!$employeeIds) return [];
+    leaveEnsureRequestPartColumns($mysqli);
+    $map = [];
+    $sql = "SELECT lr.employee_id, lr.start_date AS work_date, lr.time_request_type,
+                   CASE
+                       WHEN COALESCE(lr.approved_request_minutes, 0) > 0 THEN lr.approved_request_minutes
+                       ELSE COALESCE(lr.request_minutes, 0)
+                   END AS effective_minutes
+            FROM leave_requests lr
+            WHERE lr.employee_id IN (" . attendanceBuildInClause($employeeIds) . ")
+              AND lr.start_date BETWEEN ? AND ?
+              AND lr.status = 'approved'
+              AND lr.time_request_type IN ('late_arrival', 'early_departure')";
+    $stmt = $mysqli->prepare($sql);
+    attendanceBindDynamicParams($stmt, str_repeat('i', count($employeeIds)) . 'ss', array_merge($employeeIds, [$startDate, $endDate]));
+    $stmt->execute();
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        $employeeId = (int)$row['employee_id'];
+        $workDate = (string)$row['work_date'];
+        $type = (string)$row['time_request_type'];
+        $map[$employeeId][$workDate][$type] = ($map[$employeeId][$workDate][$type] ?? 0) + max(0, (int)$row['effective_minutes']);
     }
     return $map;
 }

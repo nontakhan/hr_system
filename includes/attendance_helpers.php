@@ -696,6 +696,62 @@ function attendanceCountMissingScanRows(array $rows) {
     return $counts;
 }
 
+function attendanceNormalizeLateEarlyIncidentType($type) {
+    $type = trim((string)$type);
+    return in_array($type, ['late', 'early'], true) ? $type : 'all';
+}
+
+function attendanceCalculateLateEarlyIncident($workDate, $checkIn, $checkOut, array $shift, array $approvedMinutes = []) {
+    $checkIn = attendanceNormalizeTime($checkIn);
+    $checkOut = attendanceNormalizeTime($checkOut);
+    $startTime = attendanceNormalizeTime($shift['start_time'] ?? '');
+    $endTime = attendanceNormalizeTime($shift['end_time'] ?? '');
+    if ($checkIn === null || $checkOut === null || $startTime === null || $endTime === null) {
+        return null;
+    }
+
+    $workDays = array_filter(array_map('trim', explode(',', (string)($shift['work_days'] ?? ''))));
+    if ($workDays && !in_array(attendanceDayName($workDate), $workDays, true)) {
+        return null;
+    }
+
+    $rawLate = max(0, (int)floor((strtotime($workDate . ' ' . $checkIn) - strtotime($workDate . ' ' . $startTime)) / 60));
+    $rawEarly = max(0, (int)floor((strtotime($workDate . ' ' . $endTime) - strtotime($workDate . ' ' . $checkOut)) / 60));
+    $isBeyondTolerance = $rawLate > max(0, (int)($shift['late_tolerance_mins'] ?? 0));
+    $lateMinutes = $isBeyondTolerance ? max(0, $rawLate - (int)($approvedMinutes['late_arrival'] ?? 0)) : 0;
+    $earlyMinutes = max(0, $rawEarly - (int)($approvedMinutes['early_departure'] ?? 0));
+    if ($lateMinutes === 0 && $earlyMinutes === 0) {
+        return null;
+    }
+
+    return [
+        'shift_start_time' => $startTime,
+        'shift_end_time' => $endTime,
+        'late_minutes' => $lateMinutes,
+        'early_minutes' => $earlyMinutes,
+        'is_late' => $lateMinutes > 0,
+        'is_early' => $earlyMinutes > 0,
+    ];
+}
+
+function attendanceFilterLateEarlyReportRows(array $rows, $type = 'all') {
+    $type = attendanceNormalizeLateEarlyIncidentType($type);
+    return array_values(array_filter($rows, function ($row) use ($type) {
+        if ($type === 'late') return !empty($row['is_late']);
+        if ($type === 'early') return !empty($row['is_early']);
+        return !empty($row['is_late']) || !empty($row['is_early']);
+    }));
+}
+
+function attendanceCountLateEarlyRows(array $rows) {
+    $counts = ['late' => 0, 'early' => 0, 'total' => count($rows)];
+    foreach ($rows as $row) {
+        if (!empty($row['is_late'])) $counts['late']++;
+        if (!empty($row['is_early'])) $counts['early']++;
+    }
+    return $counts;
+}
+
 function attendanceReadCsvRows($filePath) {
     $rows = [];
     $handle = fopen($filePath, 'r');

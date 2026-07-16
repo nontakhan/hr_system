@@ -53,6 +53,8 @@ assertIncludes(header, 'href="#reportCenterSubmenu"', 'Reports should be grouped
 assertIncludes(header, 'id="reportCenterSubmenu"', 'Report submenu should have a stable collapse id.');
 assertIncludes(header, 'href="attendance_missing_report.php"', 'Report submenu should link to the missing scan report.');
 assertIncludes(header, "isActive('attendance_missing_report.php')", 'Report submenu should stay active on the missing scan report.');
+assertIncludes(header, 'href="attendance_late_early_report.php"', 'Report submenu should link to the late/early report.');
+assertIncludes(header, "isActive('attendance_late_early_report.php')", 'Report submenu should stay active on the late/early report.');
 
 assertIncludes(header, "$approvalBadgeCounts['total']", 'Approval center should show the total pending approval badge.');
 assertIncludes(header, "$approvalBadgeCounts['leave']", 'Leave approval submenu item should keep its badge.');

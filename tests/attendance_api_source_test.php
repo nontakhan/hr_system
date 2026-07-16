@@ -58,5 +58,34 @@ assertAttendanceApiSource(
     strpos($source, "hrScopeBuildEmployeeWhereClause(\$role, hrScopeCurrentSessionScopes(), 'e')") !== false,
     'Missing scan report should reuse HR employee scope filtering.'
 );
+assertAttendanceApiSource(
+    strpos($source, "\$action === 'late_early_report'") !== false,
+    'Attendance API should expose the late_early_report action.'
+);
+assertAttendanceApiSource(
+    strpos($source, 'buildAttendanceLateEarlyReport') !== false,
+    'Late/early report should have a dedicated bulk builder.'
+);
+assertAttendanceApiSource(
+    strpos($source, 'fetchApprovedLateEarlyMinutesForEmployeesMonth') !== false,
+    'Late/early report should bulk load approved request minutes.'
+);
+assertAttendanceApiSource(
+    strpos($source, "lr.status = 'approved'") !== false,
+    'Only final approved requests should reduce incident minutes.'
+);
+assertAttendanceApiSource(
+    strpos($source, "lr.time_request_type IN ('late_arrival', 'early_departure')") !== false,
+    'Only late and early request types should reduce report minutes.'
+);
+assertAttendanceApiSource(
+    strpos($source, 'attendanceCalculateLateEarlyIncident') !== false,
+    'Bulk rows should use the tested incident calculator.'
+);
+assertAttendanceApiSource(
+    strpos($source, 'leaveEnsureRequestColumns') === false
+        && strpos($source, 'leaveEnsureRequestPartColumns($mysqli);') !== false,
+    'Late/early report should initialize request columns through the existing leave helper.'
+);
 
 echo "attendance_api_source_test passed" . PHP_EOL;

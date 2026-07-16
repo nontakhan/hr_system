@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (missingReportPage) {
         initAttendanceMissingReport();
     }
+
+    const lateEarlyReportPage = document.getElementById('attendanceLateEarlyReportPage');
+    if (lateEarlyReportPage) {
+        initAttendanceLateEarlyReport();
+    }
 });
 
 let attendanceCalendar = null;
@@ -31,6 +36,8 @@ let attendanceAdjustmentFilterOptions = { companies: [], branches: [], positions
 let attendanceAdjustmentSelectedEmployeeIds = new Set();
 let attendanceMissingRows = [];
 let attendanceMissingDataTable = null;
+let attendanceLateEarlyRows = [];
+let attendanceLateEarlyDataTable = null;
 
 async function handleAttendanceImport(e) {
     e.preventDefault();
@@ -580,6 +587,153 @@ function resetAttendanceMissingDataTable() {
     if (attendanceMissingDataTable) {
         attendanceMissingDataTable.destroy();
         attendanceMissingDataTable = null;
+    } else if (window.jQuery && table && $.fn.DataTable.isDataTable(table)) {
+        $(table).DataTable().destroy();
+    }
+}
+
+function initAttendanceLateEarlyReport() {
+    const month = document.getElementById('attendanceLateEarlyMonth');
+    if (month && !month.value) month.value = getAttendanceCurrentMonth();
+    initializeAttendanceSelect2();
+
+    const company = document.getElementById('attendanceLateEarlyCompany');
+    const branch = document.getElementById('attendanceLateEarlyBranch');
+    company?.addEventListener('change', () => {
+        updateAttendanceLateEarlyBranchOptions();
+        loadAttendanceLateEarlyReport();
+    });
+    branch?.addEventListener('change', loadAttendanceLateEarlyReport);
+    document.getElementById('attendanceLateEarlyType')?.addEventListener('change', loadAttendanceLateEarlyReport);
+    month?.addEventListener('change', loadAttendanceLateEarlyReport);
+    document.getElementById('attendanceLateEarlyLoadBtn')?.addEventListener('click', loadAttendanceLateEarlyReport);
+
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(company).off('.attendanceLateEarly').on('select2:select.attendanceLateEarly select2:clear.attendanceLateEarly', () => {
+            updateAttendanceLateEarlyBranchOptions();
+            loadAttendanceLateEarlyReport();
+        });
+        $(branch).off('.attendanceLateEarly').on('select2:select.attendanceLateEarly select2:clear.attendanceLateEarly', loadAttendanceLateEarlyReport);
+    }
+    loadAttendanceLateEarlyFilterOptions();
+}
+
+async function loadAttendanceLateEarlyFilterOptions() {
+    try {
+        const response = await fetch('api/attendance_api.php?action=adjustment_filter_options');
+        const res = await response.json();
+        if (res.status !== 'success') return;
+        attendanceAdjustmentFilterOptions = {
+            companies: res.data?.companies || [],
+            branches: res.data?.branches || [],
+            positions: res.data?.positions || [],
+        };
+        fillAttendanceAdjustmentSelect('attendanceLateEarlyCompany', attendanceAdjustmentFilterOptions.companies, 'บริษัททั้งหมด');
+        fillAttendanceAdjustmentSelect('attendanceLateEarlyBranch', attendanceAdjustmentFilterOptions.branches, 'สาขาทั้งหมด');
+        updateAttendanceLateEarlyBranchOptions();
+        loadAttendanceLateEarlyReport();
+    } catch (err) {
+        console.warn(err);
+    }
+}
+
+function updateAttendanceLateEarlyBranchOptions() {
+    const companyId = document.getElementById('attendanceLateEarlyCompany')?.value || '';
+    const branchSelect = document.getElementById('attendanceLateEarlyBranch');
+    fillAttendanceAdjustmentSelect(
+        'attendanceLateEarlyBranch',
+        companyId ? buildAttendanceBranchOptionsForCompany(attendanceAdjustmentFilterOptions.branches, companyId) : attendanceAdjustmentFilterOptions.branches,
+        companyId ? 'สาขาทั้งหมดในบริษัท' : 'สาขาทั้งหมด'
+    );
+    if (branchSelect) refreshAttendanceAdjustmentSelect2(branchSelect);
+}
+
+async function loadAttendanceLateEarlyReport() {
+    const rowsEl = document.getElementById('attendanceLateEarlyRows');
+    const month = document.getElementById('attendanceLateEarlyMonth')?.value || '';
+    if (!rowsEl || !month) return;
+
+    const params = new URLSearchParams({
+        action: 'late_early_report',
+        month,
+        company_id: document.getElementById('attendanceLateEarlyCompany')?.value || '',
+        branch_id: document.getElementById('attendanceLateEarlyBranch')?.value || '',
+        incident_type: document.getElementById('attendanceLateEarlyType')?.value || 'all',
+    });
+    resetAttendanceLateEarlyDataTable();
+    rowsEl.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
+    try {
+        const response = await fetch(`api/attendance_api.php?${params.toString()}`);
+        const responseText = await response.text();
+        if (!responseText.trim()) throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับ กรุณาลองใหม่อีกครั้ง');
+        const res = JSON.parse(responseText);
+        if (res.status !== 'success') throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
+        attendanceLateEarlyRows = res.data || [];
+        renderAttendanceLateEarlySummary(res.summary || {});
+        renderAttendanceLateEarlyRows(attendanceLateEarlyRows);
+    } catch (err) {
+        rowsEl.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function renderAttendanceLateEarlySummary(summary) {
+    const target = document.getElementById('attendanceLateEarlySummary');
+    if (!target) return;
+    target.innerHTML = [
+        attendanceSummaryCard('ทั้งหมด', summary.total || 0, 'primary', 'fa-list'),
+        attendanceSummaryCard('มาสาย', summary.late || 0, 'danger', 'fa-clock'),
+        attendanceSummaryCard('ออกก่อน', summary.early || 0, 'warning', 'fa-person-walking-arrow-right'),
+    ].join('');
+}
+
+function renderAttendanceLateEarlyRows(rows) {
+    const rowsEl = document.getElementById('attendanceLateEarlyRows');
+    if (!rowsEl) return;
+    resetAttendanceLateEarlyDataTable();
+    if (!rows.length) {
+        rowsEl.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">ไม่พบข้อมูลมาสายหรือออกก่อนในเงื่อนไขนี้</td></tr>';
+        return;
+    }
+    rowsEl.innerHTML = rows.map(buildAttendanceLateEarlyRowHtml).join('');
+    const table = typeof $ !== 'undefined' ? $('#attendanceLateEarlyTable') : null;
+    if (rows.length > 10 && table && table.length && $.fn.DataTable) {
+        attendanceLateEarlyDataTable = table.DataTable({
+            pageLength: 25,
+            order: [[0, 'asc'], [1, 'asc']],
+            language: { search: 'ค้นหา:', lengthMenu: 'แสดง _MENU_ รายการ', info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ' },
+        });
+    }
+}
+
+function buildAttendanceLateEarlyRowHtml(row) {
+    const statusBadges = [
+        row.is_late ? attendanceStatusBadge('late', 'มาสาย') : '',
+        row.is_early ? '<span class="badge bg-warning text-dark">ออกก่อน</span>' : '',
+    ].filter(Boolean).join(' ');
+    const lateMinutes = Number(row.late_minutes || 0);
+    const earlyMinutes = Number(row.early_minutes || 0);
+    return `
+        <tr>
+            <td>${escapeHtml(formatThaiDate(row.work_date))}</td>
+            <td><div class="fw-semibold">${escapeHtml(row.full_name || '-')}</div><div class="small text-muted">${escapeHtml(row.citizen_id || '')}</div></td>
+            <td>${escapeHtml(row.position_name_th || '-')}</td>
+            <td>${escapeHtml(row.company_name_th || '-')}</td>
+            <td>${escapeHtml(row.branch_name_th || '-')}</td>
+            <td>${escapeHtml(formatAttendanceTime(row.shift_start_time))}</td>
+            <td>${escapeHtml(formatAttendanceTime(row.check_in))}</td>
+            <td>${lateMinutes > 0 ? `${lateMinutes.toLocaleString('th-TH')} นาที` : '-'}</td>
+            <td>${escapeHtml(formatAttendanceTime(row.shift_end_time))}</td>
+            <td>${escapeHtml(formatAttendanceTime(row.check_out))}</td>
+            <td>${earlyMinutes > 0 ? `${earlyMinutes.toLocaleString('th-TH')} นาที` : '-'}</td>
+            <td>${statusBadges || '-'}</td>
+        </tr>`;
+}
+
+function resetAttendanceLateEarlyDataTable() {
+    const table = document.getElementById('attendanceLateEarlyTable');
+    if (attendanceLateEarlyDataTable) {
+        attendanceLateEarlyDataTable.destroy();
+        attendanceLateEarlyDataTable = null;
     } else if (window.jQuery && table && $.fn.DataTable.isDataTable(table)) {
         $(table).DataTable().destroy();
     }

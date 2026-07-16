@@ -259,6 +259,59 @@ assertSameValue(1, $missingScanCounts['missing_in'], 'Missing scan counts should
 assertSameValue(1, $missingScanCounts['missing_out'], 'Missing scan counts should include missing check-out days.');
 assertSameValue(3, $missingScanCounts['total'], 'Missing scan counts should include the total.');
 
+assertSameValue('all', attendanceNormalizeLateEarlyIncidentType('bad'), 'Unknown late/early filters should normalize to all.');
+assertSameValue('late', attendanceNormalizeLateEarlyIncidentType('late'), 'Late filter should be accepted.');
+assertSameValue('early', attendanceNormalizeLateEarlyIncidentType('early'), 'Early filter should be accepted.');
+
+$bothIncident = attendanceCalculateLateEarlyIncident(
+    '2026-07-06',
+    '08:20:00',
+    '16:40:00',
+    ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'late_tolerance_mins' => 5, 'work_days' => 'Mon,Tue,Wed,Thu,Fri'],
+    ['late_arrival' => 15, 'early_departure' => 10]
+);
+assertSameValue(5, $bothIncident['late_minutes'], 'Approved late minutes should be deducted from actual late minutes.');
+assertSameValue(10, $bothIncident['early_minutes'], 'Approved early minutes should be deducted from actual early minutes.');
+assertSameValue(true, $bothIncident['is_late'], 'Partially uncovered lateness should remain reportable.');
+assertSameValue(true, $bothIncident['is_early'], 'Partially uncovered early departure should remain reportable.');
+
+$coveredIncident = attendanceCalculateLateEarlyIncident(
+    '2026-07-07',
+    '08:10:00',
+    '16:50:00',
+    ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'late_tolerance_mins' => 5, 'work_days' => 'Mon,Tue,Wed,Thu,Fri'],
+    ['late_arrival' => 10, 'early_departure' => 10]
+);
+assertSameValue(null, $coveredIncident, 'Fully approved deviations should not appear in the report.');
+
+$withinTolerance = attendanceCalculateLateEarlyIncident(
+    '2026-07-08',
+    '08:05:00',
+    '17:00:00',
+    ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'late_tolerance_mins' => 5, 'work_days' => 'Mon,Tue,Wed,Thu,Fri']
+);
+assertSameValue(null, $withinTolerance, 'Check-in at the tolerance boundary should not be late.');
+assertSameValue(null, attendanceCalculateLateEarlyIncident(
+    '2026-07-09',
+    null,
+    '16:30:00',
+    ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'late_tolerance_mins' => 0, 'work_days' => 'Mon,Tue,Wed,Thu,Fri']
+), 'Rows with a missing scan belong only to the missing-scan report.');
+
+$incidentRows = attendanceFilterLateEarlyReportRows([
+    ['employee_id' => 1, 'is_late' => true, 'is_early' => false],
+    ['employee_id' => 2, 'is_late' => false, 'is_early' => true],
+    ['employee_id' => 3, 'is_late' => true, 'is_early' => true],
+], 'late');
+assertSameValue(2, count($incidentRows), 'Late filter should retain late-only and combined rows.');
+
+$incidentCounts = attendanceCountLateEarlyRows([
+    ['is_late' => true, 'is_early' => false],
+    ['is_late' => false, 'is_early' => true],
+    ['is_late' => true, 'is_early' => true],
+]);
+assertSameValue(['late' => 2, 'early' => 2, 'total' => 3], $incidentCounts, 'Summary should count rows once and flags independently.');
+
 $leaveMap = attendanceBuildApprovedLeaveMap([
     [
         'start_date' => '2026-01-05',
