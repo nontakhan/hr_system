@@ -134,6 +134,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             $reportCenterPages = [
                 'attendance_missing_report.php',
                 'attendance_late_early_report.php',
+                'leave_report.php',
             ];
             $requestCenterActive = isAnyActive($requestCenterPages);
             $approvalCenterActive = isAnyActive($approvalCenterPages);
@@ -229,6 +230,9 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 </a>
                 <a href="attendance_late_early_report.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('attendance_late_early_report.php'); ?>">
                     <small><i class="fas fa-business-time me-2"></i> มาสาย/ออกก่อน</small>
+                </a>
+                <a href="leave_report.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_report.php'); ?>">
+                    <small><i class="fas fa-calendar-check me-2"></i> การลา</small>
                 </a>
             </div>
 

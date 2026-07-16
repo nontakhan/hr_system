@@ -1026,6 +1026,62 @@ function leaveBuildDateSummary($startDate, $endDate, $startPart, $endPart, $work
     ];
 }
 
+function leaveExpandApprovedRequestForMonth(array $request, $month, $workDays, array $companyHolidays) {
+    if (!preg_match('/^\d{4}-\d{2}$/', (string)$month)) {
+        return [];
+    }
+
+    $monthStart = $month . '-01';
+    $monthEnd = date('Y-m-t', strtotime($monthStart));
+    $originalStart = normalizeGregorianDateInput($request['start_date'] ?? '');
+    $originalEnd = normalizeGregorianDateInput($request['end_date'] ?? '');
+    if ($originalStart === '' || $originalEnd === '' || $originalStart > $monthEnd || $originalEnd < $monthStart) {
+        return [];
+    }
+
+    $clippedStart = max($originalStart, $monthStart);
+    $clippedEnd = min($originalEnd, $monthEnd);
+    $summary = leaveBuildDateSummary(
+        $clippedStart,
+        $clippedEnd,
+        $clippedStart === $originalStart ? ($request['start_day_part'] ?? 'full') : 'full',
+        $clippedEnd === $originalEnd ? ($request['end_day_part'] ?? 'full') : 'full',
+        $workDays,
+        $companyHolidays
+    );
+    if (empty($summary['valid'])) {
+        return [];
+    }
+
+    $rows = [];
+    foreach ($summary['included_dates'] as $included) {
+        $rows[] = array_merge($request, [
+            'leave_date' => $included['date'],
+            'leave_days' => (float)$included['days'],
+            'day_part' => $included['part'],
+            'day_part_label' => $included['label'],
+        ]);
+    }
+    return $rows;
+}
+
+function leaveCountApprovedReportRows(array $rows) {
+    $employeeIds = [];
+    $days = 0.0;
+    foreach ($rows as $row) {
+        $days += (float)($row['leave_days'] ?? 0);
+        $employeeId = (int)($row['employee_id'] ?? 0);
+        if ($employeeId > 0) {
+            $employeeIds[$employeeId] = true;
+        }
+    }
+    return [
+        'total_rows' => count($rows),
+        'total_days' => round($days, 2),
+        'employee_count' => count($employeeIds),
+    ];
+}
+
 function leaveFindConflictingLeaveDates(array $existingRequests, array $requestedDates) {
     $requestedDateSet = [];
     foreach ($requestedDates as $date) {

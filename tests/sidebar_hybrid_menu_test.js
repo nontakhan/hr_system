@@ -55,6 +55,8 @@ assertIncludes(header, 'href="attendance_missing_report.php"', 'Report submenu s
 assertIncludes(header, "isActive('attendance_missing_report.php')", 'Report submenu should stay active on the missing scan report.');
 assertIncludes(header, 'href="attendance_late_early_report.php"', 'Report submenu should link to the late/early report.');
 assertIncludes(header, "isActive('attendance_late_early_report.php')", 'Report submenu should stay active on the late/early report.');
+assertIncludes(header, 'href="leave_report.php"', 'Report submenu should link to the approved leave report.');
+assertIncludes(header, "isActive('leave_report.php')", 'Report submenu should stay active on the approved leave report.');
 
 assertIncludes(header, "$approvalBadgeCounts['total']", 'Approval center should show the total pending approval badge.');
 assertIncludes(header, "$approvalBadgeCounts['leave']", 'Leave approval submenu item should keep its badge.');
