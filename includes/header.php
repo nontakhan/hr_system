@@ -135,6 +135,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 'attendance_missing_report.php',
                 'attendance_late_early_report.php',
                 'leave_report.php',
+                'employee_request_attendance_report.php',
             ];
             $requestCenterActive = isAnyActive($requestCenterPages);
             $approvalCenterActive = isAnyActive($approvalCenterPages);
@@ -233,6 +234,9 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 </a>
                 <a href="leave_report.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_report.php'); ?>">
                     <small><i class="fas fa-calendar-check me-2"></i> การลา</small>
+                </a>
+                <a href="employee_request_attendance_report.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('employee_request_attendance_report.php'); ?>">
+                    <small><i class="fas fa-list-check me-2"></i> คำขอและเหตุการณ์พนักงาน</small>
                 </a>
             </div>
 

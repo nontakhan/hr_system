@@ -22,6 +22,7 @@ try {
     require_once '../includes/employee_shift_assignment_helpers.php';
     require_once '../includes/training_request_helpers.php';
     require_once '../includes/employee_warning_helpers.php';
+    require_once '../includes/employee_request_attendance_report_helpers.php';
 
     if (!isset($_SESSION['user_id'])) sendJsonError('Login Required');
 
@@ -147,6 +148,28 @@ try {
             ]);
         }
 
+        if ($action === 'employee_request_attendance_report') {
+            if (!$canManage) sendJsonError('Access Denied');
+            $employeeId = (int)($_GET['employee_id'] ?? 0);
+            $month = $_GET['month'] ?? '';
+            if ($employeeId <= 0 || !preg_match('/^\d{4}-\d{2}$/', $month)) {
+                sendJsonError('กรุณาเลือกพนักงานและเดือน');
+            }
+            $employee = fetchEmployeeRequestAttendanceReportEmployee($mysqli, $role, $employeeId);
+            if (!$employee) sendJsonError('ไม่พบพนักงานในขอบเขตที่รับผิดชอบ');
+            sendJson([
+                'status' => 'success',
+                'month' => $month,
+                'employee' => [
+                    'id' => (int)$employee['id'],
+                    'full_name' => trim(($employee['first_name_th'] ?? '') . ' ' . ($employee['last_name_th'] ?? '')),
+                    'position_name' => $employee['position_name_th'] ?? '',
+                    'company_name' => $employee['company_name_th'] ?? '',
+                    'branch_name' => $employee['branch_name_th'] ?? '',
+                ],
+            ] + buildEmployeeRequestAttendanceReport($mysqli, $employee, $month));
+        }
+
         if ($action === 'import_summary') {
             if (!$canManage) sendJsonError('Access Denied');
             sendJson(['status' => 'success', 'data' => fetchAttendanceImportSummary($mysqli, $role)]);
@@ -206,7 +229,7 @@ try {
 
     sendJsonError('Method Not Allowed');
 } catch (Throwable $e) {
-    error_log($e->getMessage());
+    error_log($e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     sendJsonError('System Error');
 }
 
@@ -498,6 +521,186 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     }
 
     return $rows;
+}
+
+function fetchEmployeeRequestAttendanceReportEmployee(mysqli $mysqli, $role, $employeeId) {
+    $scope = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+    $sql = "SELECT e.id, e.citizen_id, e.first_name_th, e.last_name_th, e.company_id, e.branch_id,
+                   p.position_name_th, c.company_name_th, b.branch_name_th,
+                   ws.start_time, ws.end_time, ws.late_tolerance_mins, ws.work_days
+            FROM employees e
+            LEFT JOIN positions p ON e.position_id = p.id
+            LEFT JOIN companies c ON e.company_id = c.id
+            LEFT JOIN branches b ON e.branch_id = b.id
+            LEFT JOIN work_shifts ws ON e.default_shift_id = ws.id
+            WHERE e.id = ? AND e.status IN ('active', 'probation')" . $scope['sql'] . " LIMIT 1";
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, 'i' . $scope['types'], array_merge([(int)$employeeId], $scope['params']));
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc() ?: null;
+}
+
+function buildEmployeeRequestAttendanceReport(mysqli $mysqli, array $employee, $month) {
+    $employeeId = (int)$employee['id'];
+    $startDate = $month . '-01';
+    $endDate = date('Y-m-t', strtotime($startDate));
+    $events = [];
+
+    $records = fetchAttendanceRecordsForEmployeesMonth($mysqli, [$employeeId], $month);
+    $overrides = fetchAttendanceOverridesForEmployeesMonth($mysqli, [$employeeId], $startDate, $endDate);
+    $assignments = fetchShiftAssignmentsForEmployeesMonth($mysqli, [$employeeId], $startDate, $endDate);
+    $shiftOverrides = fetchShiftOverridesForEmployeesMonth($mysqli, [$employeeId], $startDate, $endDate);
+    $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
+    $leaveMap = fetchApprovedLeaveMapForEmployeesMonth($mysqli, [$employeeId], $month, $startDate, $endDate);
+    $trainingMap = fetchApprovedTrainingMapForEmployeesMonth($mysqli, [$employeeId], $month, $startDate, $endDate);
+    $daySwapMap = fetchApprovedDaySwapMapForEmployeesMonth($mysqli, [$employeeId], $month, $startDate, $endDate);
+    $baseShift = [
+        'start_time' => $employee['start_time'] ?? null,
+        'end_time' => $employee['end_time'] ?? null,
+        'late_tolerance_mins' => $employee['late_tolerance_mins'] ?? 0,
+        'work_days' => $employee['work_days'] ?? '',
+    ];
+    $scannerByDate = [];
+    $scannerDates = array_values(array_unique(array_merge(
+        array_keys($records[$employeeId] ?? []),
+        array_keys($overrides[$employeeId] ?? [])
+    )));
+    sort($scannerDates);
+    foreach ($scannerDates as $workDate) {
+        $rawRecord = $records[$employeeId][$workDate] ?? ['check_in' => null, 'check_out' => null];
+        $record = attendanceApplyRecordOverride($rawRecord, $overrides[$employeeId][$workDate] ?? null);
+        $effectiveShift = employeeShiftAssignmentsResolveForDate($assignments[$employeeId] ?? [], $baseShift, $workDate);
+        $effectiveShift = attendanceResolveShiftForDate($effectiveShift, $shiftOverrides[$employeeId] ?? [], $workDate);
+        if (isset($daySwapMap[$employeeId][$workDate])) {
+            $effectiveShift = attendanceApplyDayTypeOverride($effectiveShift, $workDate, $daySwapMap[$employeeId][$workDate]);
+        }
+        $status = attendanceEvaluateStatus($workDate, $record['check_in'], $record['check_out'], $effectiveShift, $holidays, $leaveMap[$employeeId] ?? [], $trainingMap[$employeeId] ?? []);
+        if (in_array($status['status'], ['holiday', 'leave', 'training'], true)) continue;
+        $scanner = employeeRequestReportCalculateScannerEvents($workDate, $record['check_in'], $record['check_out'], $effectiveShift);
+        $scannerByDate[$workDate] = $scanner;
+        $shiftStart = substr((string)($effectiveShift['start_time'] ?? ''), 0, 5);
+        $shiftEnd = substr((string)($effectiveShift['end_time'] ?? ''), 0, 5);
+        $checkIn = substr((string)($record['check_in'] ?? ''), 0, 5);
+        $checkOut = substr((string)($record['check_out'] ?? ''), 0, 5);
+        if ($scanner['late_minutes'] > 0) {
+            $events[] = employeeRequestReportBuildEvent("scanner:late:{$workDate}", $workDate, 'actual_late', 'scanner', "{$shiftStart} / {$checkIn}", $scanner['late_minutes'], 'minute', 'เวลาเข้างานตามกะ / เวลาสแกนเข้า', 'ข้อมูลลงเวลา');
+        }
+        if ($scanner['early_minutes'] > 0) {
+            $events[] = employeeRequestReportBuildEvent("scanner:early:{$workDate}", $workDate, 'actual_early', 'scanner', "{$checkOut} / {$shiftEnd}", $scanner['early_minutes'], 'minute', 'เวลาสแกนออก / เวลาเลิกงานตามกะ', 'ข้อมูลลงเวลา');
+        }
+        if ($scanner['overtime_minutes'] > 0) {
+            $events[] = employeeRequestReportBuildEvent("scanner:overtime:{$workDate}", $workDate, 'actual_overtime', 'scanner', "{$shiftEnd} / {$checkOut}", $scanner['overtime_minutes'], 'minute', 'เวลาเลิกงานตามกะ / เวลาสแกนออก', 'ข้อมูลลงเวลา');
+        }
+    }
+
+    $events = array_merge(
+        $events,
+        fetchEmployeeRequestReportLeaveEvents($mysqli, $employeeId, $month),
+        fetchEmployeeRequestReportHourlyEvents($mysqli, $employeeId, $startDate, $endDate, $scannerByDate),
+        fetchEmployeeRequestReportActivityEvents($mysqli, $employeeId, $startDate, $endDate),
+        fetchEmployeeRequestReportSwapEvents($mysqli, $employeeId, $startDate, $endDate)
+    );
+    $events = employeeRequestReportSortEvents($events);
+    return ['summary' => employeeRequestReportSummarize($events), 'data' => $events];
+}
+
+function fetchEmployeeRequestReportLeaveEvents(mysqli $mysqli, $employeeId, $month) {
+    leaveEnsureRequestPartColumns($mysqli);
+    leaveEnsureLeaveTypeCalculationColumns($mysqli);
+    $startDate = $month . '-01';
+    $endDate = date('Y-m-t', strtotime($startDate));
+    $stmt = $mysqli->prepare("SELECT lr.id, lr.employee_id, lr.start_date, lr.end_date, lr.start_day_part, lr.end_day_part, lr.reason, lt.type_name
+                              FROM leave_requests lr
+                              JOIN leave_types lt ON lr.leave_type_id = lt.id
+                              WHERE lr.employee_id = ? AND lr.status = 'approved' AND lt.is_actual_leave = 1
+                                AND lr.start_date <= ? AND lr.end_date >= ?");
+    $stmt->bind_param('iss', $employeeId, $endDate, $startDate);
+    $stmt->execute();
+    $requestRows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $workDays = leaveFetchEmployeeWorkDays($mysqli, $employeeId);
+    $holidays = leaveFetchCompanyHolidays($mysqli, $startDate, $endDate);
+    $events = [];
+    foreach ($requestRows as $request) {
+        foreach (leaveExpandApprovedRequestForMonth($request, $month, $workDays, $holidays) as $row) {
+            $detail = trim(($row['type_name'] ?? 'ลา') . ' | ' . ($row['day_part_label'] ?? '') . ' | ' . ($row['reason'] ?? ''), ' |');
+            $events[] = employeeRequestReportBuildEvent('leave:' . $row['id'] . ':' . $row['leave_date'], $row['leave_date'], 'leave', 'approved_request', substr($row['start_date'], 0, 10) . ' - ' . substr($row['end_date'], 0, 10), (float)$row['leave_days'], 'day', $detail, 'อนุมัติแล้ว');
+        }
+    }
+    return $events;
+}
+
+function fetchEmployeeRequestReportHourlyEvents(mysqli $mysqli, $employeeId, $startDate, $endDate, array $scannerByDate) {
+    leaveEnsureRequestPartColumns($mysqli);
+    $stmt = $mysqli->prepare("SELECT lr.id, lr.start_date, lr.time_request_type, lr.request_minutes, lr.approved_request_minutes, lr.request_start_time, lr.request_end_time, lr.reason
+                              FROM leave_requests lr
+                              WHERE lr.employee_id = ? AND lr.status = 'approved'
+                                AND lr.start_date BETWEEN ? AND ?
+                                AND lr.time_request_type IN ('late_arrival','early_departure','overtime_after_work')");
+    $stmt->bind_param('iss', $employeeId, $startDate, $endDate);
+    $stmt->execute();
+    $events = [];
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        $typeMap = ['late_arrival' => 'late_request', 'early_departure' => 'early_request', 'overtime_after_work' => 'overtime_request'];
+        $type = $typeMap[$row['time_request_type']] ?? '';
+        if ($type === '') continue;
+        $minutes = (int)$row['approved_request_minutes'] > 0 ? (int)$row['approved_request_minutes'] : (int)$row['request_minutes'];
+        $timeLabel = trim(substr((string)$row['request_start_time'], 0, 5) . ' - ' . substr((string)$row['request_end_time'], 0, 5), ' -');
+        if ($timeLabel === '') $timeLabel = '-';
+        $extra = [];
+        if ($type === 'overtime_request') $extra['actual_overtime_minutes'] = (int)($scannerByDate[$row['start_date']]['overtime_minutes'] ?? 0);
+        $events[] = employeeRequestReportBuildEvent('request:' . $row['time_request_type'] . ':' . $row['id'], $row['start_date'], $type, 'approved_request', $timeLabel, $minutes, 'minute', (string)($row['reason'] ?? ''), 'อนุมัติแล้ว', $extra);
+    }
+    return $events;
+}
+
+function fetchEmployeeRequestReportActivityEvents(mysqli $mysqli, $employeeId, $startDate, $endDate) {
+    trainingRequestEnsureTable($mysqli);
+    $stmt = $mysqli->prepare("SELECT tr.id, tr.start_date, tr.end_date, tr.start_day_part, tr.end_day_part, tr.course_name, tr.location, tr.objective, at.type_name AS activity_type_name
+                              FROM training_requests tr
+                              LEFT JOIN activity_types at ON tr.activity_type_id = at.id
+                              WHERE tr.employee_id = ? AND tr.status = 'approved'
+                                AND tr.start_date <= ? AND tr.end_date >= ?");
+    $stmt->bind_param('iss', $employeeId, $endDate, $startDate);
+    $stmt->execute();
+    $events = [];
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        $from = new DateTimeImmutable(max($startDate, $row['start_date']));
+        $to = new DateTimeImmutable(min($endDate, $row['end_date']));
+        for ($date = $from; $date <= $to; $date = $date->modify('+1 day')) {
+            $workDate = $date->format('Y-m-d');
+            $part = 'เต็มวัน';
+            if ($workDate === $row['start_date'] && $row['start_day_part'] !== 'full') $part = trainingRequestDayPartLabel($row['start_day_part']);
+            if ($workDate === $row['end_date'] && $row['end_day_part'] !== 'full') $part = trainingRequestDayPartLabel($row['end_day_part']);
+            $detail = implode(' | ', array_filter([$row['activity_type_name'], $row['course_name'], $row['location'], $row['objective']]));
+            $events[] = employeeRequestReportBuildEvent('activity:' . $row['id'] . ':' . $workDate, $workDate, 'activity', 'approved_request', $part, $part === 'เต็มวัน' ? 1 : 0.5, 'day', $detail, 'อนุมัติแล้ว');
+        }
+    }
+    return $events;
+}
+
+function fetchEmployeeRequestReportSwapEvents(mysqli $mysqli, $employeeId, $startDate, $endDate) {
+    daySwapEnsureTable($mysqli);
+    $stmt = $mysqli->prepare("SELECT dsr.id, dsr.requester_employee_id, dsr.target_employee_id, dsr.requester_date, dsr.target_date, dsr.reason,
+                                     CONCAT_WS(' ', requester.first_name_th, requester.last_name_th) AS requester_name,
+                                     CONCAT_WS(' ', target.first_name_th, target.last_name_th) AS target_name
+                              FROM day_swap_requests dsr
+                              JOIN employees requester ON dsr.requester_employee_id = requester.id
+                              JOIN employees target ON dsr.target_employee_id = target.id
+                              WHERE dsr.status = 'approved'
+                                AND (dsr.requester_employee_id = ? OR dsr.target_employee_id = ?)
+                                AND ((dsr.requester_date BETWEEN ? AND ?) OR (dsr.target_date BETWEEN ? AND ?))");
+    $stmt->bind_param('iissss', $employeeId, $employeeId, $startDate, $endDate, $startDate, $endDate);
+    $stmt->execute();
+    $events = [];
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        $isRequester = (int)$row['requester_employee_id'] === (int)$employeeId;
+        $eventDate = $isRequester ? $row['requester_date'] : $row['target_date'];
+        $counterpart = $isRequester ? $row['target_name'] : $row['requester_name'];
+        $detail = ($isRequester ? 'ผู้ขอสลับกับ ' : 'ผู้รับสลับจาก ') . $counterpart . ' | ' . $row['reason'];
+        $events[] = employeeRequestReportBuildEvent('shift-swap:' . $row['id'] . ':' . $employeeId, $eventDate, 'shift_swap', 'approved_request', $row['requester_date'] . ' ↔ ' . $row['target_date'], 1, 'request', $detail, 'อนุมัติแล้ว');
+    }
+    return $events;
 }
 
 function buildAttendanceReportRange($mysqli, array $employee, $startMonth, $endMonth) {

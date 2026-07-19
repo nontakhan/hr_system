@@ -1170,6 +1170,9 @@ function leaveFetchConflictingLeaveDates(mysqli $mysqli, $employeeId, $startDate
 
 function leaveFetchEmployeeWorkDays(mysqli $mysqli, $employeeId) {
     $stmt = $mysqli->prepare("SELECT ws.work_days FROM employees e LEFT JOIN work_shifts ws ON e.default_shift_id = ws.id WHERE e.id = ?");
+    if (!$stmt) {
+        throw new RuntimeException('Cannot prepare employee workday lookup: ' . $mysqli->error);
+    }
     $stmt->bind_param('i', $employeeId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
