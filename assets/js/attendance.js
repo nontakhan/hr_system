@@ -441,32 +441,18 @@ function initAttendanceMissingReport() {
     initializeAttendanceSelect2();
 
     const company = document.getElementById('attendanceMissingCompany');
-    const branch = document.getElementById('attendanceMissingBranch');
     if (company) {
         company.addEventListener('change', () => {
             updateAttendanceMissingBranchOptions();
-            loadAttendanceMissingReport();
         });
         if (typeof $ !== 'undefined' && $.fn.select2) {
             $(company)
                 .off('select2:select.attendanceMissing select2:clear.attendanceMissing')
                 .on('select2:select.attendanceMissing select2:clear.attendanceMissing', () => {
                     updateAttendanceMissingBranchOptions();
-                    loadAttendanceMissingReport();
                 });
         }
     }
-    if (branch) {
-        branch.addEventListener('change', loadAttendanceMissingReport);
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $(branch)
-                .off('select2:select.attendanceMissing select2:clear.attendanceMissing')
-                .on('select2:select.attendanceMissing select2:clear.attendanceMissing', loadAttendanceMissingReport);
-        }
-    }
-
-    document.getElementById('attendanceMissingType')?.addEventListener('change', loadAttendanceMissingReport);
-    if (month) month.addEventListener('change', loadAttendanceMissingReport);
     if (loadBtn) loadBtn.addEventListener('click', loadAttendanceMissingReport);
 
     loadAttendanceMissingFilterOptions();
@@ -486,7 +472,6 @@ async function loadAttendanceMissingFilterOptions() {
         fillAttendanceAdjustmentSelect('attendanceMissingCompany', attendanceAdjustmentFilterOptions.companies, 'บริษัททั้งหมด');
         fillAttendanceAdjustmentSelect('attendanceMissingBranch', attendanceAdjustmentFilterOptions.branches, 'สาขาทั้งหมด');
         updateAttendanceMissingBranchOptions();
-        loadAttendanceMissingReport();
     } catch (err) {
         console.warn(err);
     }
@@ -650,22 +635,15 @@ function initAttendanceLateEarlyReport() {
     initializeAttendanceSelect2();
 
     const company = document.getElementById('attendanceLateEarlyCompany');
-    const branch = document.getElementById('attendanceLateEarlyBranch');
     company?.addEventListener('change', () => {
         updateAttendanceLateEarlyBranchOptions();
-        loadAttendanceLateEarlyReport();
     });
-    branch?.addEventListener('change', loadAttendanceLateEarlyReport);
-    document.getElementById('attendanceLateEarlyType')?.addEventListener('change', loadAttendanceLateEarlyReport);
-    month?.addEventListener('change', loadAttendanceLateEarlyReport);
     document.getElementById('attendanceLateEarlyLoadBtn')?.addEventListener('click', loadAttendanceLateEarlyReport);
 
     if (typeof $ !== 'undefined' && $.fn.select2) {
         $(company).off('.attendanceLateEarly').on('select2:select.attendanceLateEarly select2:clear.attendanceLateEarly', () => {
             updateAttendanceLateEarlyBranchOptions();
-            loadAttendanceLateEarlyReport();
         });
-        $(branch).off('.attendanceLateEarly').on('select2:select.attendanceLateEarly select2:clear.attendanceLateEarly', loadAttendanceLateEarlyReport);
     }
     loadAttendanceLateEarlyFilterOptions();
 }
@@ -683,7 +661,6 @@ async function loadAttendanceLateEarlyFilterOptions() {
         fillAttendanceAdjustmentSelect('attendanceLateEarlyCompany', attendanceAdjustmentFilterOptions.companies, 'บริษัททั้งหมด');
         fillAttendanceAdjustmentSelect('attendanceLateEarlyBranch', attendanceAdjustmentFilterOptions.branches, 'สาขาทั้งหมด');
         updateAttendanceLateEarlyBranchOptions();
-        loadAttendanceLateEarlyReport();
     } catch (err) {
         console.warn(err);
     }

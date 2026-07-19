@@ -25,14 +25,9 @@ function initApprovedLeaveReport() {
     initializeApprovedLeaveReportSelect2();
 
     const company = document.getElementById('approvedLeaveReportCompany');
-    const branch = document.getElementById('approvedLeaveReportBranch');
     company?.addEventListener('change', () => {
         updateApprovedLeaveReportBranches();
-        loadApprovedLeaveReport();
     });
-    branch?.addEventListener('change', loadApprovedLeaveReport);
-    document.getElementById('approvedLeaveReportType')?.addEventListener('change', loadApprovedLeaveReport);
-    month?.addEventListener('change', loadApprovedLeaveReport);
     document.getElementById('approvedLeaveReportLoadBtn')?.addEventListener('click', loadApprovedLeaveReport);
     loadApprovedLeaveReportOptions();
 }
@@ -61,7 +56,6 @@ async function loadApprovedLeaveReportOptions() {
         fillApprovedLeaveReportSelect('approvedLeaveReportCompany', approvedLeaveReportOptions.companies, 'บริษัททั้งหมด');
         fillApprovedLeaveReportSelect('approvedLeaveReportType', approvedLeaveReportOptions.leave_types, 'ประเภทการลาทั้งหมด');
         updateApprovedLeaveReportBranches();
-        loadApprovedLeaveReport();
     } catch (error) {
         renderApprovedLeaveReportError(error.message);
     }
