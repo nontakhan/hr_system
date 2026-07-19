@@ -7,13 +7,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+let employeeWarningDetailRows = new Map();
+let employeeWarningDetailContext = null;
+let employeeWarningSearchTerm = '';
+
 function initEmployeeWarningsAdminPage() {
-    document.getElementById('employeeWarningMonth')?.addEventListener('change', loadEmployeeWarningSummary);
-    document.getElementById('refreshEmployeeWarningsBtn')?.addEventListener('click', loadEmployeeWarningSummary);
+    document.getElementById('employeeWarningMonth')?.addEventListener('change', clearEmployeeWarningSearch);
+    document.getElementById('refreshEmployeeWarningsBtn')?.addEventListener('click', refreshEmployeeWarningView);
     document.getElementById('employeeWarningForm')?.addEventListener('submit', submitEmployeeWarning);
     document.getElementById('warningTypeForm')?.addEventListener('submit', submitWarningType);
     document.getElementById('resetWarningTypeFormBtn')?.addEventListener('click', resetWarningTypeForm);
     document.getElementById('warningTypeTableBody')?.addEventListener('click', handleWarningTypeTableClick);
+    document.getElementById('employeeWarningDetailBody')?.addEventListener('click', handleEmployeeWarningDetailClick);
+    document.getElementById('addEmployeeWarningBtn')?.addEventListener('click', resetEmployeeWarningForm);
+    document.getElementById('employeeWarningModal')?.addEventListener('hidden.bs.modal', resetEmployeeWarningForm);
+    document.getElementById('employeeWarningSearchForm')?.addEventListener('submit', searchEmployeeWarnings);
+    document.getElementById('clearEmployeeWarningSearchBtn')?.addEventListener('click', clearEmployeeWarningSearch);
 
     loadEmployeeWarningEmployees();
     loadWarningTypes();
@@ -76,12 +85,13 @@ function renderEmployeeWarningSummaryCards(summary) {
     });
 }
 
-function renderEmployeeWarningSummaryRows(rows) {
+function renderEmployeeWarningSummaryRows(rows, mode = 'month') {
     const tbody = document.getElementById('employeeWarningSummaryBody');
     if (!tbody) return;
 
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ไม่พบใบเตือนในเดือนที่เลือก</td></tr>';
+        const message = mode === 'history' ? 'ไม่พบประวัติใบเตือนที่ตรงกับชื่อ' : 'ไม่พบใบเตือนในเดือนที่เลือก';
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">${message}</td></tr>`;
         return;
     }
 
@@ -99,7 +109,7 @@ function renderEmployeeWarningSummaryRows(rows) {
                 <td><span class="badge bg-danger">${Number.parseInt(row.warning_count, 10) || 0}</span></td>
                 <td>${ewEscapeHtml(row.warning_types || '-')}</td>
                 <td>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEmployeeWarningDetails(${employeeId}, '${ewEscapeAttr(employeeName)}')">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEmployeeWarningDetails(${employeeId}, '${ewEscapeAttr(employeeName)}', '${mode}')">
                         ดู
                     </button>
                 </td>
@@ -112,7 +122,7 @@ async function submitEmployeeWarning(event) {
     event.preventDefault();
     const form = event.target;
     const data = Object.fromEntries(new FormData(form).entries());
-    data.action = 'create_warning';
+    data.action = data.id ? 'update_warning' : 'create_warning';
 
     try {
         await employeeWarningFetchJson('api/employee_warning_api.php', {
@@ -120,14 +130,75 @@ async function submitEmployeeWarning(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
-        Swal.fire('สำเร็จ', 'บันทึกใบเตือนเรียบร้อยแล้ว', 'success');
+        Swal.fire('สำเร็จ', data.id ? 'แก้ไขใบเตือนเรียบร้อยแล้ว' : 'บันทึกใบเตือนเรียบร้อยแล้ว', 'success');
         bootstrap.Modal.getInstance(document.getElementById('employeeWarningModal'))?.hide();
-        form.reset();
-        document.getElementById('employeeWarningDate').value = todayDate();
-        loadEmployeeWarningSummary();
+        resetEmployeeWarningForm();
+        await refreshEmployeeWarningView();
+        if (employeeWarningDetailContext) {
+            await openEmployeeWarningDetails(employeeWarningDetailContext.employeeId, employeeWarningDetailContext.employeeName, employeeWarningDetailContext.mode);
+        }
     } catch (err) {
         Swal.fire('ผิดพลาด', err.message, 'error');
     }
+}
+
+async function searchEmployeeWarnings(event) {
+    event?.preventDefault();
+    const input = document.getElementById('employeeWarningSearchName');
+    const term = String(input?.value || '').trim();
+    if (!term) {
+        Swal.fire('กรุณาระบุชื่อ', 'กรอกชื่อหรือบางส่วนของชื่อพนักงานที่ต้องการค้นหา', 'warning');
+        input?.focus();
+        return;
+    }
+    employeeWarningSearchTerm = term.slice(0, 100);
+    await loadEmployeeWarningSearchResults();
+}
+
+async function loadEmployeeWarningSearchResults() {
+    const tbody = document.getElementById('employeeWarningSummaryBody');
+    if (!tbody || !employeeWarningSearchTerm) return;
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">กำลังค้นหา...</td></tr>';
+    document.getElementById('employeeWarningTableTitle').textContent = 'ผลการค้นหาประวัติใบเตือนทุกเดือน';
+    document.getElementById('employeeWarningTableMode').textContent = `ค้นหา: ${employeeWarningSearchTerm}`;
+    document.getElementById('clearEmployeeWarningSearchBtn').classList.remove('d-none');
+    try {
+        const rows = await employeeWarningFetchJson(`api/employee_warning_api.php?action=search_employee_warnings&q=${encodeURIComponent(employeeWarningSearchTerm)}`);
+        renderEmployeeWarningSummaryRows(rows, 'history');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${ewEscapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+async function clearEmployeeWarningSearch() {
+    employeeWarningSearchTerm = '';
+    employeeWarningDetailContext = null;
+    const input = document.getElementById('employeeWarningSearchName');
+    if (input) input.value = '';
+    document.getElementById('employeeWarningTableTitle').textContent = 'สรุปรายเดือนแยกตามพนักงาน';
+    document.getElementById('employeeWarningTableMode').textContent = 'แสดงเฉพาะพนักงานที่มีใบเตือนในเดือนที่เลือก';
+    document.getElementById('clearEmployeeWarningSearchBtn').classList.add('d-none');
+    await loadEmployeeWarningSummary();
+}
+
+async function refreshEmployeeWarningView() {
+    if (employeeWarningSearchTerm) {
+        await loadEmployeeWarningSearchResults();
+    } else {
+        await loadEmployeeWarningSummary();
+    }
+}
+
+function resetEmployeeWarningForm() {
+    document.getElementById('employeeWarningForm')?.reset();
+    const id = document.getElementById('employeeWarningId');
+    const date = document.getElementById('employeeWarningDate');
+    const title = document.getElementById('employeeWarningModalTitle');
+    const submitLabel = document.getElementById('employeeWarningSubmitLabel');
+    if (id) id.value = '';
+    if (date) date.value = todayDate();
+    if (title) title.textContent = 'เพิ่มใบเตือนพนักงาน';
+    if (submitLabel) submitLabel.textContent = 'บันทึกใบเตือน';
 }
 
 async function loadWarningTypes() {
@@ -246,22 +317,26 @@ function resetWarningTypeForm() {
     if (idInput) idInput.value = '';
 }
 
-window.openEmployeeWarningDetails = async function(employeeId, employeeName) {
+window.openEmployeeWarningDetails = async function(employeeId, employeeName, mode = 'month') {
     const modalEl = document.getElementById('employeeWarningDetailModal');
     const tbody = document.getElementById('employeeWarningDetailBody');
     const title = document.getElementById('employeeWarningDetailTitle');
     const month = document.getElementById('employeeWarningMonth')?.value || currentYearMonth();
     if (!modalEl || !tbody) return;
 
+    employeeWarningDetailContext = { employeeId, employeeName, mode };
     title.textContent = `รายละเอียดใบเตือน: ${employeeName}`;
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
     new bootstrap.Modal(modalEl).show();
 
     try {
-        const rows = await employeeWarningFetchJson(`api/employee_warning_api.php?action=employee_month_details&employee_id=${employeeId}&month=${encodeURIComponent(month)}`);
+        const endpoint = mode === 'history'
+            ? `api/employee_warning_api.php?action=employee_warning_history&employee_id=${employeeId}`
+            : `api/employee_warning_api.php?action=employee_month_details&employee_id=${employeeId}&month=${encodeURIComponent(month)}`;
+        const rows = await employeeWarningFetchJson(endpoint);
         renderEmployeeWarningDetailRows(rows);
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${ewEscapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${ewEscapeHtml(err.message)}</td></tr>`;
     }
 };
 
@@ -270,18 +345,82 @@ function renderEmployeeWarningDetailRows(rows) {
     if (!tbody) return;
 
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">ไม่พบรายละเอียด</td></tr>';
+        employeeWarningDetailRows = new Map();
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ไม่พบรายละเอียด</td></tr>';
         return;
     }
 
+    employeeWarningDetailRows = new Map(rows.map(row => [Number.parseInt(row.id, 10), row]));
     tbody.innerHTML = rows.map(row => `
         <tr>
             <td>${formatWarningDate(row.warning_date)}</td>
             <td>${ewEscapeHtml(row.type_name || '-')}</td>
             <td>${ewEscapeHtml(row.detail || '-')}</td>
             <td>${ewEscapeHtml(row.created_by_name || '-')}</td>
+            <td class="text-nowrap">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-employee-warning-edit" data-id="${Number.parseInt(row.id, 10)}" title="แก้ไข">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-employee-warning-delete" data-id="${Number.parseInt(row.id, 10)}" title="ลบ">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
         </tr>
     `).join('');
+}
+
+function handleEmployeeWarningDetailClick(event) {
+    const editButton = event.target.closest('.btn-employee-warning-edit');
+    const deleteButton = event.target.closest('.btn-employee-warning-delete');
+    const id = Number.parseInt((editButton || deleteButton)?.dataset.id, 10);
+    if (!id) return;
+
+    if (editButton) {
+        editEmployeeWarning(employeeWarningDetailRows.get(id));
+    } else if (deleteButton) {
+        deleteEmployeeWarning(id);
+    }
+}
+
+function editEmployeeWarning(row) {
+    if (!row) return;
+    document.getElementById('employeeWarningId').value = row.id || '';
+    document.getElementById('employeeWarningEmployee').value = row.employee_id || '';
+    document.getElementById('employeeWarningType').value = row.warning_type_id || '';
+    document.getElementById('employeeWarningDate').value = String(row.warning_date || '').slice(0, 10);
+    document.getElementById('employeeWarningDetail').value = row.detail || '';
+    document.getElementById('employeeWarningModalTitle').textContent = 'แก้ไขใบเตือนพนักงาน';
+    document.getElementById('employeeWarningSubmitLabel').textContent = 'บันทึกการแก้ไข';
+    bootstrap.Modal.getInstance(document.getElementById('employeeWarningDetailModal'))?.hide();
+    new bootstrap.Modal(document.getElementById('employeeWarningModal')).show();
+}
+
+async function deleteEmployeeWarning(id) {
+    const confirmation = await Swal.fire({
+        title: 'ยืนยันการลบใบเตือน?',
+        text: 'เมื่อลบแล้วจะไม่สามารถเรียกคืนข้อมูลได้',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ลบ',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#d33',
+    });
+    if (!confirmation.isConfirmed) return;
+
+    try {
+        await employeeWarningFetchJson('api/employee_warning_api.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_warning', id }),
+        });
+        Swal.fire('สำเร็จ', 'ลบใบเตือนเรียบร้อยแล้ว', 'success');
+        await refreshEmployeeWarningView();
+        if (employeeWarningDetailContext) {
+            await openEmployeeWarningDetails(employeeWarningDetailContext.employeeId, employeeWarningDetailContext.employeeName, employeeWarningDetailContext.mode);
+        }
+    } catch (err) {
+        Swal.fire('ลบไม่ได้', err.message, 'error');
+    }
 }
 
 async function loadMyWarnings() {

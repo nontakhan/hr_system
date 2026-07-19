@@ -43,7 +43,11 @@ assert_contains_text($myPage, 'myWarningMonth', 'Employee page must expose a mon
 foreach ([
     'monthly_summary',
     'employee_month_details',
+    'search_employee_warnings',
+    'employee_warning_history',
     'create_warning',
+    'update_warning',
+    'delete_warning',
     'get_warning_types',
     'create_warning_type',
     'update_warning_type',
@@ -64,6 +68,18 @@ assert_contains_text($helper, 'source_event_date', 'Employee warnings must store
 assert_contains_text($helper, 'uq_employee_warnings_source', 'Employee warnings must prevent duplicate report sources');
 assert_contains_text($helper, 'employeeWarningDeleteType', 'Helper must include protected delete function');
 assert_contains_text($helper, 'SELECT id FROM employee_warnings WHERE warning_type_id = ?', 'Delete must check existing warning history');
+assert_contains_text($helper, 'employeeWarningUpdateRecord', 'Helper must update a warning record');
+assert_contains_text($helper, 'employeeWarningDeleteRecord', 'Helper must delete a warning record');
+assert_contains_text($helper, 'updated_by = ?', 'Warning updates must record the acting user');
+assert_contains_text($helper, "JOIN employees e ON ew.employee_id = e.id", 'Warning mutations must authorize through employee scope');
+assert_contains_text($helper, 'SET employee_id = ?, warning_type_id = ?, warning_date = ?, detail = ?, updated_by = ?', 'Warning update must change only editable fields and audit user');
+assert_not_contains_text($helper, 'SET source_type =', 'Warning update must preserve bulk source type');
+assert_not_contains_text($helper, 'source_key = ?', 'Warning update must preserve bulk source key');
+assert_contains_text($helper, 'employeeWarningNormalizeSearch', 'Helper must normalize all-month name searches');
+assert_contains_text($helper, 'employeeWarningSearchByName', 'Helper must search warning employees across all months');
+assert_contains_text($helper, 'employeeWarningFetchEmployeeHistory', 'Helper must fetch all warning history for an employee');
+assert_contains_text($helper, "CONCAT_WS(' ', e.first_name_th, e.last_name_th) LIKE ?", 'Name search must use a prepared partial-name pattern');
+assert_contains_text($helper, "employeeWarningEmployeeScopeClause(\$role, \$scopes, 'e')", 'Warning searches and history must reuse HR scope filtering');
 
 assert_contains_text($js, 'initEmployeeWarningsAdminPage', 'JS must initialize HR/admin page');
 assert_contains_text($js, 'initMyWarningsPage', 'JS must initialize employee page');

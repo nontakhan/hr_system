@@ -58,6 +58,15 @@ function employeeWarningNormalizeMonth(?string $month): string
     return $month;
 }
 
+function employeeWarningNormalizeSearch(?string $term): string
+{
+    $term = trim((string)$term);
+    if ($term === '') {
+        throw new InvalidArgumentException('กรุณาระบุชื่อพนักงาน');
+    }
+    return employeeWarningTrim($term, 100);
+}
+
 function employeeWarningNormalizeDate(?string $date, string $message): string
 {
     $date = trim((string)$date);
@@ -134,7 +143,7 @@ function employeeWarningDeleteType(mysqli $mysqli, int $id): void
     }
 }
 
-function employeeWarningCreateRecord(mysqli $mysqli, array $input, int $userId): void
+function employeeWarningValidateRecordInput(mysqli $mysqli, array $input): array
 {
     $employeeId = (int)($input['employee_id'] ?? 0);
     $warningTypeId = (int)($input['warning_type_id'] ?? 0);
@@ -162,10 +171,99 @@ function employeeWarningCreateRecord(mysqli $mysqli, array $input, int $userId):
         throw new InvalidArgumentException('ไม่พบรายการใบเตือน');
     }
 
+    return [$employeeId, $warningTypeId, $warningDate, $detail];
+}
+
+function employeeWarningCreateRecord(mysqli $mysqli, array $input, int $userId): void
+{
+    [$employeeId, $warningTypeId, $warningDate, $detail] = employeeWarningValidateRecordInput($mysqli, $input);
+
     $stmt = $mysqli->prepare("INSERT INTO employee_warnings (employee_id, warning_type_id, warning_date, detail, created_by) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param('iissi', $employeeId, $warningTypeId, $warningDate, $detail, $userId);
     if (!$stmt->execute()) {
         throw new RuntimeException($stmt->error ?: 'Cannot save employee warning');
+    }
+}
+
+function employeeWarningRequireScopedEmployee(mysqli $mysqli, int $employeeId, string $role, array $scopes): void
+{
+    if ($employeeId <= 0) {
+        throw new InvalidArgumentException('กรุณาเลือกพนักงาน');
+    }
+
+    $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
+    $stmt = $mysqli->prepare("SELECT e.id FROM employees e WHERE e.id = ?" . $scopeClause['sql'] . " LIMIT 1");
+    employeeWarningBindParams(
+        $stmt,
+        'i' . $scopeClause['types'],
+        array_merge([$employeeId], $scopeClause['params'])
+    );
+    $stmt->execute();
+    if (!$stmt->get_result()->fetch_assoc()) {
+        throw new InvalidArgumentException('ไม่พบข้อมูลใบเตือน');
+    }
+}
+
+function employeeWarningRequireScopedRecord(mysqli $mysqli, int $id, string $role, array $scopes): array
+{
+    if ($id <= 0) {
+        throw new InvalidArgumentException('ข้อมูลใบเตือนไม่ถูกต้อง');
+    }
+
+    $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
+    $stmt = $mysqli->prepare("SELECT ew.id, ew.employee_id
+                              FROM employee_warnings ew
+                              JOIN employees e ON ew.employee_id = e.id
+                              WHERE ew.id = ?" . $scopeClause['sql'] . " LIMIT 1");
+    employeeWarningBindParams(
+        $stmt,
+        'i' . $scopeClause['types'],
+        array_merge([$id], $scopeClause['params'])
+    );
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    if (!$row) {
+        throw new InvalidArgumentException('ไม่พบข้อมูลใบเตือน');
+    }
+    return $row;
+}
+
+function employeeWarningUpdateRecord(mysqli $mysqli, array $input, int $userId, string $role, array $scopes): void
+{
+    $id = (int)($input['id'] ?? 0);
+    employeeWarningRequireScopedRecord($mysqli, $id, $role, $scopes);
+    [$employeeId, $warningTypeId, $warningDate, $detail] = employeeWarningValidateRecordInput($mysqli, $input);
+    employeeWarningRequireScopedEmployee($mysqli, $employeeId, $role, $scopes);
+
+    $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
+    $stmt = $mysqli->prepare("UPDATE employee_warnings ew
+                              JOIN employees e ON ew.employee_id = e.id
+                              SET employee_id = ?, warning_type_id = ?, warning_date = ?, detail = ?, updated_by = ?
+                              WHERE ew.id = ?" . $scopeClause['sql']);
+    employeeWarningBindParams(
+        $stmt,
+        'iissii' . $scopeClause['types'],
+        array_merge([$employeeId, $warningTypeId, $warningDate, $detail, $userId, $id], $scopeClause['params'])
+    );
+    if (!$stmt->execute()) {
+        throw new RuntimeException($stmt->error ?: 'Cannot update employee warning');
+    }
+}
+
+function employeeWarningDeleteRecord(mysqli $mysqli, int $id, string $role, array $scopes): void
+{
+    employeeWarningRequireScopedRecord($mysqli, $id, $role, $scopes);
+    $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
+    $stmt = $mysqli->prepare("DELETE ew FROM employee_warnings ew
+                              JOIN employees e ON ew.employee_id = e.id
+                              WHERE ew.id = ?" . $scopeClause['sql']);
+    employeeWarningBindParams(
+        $stmt,
+        'i' . $scopeClause['types'],
+        array_merge([$id], $scopeClause['params'])
+    );
+    if (!$stmt->execute()) {
+        throw new RuntimeException($stmt->error ?: 'Cannot delete employee warning');
     }
 }
 
@@ -267,6 +365,37 @@ function employeeWarningFetchMonthlySummary(mysqli $mysqli, string $month, strin
     ];
 }
 
+function employeeWarningSearchByName(mysqli $mysqli, string $term, string $role = 'admin', array $scopes = []): array
+{
+    $term = employeeWarningNormalizeSearch($term);
+    $escapedTerm = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+    $pattern = '%' . $escapedTerm . '%';
+    $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
+    $sql = "SELECT e.id AS employee_id,
+                   e.citizen_id,
+                   CONCAT_WS(' ', e.first_name_th, e.last_name_th) AS employee_name,
+                   c.company_name_th,
+                   b.branch_name_th,
+                   d.dept_name_th,
+                   p.position_name_th,
+                   COUNT(ew.id) AS warning_count,
+                   GROUP_CONCAT(DISTINCT wt.type_name ORDER BY wt.type_name SEPARATOR ', ') AS warning_types
+            FROM employee_warnings ew
+            JOIN employees e ON ew.employee_id = e.id
+            JOIN warning_types wt ON ew.warning_type_id = wt.id
+            LEFT JOIN companies c ON e.company_id = c.id
+            LEFT JOIN branches b ON e.branch_id = b.id
+            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN positions p ON e.position_id = p.id
+            WHERE CONCAT_WS(' ', e.first_name_th, e.last_name_th) LIKE ? ESCAPE '\\\\'" . $scopeClause['sql'] . "
+            GROUP BY e.id, e.citizen_id, e.first_name_th, e.last_name_th, c.company_name_th, b.branch_name_th, d.dept_name_th, p.position_name_th
+            ORDER BY e.first_name_th, e.last_name_th";
+    $stmt = $mysqli->prepare($sql);
+    employeeWarningBindParams($stmt, 's' . $scopeClause['types'], array_merge([$pattern], $scopeClause['params']));
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
 function employeeWarningFetchTopType(mysqli $mysqli, string $start, string $end, string $role, array $scopes): ?array
 {
     $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
@@ -291,6 +420,8 @@ function employeeWarningFetchEmployeeMonthDetails(mysqli $mysqli, int $employeeI
     [$start, $end] = employeeWarningMonthRange($month);
     $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
     $stmt = $mysqli->prepare("SELECT ew.id,
+                                     ew.employee_id,
+                                     ew.warning_type_id,
                                      ew.warning_date,
                                      ew.detail,
                                      ew.created_at,
@@ -306,6 +437,33 @@ function employeeWarningFetchEmployeeMonthDetails(mysqli $mysqli, int $employeeI
     $types = 'iss' . $scopeClause['types'];
     $params = array_merge([$employeeId, $start, $end], $scopeClause['params']);
     employeeWarningBindParams($stmt, $types, $params);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function employeeWarningFetchEmployeeHistory(mysqli $mysqli, int $employeeId, string $role = 'admin', array $scopes = []): array
+{
+    if ($employeeId <= 0) {
+        throw new InvalidArgumentException('พนักงานไม่ถูกต้อง');
+    }
+
+    $scopeClause = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
+    $stmt = $mysqli->prepare("SELECT ew.id,
+                                     ew.employee_id,
+                                     ew.warning_type_id,
+                                     ew.warning_date,
+                                     ew.detail,
+                                     ew.created_at,
+                                     wt.type_name,
+                                     CONCAT_WS(' ', ce.first_name_th, ce.last_name_th) AS created_by_name
+                              FROM employee_warnings ew
+                              JOIN employees e ON ew.employee_id = e.id
+                              JOIN warning_types wt ON ew.warning_type_id = wt.id
+                              LEFT JOIN users u ON ew.created_by = u.id
+                              LEFT JOIN employees ce ON u.employee_id = ce.id
+                              WHERE ew.employee_id = ?" . $scopeClause['sql'] . "
+                              ORDER BY ew.warning_date DESC, ew.id DESC");
+    employeeWarningBindParams($stmt, 'i' . $scopeClause['types'], array_merge([$employeeId], $scopeClause['params']));
     $stmt->execute();
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }

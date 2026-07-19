@@ -59,6 +59,13 @@ try {
             ]);
         }
 
+        if ($action === 'search_employee_warnings') {
+            sendEmployeeWarningJson([
+                'status' => 'success',
+                'data' => employeeWarningSearchByName($mysqli, $_GET['q'] ?? '', $role, $scopes),
+            ]);
+        }
+
         if ($action === 'employee_month_details') {
             $month = employeeWarningNormalizeMonth($_GET['month'] ?? null);
             $targetEmployeeId = (int)($_GET['employee_id'] ?? 0);
@@ -68,6 +75,14 @@ try {
             sendEmployeeWarningJson([
                 'status' => 'success',
                 'data' => employeeWarningFetchEmployeeMonthDetails($mysqli, $targetEmployeeId, $month, $role, $scopes),
+            ]);
+        }
+
+        if ($action === 'employee_warning_history') {
+            $targetEmployeeId = (int)($_GET['employee_id'] ?? 0);
+            sendEmployeeWarningJson([
+                'status' => 'success',
+                'data' => employeeWarningFetchEmployeeHistory($mysqli, $targetEmployeeId, $role, $scopes),
             ]);
         }
 
@@ -99,6 +114,11 @@ try {
             sendEmployeeWarningJson(['status' => 'success', 'message' => 'บันทึกใบเตือนเรียบร้อยแล้ว']);
         }
 
+        if ($postAction === 'update_warning') {
+            employeeWarningUpdateRecord($mysqli, $input, $userId, $role, $scopes);
+            sendEmployeeWarningJson(['status' => 'success', 'message' => 'แก้ไขใบเตือนเรียบร้อยแล้ว']);
+        }
+
         if ($postAction === 'bulk_create') {
             sendEmployeeWarningJson([
                 'status' => 'success',
@@ -120,6 +140,10 @@ try {
 
     if ($method === 'DELETE') {
         employeeWarningRequireHr($role);
+        if (($input['action'] ?? '') === 'delete_warning') {
+            employeeWarningDeleteRecord($mysqli, (int)($input['id'] ?? 0), $role, $scopes);
+            sendEmployeeWarningJson(['status' => 'success', 'message' => 'ลบใบเตือนเรียบร้อยแล้ว']);
+        }
         if (($input['action'] ?? '') === 'delete_warning_type') {
             employeeWarningDeleteType($mysqli, (int)($input['id'] ?? 0));
             sendEmployeeWarningJson(['status' => 'success', 'message' => 'ลบรายการใบเตือนเรียบร้อยแล้ว']);

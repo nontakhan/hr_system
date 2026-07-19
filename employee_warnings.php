@@ -22,7 +22,7 @@ $today = date('Y-m-d');
         <button type="button" class="btn btn-outline-secondary" id="refreshEmployeeWarningsBtn">
             <i class="fas fa-rotate"></i> รีเฟรช
         </button>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#employeeWarningModal">
+        <button type="button" class="btn btn-primary" id="addEmployeeWarningBtn" data-bs-toggle="modal" data-bs-target="#employeeWarningModal">
             <i class="fas fa-plus"></i> เพิ่มใบเตือน
         </button>
     </div>
@@ -68,9 +68,23 @@ $today = date('Y-m-d');
     <div class="col-12 col-xl-8">
         <div class="card shadow-sm border-0">
             <div class="card-body">
+                <form id="employeeWarningSearchForm" class="row g-2 mb-3">
+                    <div class="col-12 col-md">
+                        <label class="visually-hidden" for="employeeWarningSearchName">ค้นหาชื่อพนักงาน</label>
+                        <input type="search" class="form-control" id="employeeWarningSearchName" maxlength="100" placeholder="ค้นหาชื่อพนักงานจากประวัติทุกเดือน">
+                    </div>
+                    <div class="col-12 col-md-auto d-flex gap-2">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-search"></i> ค้นหา
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary d-none" id="clearEmployeeWarningSearchBtn">
+                            <i class="fas fa-times"></i> ล้างการค้นหา
+                        </button>
+                    </div>
+                </form>
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="h5 mb-0">สรุปรายเดือนแยกตามพนักงาน</h2>
-                    <span class="badge bg-light text-dark border">แสดงเฉพาะพนักงานที่มีใบเตือนในเดือนที่เลือก</span>
+                    <h2 class="h5 mb-0" id="employeeWarningTableTitle">สรุปรายเดือนแยกตามพนักงาน</h2>
+                    <span class="badge bg-light text-dark border" id="employeeWarningTableMode">แสดงเฉพาะพนักงานที่มีใบเตือนในเดือนที่เลือก</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
@@ -135,10 +149,11 @@ $today = date('Y-m-d');
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">เพิ่มใบเตือนพนักงาน</h5>
+                <h5 class="modal-title" id="employeeWarningModalTitle">เพิ่มใบเตือนพนักงาน</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="employeeWarningForm">
+                <input type="hidden" name="id" id="employeeWarningId">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label" for="employeeWarningEmployee">พนักงาน <span class="text-danger">*</span></label>
@@ -163,7 +178,7 @@ $today = date('Y-m-d');
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="submit" class="btn btn-primary">บันทึกใบเตือน</button>
+                    <button type="submit" class="btn btn-primary"><span id="employeeWarningSubmitLabel">บันทึกใบเตือน</span></button>
                 </div>
             </form>
         </div>
@@ -186,10 +201,11 @@ $today = date('Y-m-d');
                                 <th>รายการใบเตือน</th>
                                 <th>รายละเอียด</th>
                                 <th>ผู้บันทึก</th>
+                                <th style="width: 100px;">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="employeeWarningDetailBody">
-                            <tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
                         </tbody>
                     </table>
                 </div>
