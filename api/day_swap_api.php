@@ -18,6 +18,7 @@ try {
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/day_swap_helpers.php';
     require_once '../includes/hr_scope_helpers.php';
+    require_once '../includes/request_cancellation_helpers.php';
 
     if (!isset($_SESSION['user_id'])) {
         sendDaySwapError('Login Required');
@@ -71,7 +72,7 @@ try {
         }
 
         if ($action === 'my_requests') {
-            $stmt = $mysqli->prepare("SELECT dsr.*, dsr.created_via, dsr.created_by_role, dsr.proxy_note,
+            $stmt = $mysqli->prepare("SELECT dsr.*, (dsr.requester_employee_id = ?) AS can_cancel, dsr.created_via, dsr.created_by_role, dsr.proxy_note,
                                              CONCAT_WS(' ', te.first_name_th, te.last_name_th) AS target_name,
                                              CONCAT_WS(' ', re.first_name_th, re.last_name_th) AS requester_name,
                                              CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
@@ -83,7 +84,7 @@ try {
                                       LEFT JOIN employees pce ON dsr.created_by_employee_id = pce.id
                                       WHERE dsr.requester_employee_id = ? OR dsr.target_employee_id = ?
                                       ORDER BY dsr.created_at DESC");
-            $stmt->bind_param('ii', $myEmployeeId, $myEmployeeId);
+            $stmt->bind_param('iii', $myEmployeeId, $myEmployeeId, $myEmployeeId);
             $stmt->execute();
             sendDaySwapJson(['status' => 'success', 'data' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)]);
         }
@@ -141,6 +142,25 @@ try {
             throw new Exception($stmt->error);
         }
 
+        if ($postAction === 'cancel') {
+            $requestId = (int)($input['request_id'] ?? 0);
+            $reason = trim((string)($input['cancellation_reason'] ?? ''));
+            if ($requestId <= 0 || $reason === '') sendDaySwapError('กรุณาระบุเหตุผลการยกเลิก');
+            $stmt = $mysqli->prepare("SELECT id, status FROM day_swap_requests WHERE id = ? AND requester_employee_id = ?");
+            $stmt->bind_param('ii', $requestId, $myEmployeeId);
+            $stmt->execute();
+            $request = $stmt->get_result()->fetch_assoc();
+            $newStatus = $request ? requestCancellationEmployeeTransition((string)$request['status']) : null;
+            if ($newStatus === null) sendDaySwapError('ไม่สามารถยกเลิกรายการนี้ได้');
+            $currentStatus = (string)$request['status'];
+            $update = $mysqli->prepare("UPDATE day_swap_requests SET status = ?, cancellation_reason = ? WHERE id = ? AND requester_employee_id = ? AND status = ?");
+            $update->bind_param('ssiis', $newStatus, $reason, $requestId, $myEmployeeId, $currentStatus);
+            if ($update->execute() && $update->affected_rows === 1) {
+                sendDaySwapJson(['status' => 'success', 'message' => $newStatus === 'pending_cancel_hr' ? 'ส่งคำขอยกเลิกแล้ว รอ HR/Admin อนุมัติ' : 'ยกเลิกรายการเรียบร้อยแล้ว']);
+            }
+            sendDaySwapError('สถานะรายการเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่');
+        }
+
         if ($postAction === 'approve' || $postAction === 'reject') {
             if (!in_array($myRole, ['manager', 'hr', 'admin'], true)) sendDaySwapError('Access Denied');
             $requestId = (int)($input['request_id'] ?? 0);
@@ -191,6 +211,13 @@ try {
                                               approval_date = ?,
                                               rejection_reason = ?
                                           WHERE id = ? AND status = 'pending_hr'");
+                $stmt->bind_param('sisissi', $newStatus, $myEmployeeId, $now, $myEmployeeId, $now, $rejectReason, $requestId);
+            } elseif ($currentStatus === 'pending_cancel_hr') {
+                $newStatus = requestCancellationReviewerTransition($currentStatus, $postAction, $myRole);
+                if ($newStatus === null) sendDaySwapError('Access Denied');
+                if ($postAction === 'reject' && $reason === '') sendDaySwapError('กรุณาระบุเหตุผลที่ไม่อนุมัติ');
+                $rejectReason = $postAction === 'approve' ? null : $reason;
+                $stmt = $mysqli->prepare("UPDATE day_swap_requests SET status = ?, hr_approver_id = ?, hr_approval_date = ?, approver_id = ?, approval_date = ?, rejection_reason = ? WHERE id = ? AND status = 'pending_cancel_hr'");
                 $stmt->bind_param('sisissi', $newStatus, $myEmployeeId, $now, $myEmployeeId, $now, $rejectReason, $requestId);
             } else {
                 sendDaySwapError('Request was already processed');
@@ -297,14 +324,14 @@ function daySwapApprovalQuery($type, $role, array $scopes) {
 
     if ($type === 'pending') {
         if ($role === 'hr') {
-            $sql .= " AND dsr.status = 'pending_hr'";
+            $sql .= " AND dsr.status IN ('pending_hr','pending_cancel_hr')";
         } elseif ($role === 'admin') {
-            $sql .= " AND dsr.status IN ('pending','pending_manager','pending_hr')";
+            $sql .= " AND dsr.status IN ('pending','pending_manager','pending_hr','pending_cancel_hr')";
         } else {
             $sql .= " AND dsr.status IN ('pending','pending_manager')";
         }
     } else {
-        $sql .= " AND dsr.status IN ('approved','rejected')";
+        $sql .= " AND dsr.status IN ('approved','rejected','cancelled')";
     }
     $sql .= " ORDER BY dsr.created_at DESC";
 

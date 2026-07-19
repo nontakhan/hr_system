@@ -18,6 +18,7 @@ try {
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/day_swap_helpers.php';
     require_once '../includes/leave_helpers.php';
+    require_once '../includes/request_cancellation_helpers.php';
 
     if (!isset($_SESSION['user_id'])) {
         sendJsonError('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -56,6 +57,11 @@ try {
     if ($method === 'POST') {
         if ($action === 'submit') {
             submitTimeRequest($mysqli);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        if (($input['action'] ?? $action) === 'cancel') {
+            cancelMyTimeRequest($mysqli, $input);
         }
 
         sendJsonError('Invalid Action');
@@ -183,6 +189,31 @@ function calculateMyTimeRequest(mysqli $mysqli, $type, $workDate, $requestTime) 
 function calculateMyOvertimeRequest(mysqli $mysqli, $workDate, $startTime, $endTime) {
     $workDate = normalizeGregorianDateInput($workDate);
     return attendanceCalculateOvertimeWindowMinutes($workDate, $startTime, $endTime);
+}
+
+function cancelMyTimeRequest(mysqli $mysqli, array $input): void {
+    $employeeId = (int)($_SESSION['employee_id'] ?? 0);
+    $requestId = (int)($input['request_id'] ?? 0);
+    $reason = trim((string)($input['cancellation_reason'] ?? ''));
+    $typeFilter = normalizeTimeRequestHistoryFilter($input['time_request_type'] ?? 'late_early');
+    if ($requestId <= 0 || $reason === '') sendJsonError('กรุณาระบุเหตุผลการยกเลิก');
+
+    $typeSql = $typeFilter === 'overtime_after_work'
+        ? " AND time_request_type = 'overtime_after_work'"
+        : " AND time_request_type IN ('late_arrival','early_departure')";
+    $stmt = $mysqli->prepare("SELECT id, status FROM leave_requests WHERE id = ? AND employee_id = ? AND request_unit = 'hour' {$typeSql}");
+    $stmt->bind_param('ii', $requestId, $employeeId);
+    $stmt->execute();
+    $request = $stmt->get_result()->fetch_assoc();
+    $newStatus = $request ? requestCancellationEmployeeTransition((string)$request['status']) : null;
+    if ($newStatus === null) sendJsonError('ไม่สามารถยกเลิกรายการนี้ได้');
+
+    $currentStatus = (string)$request['status'];
+    $update = $mysqli->prepare("UPDATE leave_requests SET status = ?, cancellation_reason = ? WHERE id = ? AND employee_id = ? AND status = ?");
+    $update->bind_param('ssiis', $newStatus, $reason, $requestId, $employeeId, $currentStatus);
+    if (!$update->execute() || $update->affected_rows !== 1) sendJsonError('สถานะรายการเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่');
+
+    sendJson(['status' => 'success', 'message' => $newStatus === 'pending_cancel_hr' ? 'ส่งคำขอยกเลิกแล้ว รอ HR/Admin อนุมัติ' : 'ยกเลิกรายการเรียบร้อยแล้ว']);
 }
 
 function fetchMyWorkDateContext(mysqli $mysqli, $workDate) {

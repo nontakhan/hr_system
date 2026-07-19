@@ -10,10 +10,11 @@ function daySwapEnsureTable($mysqli) {
         requester_date DATE NOT NULL,
         target_date DATE NOT NULL,
         reason TEXT NOT NULL,
-        status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager',
+        status ENUM('pending','pending_manager','pending_hr','approved','pending_cancel_hr','rejected','cancelled') NOT NULL DEFAULT 'pending_manager',
         approver_id INT NULL,
         approval_date DATETIME NULL,
         rejection_reason TEXT NULL,
+        cancellation_reason TEXT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_day_swap_requester (requester_employee_id, status),
@@ -33,8 +34,8 @@ function daySwapEnsureTable($mysqli) {
     }
     proxyRequestEnsureAuditColumns($mysqli, 'day_swap_requests');
 
-    if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_manager') === false) {
-        $mysqli->query("ALTER TABLE day_swap_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
+    if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_cancel_hr') === false) {
+        $mysqli->query("ALTER TABLE day_swap_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','pending_cancel_hr','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
     }
     if (!isset($columns['manager_approver_id'])) {
         $mysqli->query("ALTER TABLE day_swap_requests ADD COLUMN manager_approver_id INT NULL AFTER approver_id");
@@ -47,6 +48,9 @@ function daySwapEnsureTable($mysqli) {
     }
     if (!isset($columns['hr_approval_date'])) {
         $mysqli->query("ALTER TABLE day_swap_requests ADD COLUMN hr_approval_date DATETIME NULL AFTER hr_approver_id");
+    }
+    if (!isset($columns['cancellation_reason'])) {
+        $mysqli->query("ALTER TABLE day_swap_requests ADD COLUMN cancellation_reason TEXT NULL AFTER rejection_reason");
     }
 }
 
@@ -100,7 +104,7 @@ function daySwapFetchApprovedRowsForMonth($mysqli, $employeeId, $month) {
     $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
     $stmt = $mysqli->prepare("SELECT requester_employee_id, target_employee_id, requester_date, target_date
                               FROM day_swap_requests
-                              WHERE status = 'approved'
+                              WHERE status IN ('approved','pending_cancel_hr')
                                 AND (requester_employee_id = ? OR target_employee_id = ?)
                                 AND ((requester_date BETWEEN ? AND ?) OR (target_date BETWEEN ? AND ?))");
     $stmt->bind_param('iissss', $employeeId, $employeeId, $start, $end, $start, $end);

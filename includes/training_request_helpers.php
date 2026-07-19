@@ -19,7 +19,7 @@ function trainingRequestEnsureTable(mysqli $mysqli): void
         location VARCHAR(255) NULL,
         objective TEXT NOT NULL,
         attachment_path VARCHAR(255) NULL,
-        status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_manager',
+        status ENUM('pending','pending_manager','pending_hr','approved','pending_cancel_hr','rejected','cancelled') NOT NULL DEFAULT 'pending_manager',
         manager_approver_id INT NULL,
         manager_approval_date DATETIME NULL,
         hr_approver_id INT NULL,
@@ -27,6 +27,7 @@ function trainingRequestEnsureTable(mysqli $mysqli): void
         approver_id INT NULL,
         approval_date DATETIME NULL,
         rejection_reason TEXT NULL,
+        cancellation_reason TEXT NULL,
         training_record_id INT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -76,7 +77,7 @@ function trainingRequestEnsureActivityColumns(mysqli $mysqli): void
     $columns = [];
     $result = $mysqli->query("SHOW COLUMNS FROM training_requests");
     while ($result && ($row = $result->fetch_assoc())) {
-        $columns[$row['Field']] = true;
+        $columns[$row['Field']] = $row;
     }
 
     if (!isset($columns['activity_type_id'])) {
@@ -88,6 +89,12 @@ function trainingRequestEnsureActivityColumns(mysqli $mysqli): void
     }
     if (!isset($columns['end_day_part'])) {
         $mysqli->query("ALTER TABLE training_requests ADD COLUMN end_day_part ENUM('full','morning','afternoon') NOT NULL DEFAULT 'full' AFTER start_day_part");
+    }
+    if (isset($columns['status']) && strpos($columns['status']['Type'], 'pending_cancel_hr') === false) {
+        $mysqli->query("ALTER TABLE training_requests MODIFY status ENUM('pending','pending_manager','pending_hr','approved','pending_cancel_hr','rejected','cancelled') NOT NULL DEFAULT 'pending_manager'");
+    }
+    if (!isset($columns['cancellation_reason'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN cancellation_reason TEXT NULL AFTER rejection_reason");
     }
 }
 
@@ -231,14 +238,14 @@ function trainingRequestApprovalQuery(string $type, string $role, array $scopes)
 
     if ($type === 'pending') {
         if ($role === 'hr') {
-            $sql .= " AND tr.status = 'pending_hr'";
+            $sql .= " AND tr.status IN ('pending_hr','pending_cancel_hr')";
         } elseif ($role === 'admin') {
-            $sql .= " AND tr.status IN ('pending','pending_manager','pending_hr')";
+            $sql .= " AND tr.status IN ('pending','pending_manager','pending_hr','pending_cancel_hr')";
         } else {
             $sql .= " AND tr.status IN ('pending','pending_manager')";
         }
     } else {
-        $sql .= " AND tr.status IN ('approved','rejected')";
+        $sql .= " AND tr.status IN ('approved','rejected','cancelled')";
     }
 
     $sql .= " ORDER BY tr.created_at DESC";

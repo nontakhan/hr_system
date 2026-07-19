@@ -266,7 +266,7 @@ async function loadTimeRequestHistory() {
                 <td>${escapeHtml(formatTimeRequestType(item.time_request_type))}${proxyHtml}</td>
                 <td>${formatThaiDate(item.start_date)}</td>
                 <td>${escapeHtml(formatTimeRequestDuration(item))}</td>
-                <td>${formatRequestStatusBadge(item.status)}</td>
+                <td>${formatRequestStatusBadge(item.status)}${renderTimeRequestCancellation(item)}</td>
             </tr>
         `;
         }).join('');
@@ -276,6 +276,24 @@ async function loadTimeRequestHistory() {
         tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
 }
+
+function renderTimeRequestCancellation(item) {
+    const cancellable = ['pending', 'pending_manager', 'pending_hr', 'approved'].includes(item.status);
+    const reason = item.cancellation_reason ? `<div class="small text-danger mt-1">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : '';
+    if (!cancellable) return reason;
+    const label = item.status === 'approved' ? 'ขอยกเลิก' : 'ยกเลิก';
+    return `${reason}<button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="cancelTimeRequest(${Number(item.id)}, '${escapeHtml(item.status)}')">${label}</button>`;
+}
+
+window.cancelTimeRequest = async function (requestId, status) {
+    const approved = status === 'approved';
+    const result = await Swal.fire({ title: approved ? 'ขอยกเลิกรายการที่อนุมัติแล้ว?' : 'ยืนยันการยกเลิก?', text: approved ? 'คำขอนี้จะถูกส่งให้ HR/Admin อนุมัติ' : '', input: 'textarea', inputLabel: 'เหตุผลการยกเลิก', inputPlaceholder: 'ระบุเหตุผลการยกเลิก...', inputValidator: value => String(value || '').trim() ? undefined : 'กรุณาระบุเหตุผลการยกเลิก', showCancelButton: true, confirmButtonText: approved ? 'ส่งคำขอยกเลิก' : 'ยืนยันยกเลิก', cancelButtonText: 'ไม่' });
+    if (!result.isConfirmed) return;
+    const response = await fetch('api/late_early_request_api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel', request_id: requestId, cancellation_reason: String(result.value || '').trim(), time_request_type: window.timeRequestHistoryType || 'late_early' }) });
+    const payload = await response.json();
+    await Swal.fire(payload.status === 'success' ? 'สำเร็จ' : 'ไม่สำเร็จ', payload.message || '', payload.status === 'success' ? 'success' : 'error');
+    if (payload.status === 'success') loadTimeRequestHistory();
+};
 
 function renderProxyCreatorLine(item) {
     if (!item || item.created_via !== 'admin_proxy') return '';
@@ -354,9 +372,10 @@ function formatRequestStatusBadge(status) {
         pending: ['รอหัวหน้าอนุมัติ', 'bg-warning text-dark'],
         pending_manager: ['รอหัวหน้าอนุมัติ', 'bg-warning text-dark'],
         pending_hr: ['รอ HR อนุมัติ', 'bg-info text-dark'],
+        pending_cancel_hr: ['รอ HR/Admin อนุมัติยกเลิก', 'bg-warning text-dark'],
         approved: ['อนุมัติแล้ว', 'bg-success'],
         rejected: ['ไม่อนุมัติ', 'bg-danger'],
-        cancelled: ['ยกเลิก', 'bg-secondary'],
+        cancelled: ['ยกเลิกแล้ว', 'bg-secondary'],
     };
     const [label, cls] = labels[status] || [status || '-', 'bg-secondary'];
     return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;

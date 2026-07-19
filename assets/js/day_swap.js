@@ -275,7 +275,7 @@ async function loadDaySwapHistory() {
                 <td>${formatThaiDate(item.created_at)}</td>
                 <td>${escapeHtml(item.requester_name || '-')} ↔ ${escapeHtml(item.target_name || '-')}${proxyHtml}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
-                <td>${renderDaySwapStatus(item.status)}</td>
+                <td>${renderDaySwapStatus(item.status)}${renderDaySwapCancellation(item)}</td>
             </tr>
         `;
         }).join('');
@@ -309,13 +309,13 @@ async function loadDaySwapPendingApprovals() {
                 <td>${renderDaySwapEmployeeCell(item.requester_name, item.requester_code, item.requester_profile_img_url, renderDaySwapStatus(item.status))}</td>
                 <td>${renderDaySwapEmployeeCell(item.target_name, item.target_code, item.target_profile_img_url)}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
-                <td><small class="text-muted">${escapeHtml(item.reason || '-')}</small></td>
+                <td><small class="text-muted">${escapeHtml(item.reason || '-')}</small>${item.cancellation_reason ? `<div class="small text-danger">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : ''}</td>
                 <td>
-                    <button class="btn btn-sm btn-success me-1" onclick="openDaySwapActionModal(${item.id}, 'approve', '${escapeAttr(item.requester_name || '')}')">
-                        <i class="fas fa-check"></i> อนุมัติ
+                    <button class="btn btn-sm btn-success me-1" onclick="openDaySwapActionModal(${item.id}, 'approve', '${escapeAttr(item.requester_name || '')}', '${escapeAttr(item.status)}')">
+                        <i class="fas fa-check"></i> ${item.status === 'pending_cancel_hr' ? 'อนุมัติยกเลิก' : 'อนุมัติ'}
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="openDaySwapActionModal(${item.id}, 'reject', '${escapeAttr(item.requester_name || '')}')">
-                        <i class="fas fa-times"></i> ไม่
+                    <button class="btn btn-sm btn-danger" onclick="openDaySwapActionModal(${item.id}, 'reject', '${escapeAttr(item.requester_name || '')}', '${escapeAttr(item.status)}')">
+                        <i class="fas fa-times"></i> ${item.status === 'pending_cancel_hr' ? 'ไม่อนุมัติยกเลิก' : 'ไม่'}
                     </button>
                 </td>
             </tr>
@@ -403,12 +403,13 @@ function initDaySwapDataTable(tableId, order = [[0, 'desc']], unsortableTargets 
     daySwapDataTables[tableId] = jQuery(`#${tableId}`).DataTable(options);
 }
 
-window.openDaySwapActionModal = function(id, action, name) {
+window.openDaySwapActionModal = function(id, action, name, status = '') {
     const modal = new bootstrap.Modal(document.getElementById('daySwapActionModal'));
     const isApprove = action === 'approve';
+    const isCancellation = status === 'pending_cancel_hr';
     document.getElementById('daySwapRequestId').value = id;
     document.getElementById('daySwapActionType').value = action;
-    document.getElementById('daySwapActionTitle').textContent = isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ';
+    document.getElementById('daySwapActionTitle').textContent = isCancellation ? (isApprove ? 'ยืนยันอนุมัติยกเลิก' : 'ยืนยันไม่อนุมัติยกเลิก') : (isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ');
     document.getElementById('daySwapActionTitle').className = `modal-title ${isApprove ? 'text-success' : 'text-danger'}`;
     document.getElementById('daySwapActionMessage').innerHTML = `ต้องการ${isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ'}คำขอสลับวันหยุดของ <strong>${escapeHtml(name)}</strong> ใช่หรือไม่?`;
     document.getElementById('daySwapConfirmBtn').className = `btn ${isApprove ? 'btn-success' : 'btn-danger'}`;
@@ -444,6 +445,7 @@ function renderDaySwapStatus(status) {
         pending: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
         pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
         pending_hr: ['รอ HR อนุมัติ', 'info text-dark'],
+        pending_cancel_hr: ['รอ HR/Admin อนุมัติยกเลิก', 'warning text-dark'],
         approved: ['อนุมัติแล้ว', 'success'],
         rejected: ['ไม่อนุมัติ', 'danger'],
         cancelled: ['ยกเลิก', 'secondary'],
@@ -451,6 +453,22 @@ function renderDaySwapStatus(status) {
     const item = map[status] || [status || '-', 'secondary'];
     return `<span class="badge bg-${item[1]}">${item[0]}</span>`;
 }
+
+function renderDaySwapCancellation(item) {
+    const reason = item.cancellation_reason ? `<div class="small text-danger mt-1">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : '';
+    if (!Number(item.can_cancel) || !['pending', 'pending_manager', 'pending_hr', 'approved'].includes(item.status)) return reason;
+    const label = item.status === 'approved' ? 'ขอยกเลิก' : 'ยกเลิก';
+    return `${reason}<button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="cancelDaySwapRequest(${Number(item.id)}, '${escapeAttr(item.status)}')">${label}</button>`;
+}
+
+window.cancelDaySwapRequest = async function (requestId, status) {
+    const result = await Swal.fire({ title: status === 'approved' ? 'ขอยกเลิกรายการที่อนุมัติแล้ว?' : 'ยืนยันการยกเลิก?', text: status === 'approved' ? 'คำขอนี้จะถูกส่งให้ HR/Admin อนุมัติ' : '', input: 'textarea', inputLabel: 'เหตุผลการยกเลิก', inputValidator: value => String(value || '').trim() ? undefined : 'กรุณาระบุเหตุผลการยกเลิก', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ไม่' });
+    if (!result.isConfirmed) return;
+    const response = await fetch('api/day_swap_api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel', request_id: requestId, cancellation_reason: String(result.value || '').trim() }) });
+    const payload = await response.json();
+    await Swal.fire(payload.status === 'success' ? 'สำเร็จ' : 'ไม่สำเร็จ', payload.message || '', payload.status === 'success' ? 'success' : 'error');
+    if (payload.status === 'success') loadMyDaySwapRequests();
+};
 
 function refreshDaySwapSelect(select) {
     if (window.jQuery && jQuery.fn.select2) {

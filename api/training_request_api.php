@@ -18,6 +18,7 @@ try {
     require_once '../includes/hr_scope_helpers.php';
     require_once '../includes/training_request_helpers.php';
     require_once '../includes/upload_security.php';
+    require_once '../includes/request_cancellation_helpers.php';
 
     if (!isset($_SESSION['user_id'])) {
         sendTrainingRequestError('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -67,6 +68,9 @@ try {
 
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $postAction = $input['action'] ?? $action;
+        if ($postAction === 'cancel') {
+            cancelMyTrainingRequest($mysqli, $input, $myEmployeeId);
+        }
         if ($postAction === 'approve' || $postAction === 'reject') {
             processTrainingRequestApproval($mysqli, $input, $postAction, $myRole, $myEmployeeId);
         }
@@ -141,6 +145,23 @@ function createTrainingRequest(mysqli $mysqli, int $employeeId): void
     sendTrainingRequestJson(['status' => 'success', 'message' => 'ส่งคำขอกิจกรรมเรียบร้อยแล้ว รอหัวหน้าอนุมัติ']);
 }
 
+function cancelMyTrainingRequest(mysqli $mysqli, array $input, int $employeeId): void {
+    $requestId = (int)($input['request_id'] ?? 0);
+    $reason = trim((string)($input['cancellation_reason'] ?? ''));
+    if ($requestId <= 0 || $reason === '') sendTrainingRequestError('กรุณาระบุเหตุผลการยกเลิก');
+    $stmt = $mysqli->prepare("SELECT id, status FROM training_requests WHERE id = ? AND employee_id = ?");
+    $stmt->bind_param('ii', $requestId, $employeeId);
+    $stmt->execute();
+    $request = $stmt->get_result()->fetch_assoc();
+    $newStatus = $request ? requestCancellationEmployeeTransition((string)$request['status']) : null;
+    if ($newStatus === null) sendTrainingRequestError('ไม่สามารถยกเลิกรายการนี้ได้');
+    $currentStatus = (string)$request['status'];
+    $update = $mysqli->prepare("UPDATE training_requests SET status = ?, cancellation_reason = ? WHERE id = ? AND employee_id = ? AND status = ?");
+    $update->bind_param('ssiis', $newStatus, $reason, $requestId, $employeeId, $currentStatus);
+    if (!$update->execute() || $update->affected_rows !== 1) sendTrainingRequestError('สถานะรายการเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่');
+    sendTrainingRequestJson(['status' => 'success', 'message' => $newStatus === 'pending_cancel_hr' ? 'ส่งคำขอยกเลิกแล้ว รอ HR/Admin อนุมัติ' : 'ยกเลิกรายการเรียบร้อยแล้ว']);
+}
+
 function processTrainingRequestApproval(mysqli $mysqli, array $input, string $action, string $role, int $employeeId): void
 {
     if (!in_array($role, ['manager', 'hr', 'admin'], true)) {
@@ -208,6 +229,13 @@ function processTrainingRequestApproval(mysqli $mysqli, array $input, string $ac
                                           training_record_id = ?
                                       WHERE id = ? AND status = 'pending_hr'");
             $stmt->bind_param('sisissii', $newStatus, $employeeId, $now, $employeeId, $now, $rejectReason, $trainingRecordId, $requestId);
+        } elseif ($currentStatus === 'pending_cancel_hr') {
+            $newStatus = requestCancellationReviewerTransition($currentStatus, $action, $role);
+            if ($newStatus === null) throw new InvalidArgumentException('Access Denied');
+            if ($action === 'reject' && $reason === '') throw new InvalidArgumentException('กรุณาระบุเหตุผลที่ไม่อนุมัติ');
+            $rejectReason = $action === 'approve' ? null : $reason;
+            $stmt = $mysqli->prepare("UPDATE training_requests SET status = ?, hr_approver_id = ?, hr_approval_date = ?, approver_id = ?, approval_date = ?, rejection_reason = ? WHERE id = ? AND status = 'pending_cancel_hr'");
+            $stmt->bind_param('sisissi', $newStatus, $employeeId, $now, $employeeId, $now, $rejectReason, $requestId);
         } else {
             throw new InvalidArgumentException('Request was already processed');
         }

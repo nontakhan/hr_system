@@ -90,7 +90,7 @@ function attendanceWarningFetchTrainingMap(mysqli $mysqli, int $employeeId, stri
     $stmt = $mysqli->prepare("SELECT tr.start_date, tr.end_date, tr.course_name, at.type_name AS activity_type_name
                               FROM training_requests tr
                               LEFT JOIN activity_types at ON tr.activity_type_id = at.id
-                              WHERE tr.employee_id = ? AND tr.status = 'approved'
+                              WHERE tr.employee_id = ? AND tr.status IN ('approved','pending_cancel_hr')
                                 AND tr.start_date <= ? AND tr.end_date >= ?");
     if (!$stmt) {
         return [];
@@ -104,7 +104,7 @@ function attendanceWarningFetchDaySwapType(mysqli $mysqli, int $employeeId, stri
 {
     $stmt = $mysqli->prepare("SELECT requester_employee_id, target_employee_id, requester_date, target_date
                               FROM day_swap_requests
-                              WHERE status = 'approved'
+                              WHERE status IN ('approved','pending_cancel_hr')
                                 AND (requester_employee_id = ? OR target_employee_id = ?)
                                 AND (? IN (requester_date, target_date))");
     if (!$stmt) {
@@ -121,7 +121,7 @@ function attendanceWarningFetchApprovedMinutes(mysqli $mysqli, int $employeeId, 
     $stmt = $mysqli->prepare("SELECT time_request_type,
                                      CASE WHEN COALESCE(approved_request_minutes, 0) > 0 THEN approved_request_minutes ELSE COALESCE(request_minutes, 0) END AS effective_minutes
                               FROM leave_requests
-                              WHERE employee_id = ? AND start_date = ? AND status = 'approved'
+                              WHERE employee_id = ? AND start_date = ? AND status IN ('approved','pending_cancel_hr')
                                 AND time_request_type IN ('late_arrival', 'early_departure')");
     $stmt->bind_param('is', $employeeId, $workDate);
     $stmt->execute();

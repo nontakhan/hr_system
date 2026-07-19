@@ -86,7 +86,7 @@ async function loadTrainingRequestHistory() {
                   </td>
                   <td>${formatTrainingRequestDateRangeWithParts(item)}</td>
                   <td>${escapeHtml(item.location || '-')}</td>
-                <td>${renderTrainingRequestStatus(item.status)}</td>
+                <td>${renderTrainingRequestStatus(item.status)}${renderTrainingRequestCancellation(item)}</td>
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || item.objective || '-')}</small>${renderTrainingRequestAttachment(item)}</td>
             </tr>
         `;
@@ -114,7 +114,7 @@ async function loadTrainingRequestPendingApprovals() {
         tbody.innerHTML = res.data.map(item => `
             <tr>
                 <td>${renderTrainingRequestEmployeeCell(item, renderTrainingRequestStatus(item.status))}</td>
-                <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div><div class="small text-muted">${escapeHtml(item.activity_type_name || 'กิจกรรม')}</div></td>
+                <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div><div class="small text-muted">${escapeHtml(item.activity_type_name || 'กิจกรรม')}</div>${item.cancellation_reason ? `<div class="small text-danger">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : ''}</td>
                 <td>${formatTrainingRequestDateRangeWithParts(item)}</td>
                 <td>
                     <div>${escapeHtml(item.location || '-')}</div>
@@ -122,11 +122,11 @@ async function loadTrainingRequestPendingApprovals() {
                     ${renderTrainingRequestAttachment(item)}
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-success me-1" onclick="openTrainingRequestActionModal(${item.id}, 'approve', '${escapeAttr(item.employee_name || '')}')">
-                        <i class="fas fa-check"></i> อนุมัติ
+                    <button class="btn btn-sm btn-success me-1" onclick="openTrainingRequestActionModal(${item.id}, 'approve', '${escapeAttr(item.employee_name || '')}', '${escapeAttr(item.status)}')">
+                        <i class="fas fa-check"></i> ${item.status === 'pending_cancel_hr' ? 'อนุมัติยกเลิก' : 'อนุมัติ'}
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="openTrainingRequestActionModal(${item.id}, 'reject', '${escapeAttr(item.employee_name || '')}')">
-                        <i class="fas fa-times"></i> ไม่
+                    <button class="btn btn-sm btn-danger" onclick="openTrainingRequestActionModal(${item.id}, 'reject', '${escapeAttr(item.employee_name || '')}', '${escapeAttr(item.status)}')">
+                        <i class="fas fa-times"></i> ${item.status === 'pending_cancel_hr' ? 'ไม่อนุมัติยกเลิก' : 'ไม่'}
                     </button>
                 </td>
             </tr>
@@ -216,12 +216,13 @@ function initTrainingRequestDataTable(tableId, order = [[0, 'desc']], unsortable
     trainingRequestDataTables[tableId] = jQuery(`#${tableId}`).DataTable(options);
 }
 
-window.openTrainingRequestActionModal = function(id, action, name) {
+window.openTrainingRequestActionModal = function(id, action, name, status = '') {
     const modal = new bootstrap.Modal(document.getElementById('trainingRequestActionModal'));
     const isApprove = action === 'approve';
+    const isCancellation = status === 'pending_cancel_hr';
     document.getElementById('trainingRequestId').value = id;
     document.getElementById('trainingRequestActionType').value = action;
-    document.getElementById('trainingRequestActionTitle').textContent = isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ';
+    document.getElementById('trainingRequestActionTitle').textContent = isCancellation ? (isApprove ? 'ยืนยันอนุมัติยกเลิก' : 'ยืนยันไม่อนุมัติยกเลิก') : (isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ');
     document.getElementById('trainingRequestActionTitle').className = `modal-title ${isApprove ? 'text-success' : 'text-danger'}`;
     document.getElementById('trainingRequestActionMessage').innerHTML = `ต้องการ${isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ'}คำขอกิจกรรมของ <strong>${escapeHtml(name)}</strong> ใช่หรือไม่?`;
     document.getElementById('trainingRequestConfirmBtn').className = `btn ${isApprove ? 'btn-success' : 'btn-danger'}`;
@@ -258,6 +259,7 @@ function renderTrainingRequestStatus(status) {
         pending: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
         pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
         pending_hr: ['รอ HR อนุมัติ', 'info text-dark'],
+        pending_cancel_hr: ['รอ HR/Admin อนุมัติยกเลิก', 'warning text-dark'],
         approved: ['อนุมัติแล้ว', 'success'],
         rejected: ['ไม่อนุมัติ', 'danger'],
         cancelled: ['ยกเลิก', 'secondary'],
@@ -265,6 +267,22 @@ function renderTrainingRequestStatus(status) {
     const item = map[status] || [status || '-', 'secondary'];
     return `<span class="badge bg-${item[1]}">${item[0]}</span>`;
 }
+
+function renderTrainingRequestCancellation(item) {
+    const reason = item.cancellation_reason ? `<div class="small text-danger mt-1">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : '';
+    if (!['pending', 'pending_manager', 'pending_hr', 'approved'].includes(item.status)) return reason;
+    const label = item.status === 'approved' ? 'ขอยกเลิก' : 'ยกเลิก';
+    return `${reason}<button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="cancelTrainingRequest(${Number(item.id)}, '${escapeAttr(item.status)}')">${label}</button>`;
+}
+
+window.cancelTrainingRequest = async function (requestId, status) {
+    const result = await Swal.fire({ title: status === 'approved' ? 'ขอยกเลิกรายการที่อนุมัติแล้ว?' : 'ยืนยันการยกเลิก?', text: status === 'approved' ? 'คำขอนี้จะถูกส่งให้ HR/Admin อนุมัติ' : '', input: 'textarea', inputLabel: 'เหตุผลการยกเลิก', inputValidator: value => String(value || '').trim() ? undefined : 'กรุณาระบุเหตุผลการยกเลิก', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ไม่' });
+    if (!result.isConfirmed) return;
+    const response = await fetch('api/training_request_api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel', request_id: requestId, cancellation_reason: String(result.value || '').trim() }) });
+    const payload = await response.json();
+    await Swal.fire(payload.status === 'success' ? 'สำเร็จ' : 'ไม่สำเร็จ', payload.message || '', payload.status === 'success' ? 'success' : 'error');
+    if (payload.status === 'success') loadMyTrainingRequests();
+};
 
 function formatTrainingRequestDateRange(item) {
     const start = item.start_date ? formatThaiDate(item.start_date) : '-';

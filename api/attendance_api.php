@@ -836,7 +836,7 @@ function fetchApprovedTrainingMapForEmployeesMonth(mysqli $mysqli, array $employ
             FROM training_requests tr
             LEFT JOIN activity_types at ON tr.activity_type_id = at.id
             WHERE tr.employee_id IN (" . attendanceBuildInClause($employeeIds) . ")
-              AND tr.status = 'approved'
+              AND tr.status IN ('approved','pending_cancel_hr')
               AND tr.start_date <= ?
               AND tr.end_date >= ?
             ORDER BY tr.employee_id, tr.start_date, tr.id";
@@ -858,7 +858,7 @@ function fetchApprovedDaySwapMapForEmployeesMonth(mysqli $mysqli, array $employe
     $map = [];
     $sql = "SELECT requester_employee_id, target_employee_id, requester_date, target_date
             FROM day_swap_requests
-            WHERE status = 'approved'
+            WHERE status IN ('approved','pending_cancel_hr')
               AND (requester_employee_id IN (" . attendanceBuildInClause($employeeIds) . ")
                    OR target_employee_id IN (" . attendanceBuildInClause($employeeIds) . "))
               AND ((requester_date BETWEEN ? AND ?) OR (target_date BETWEEN ? AND ?))";
@@ -944,7 +944,7 @@ function fetchApprovedTrainingRequestsForMonth($mysqli, $employeeId, $month) {
                               FROM training_requests tr
                               LEFT JOIN activity_types at ON tr.activity_type_id = at.id
                               WHERE tr.employee_id = ?
-                                AND tr.status = 'approved'
+                                AND tr.status IN ('approved','pending_cancel_hr')
                                 AND tr.start_date <= ?
                                 AND tr.end_date >= ?
                               ORDER BY tr.start_date, tr.id");

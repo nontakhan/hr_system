@@ -4,7 +4,9 @@ const vm = require('vm');
 global.document = {
     addEventListener() {},
 };
-global.window = {};
+global.window = {
+    addEventListener() {},
+};
 
 vm.runInThisContext(fs.readFileSync('assets/js/utils.js', 'utf8'));
 vm.runInThisContext(fs.readFileSync('assets/js/day_swap.js', 'utf8'));

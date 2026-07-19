@@ -36,7 +36,7 @@ const script = read('assets/js/training_request.js');
 const badges = read('includes/approval_badge_helpers.php');
 
 assertIncludes(helper, 'CREATE TABLE IF NOT EXISTS training_requests', 'Training requests should have their own table.');
-assertIncludes(helper, "status ENUM('pending','pending_manager','pending_hr','approved','rejected','cancelled')", 'Training requests should use the two-step approval status set.');
+assertIncludes(helper, "status ENUM('pending','pending_manager','pending_hr','approved','pending_cancel_hr','rejected','cancelled')", 'Training requests should use the two-step approval and cancellation status set.');
 assertIncludes(helper, 'trainingRequestCreateHistoryRecord', 'Helper should expose auto history creation after HR approval.');
 assertIncludes(helper, 'employee_training_records', 'Approving a training request should write to employee training history.');
 assertIncludes(helper, 'e.profile_img_url AS employee_profile_img_url', 'Training approval API should return employee profile images.');
