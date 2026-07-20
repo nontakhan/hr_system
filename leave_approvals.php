@@ -80,10 +80,11 @@ window.leaveApprovalRequestUnit = 'day';
                                 <th>วันที่ลา</th>
                                 <th>สถานะ</th>
                                 <th>หมายเหตุ</th>
+                                <th class="reviewer-cancel-action-column">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody">
-                            <tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลดข้อมูล...</td></tr>
                         </tbody>
                     </table>
                 </div>

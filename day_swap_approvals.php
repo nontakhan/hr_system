@@ -65,10 +65,11 @@ require_once 'includes/header.php';
                                 <th>วันที่สลับ</th>
                                 <th>สถานะ</th>
                                 <th>หมายเหตุ</th>
+                                <th class="reviewer-cancel-action-column">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="daySwapApprovalHistoryBody">
-                            <tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
                         </tbody>
                     </table>
                 </div>

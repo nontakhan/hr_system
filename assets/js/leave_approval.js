@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pendingTab) pendingTab.addEventListener('shown.bs.tab', loadPendingLeaves);
     if (historyTab) historyTab.addEventListener('shown.bs.tab', loadHistoryLeaves);
 
+    document.getElementById('historyTableBody')?.addEventListener('click', event => {
+        const button = event.target.closest('.reviewer-cancel-request-button');
+        if (!button) return;
+        reviewerCancelApprovedLeaveRequest(Number(button.dataset.requestId), button.dataset.employeeName || '-', button.dataset.requestType || '-');
+    });
+
     // Modal Action Logic
     const approvalForm = document.getElementById('approvalForm');
     if (approvalForm) {
@@ -63,6 +69,7 @@ function initLeaveApprovalDataTable(tableId, key, orderColumn = 0) {
         pageLength: 10,
         deferRender: true,
         autoWidth: false,
+        columnDefs: [{ targets: -1, orderable: false, searchable: false }],
     });
 }
 
@@ -102,7 +109,7 @@ function renderLeaveStatusBadge(status) {
 async function loadPendingLeaves() {
     const tbody = document.getElementById('pendingTableBody');
     resetLeaveApprovalDataTable('pendingTable', 'pending');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">กำลังโหลด...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">กำลังโหลด...</td></tr>';
 
     try {
         const params = new URLSearchParams({
@@ -215,7 +222,7 @@ async function loadHistoryLeaves() {
 
         if (res.status === 'success') {
             if (res.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ไม่มีประวัติ</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ไม่มีประวัติ</td></tr>';
                 return;
             }
 
@@ -231,6 +238,11 @@ async function loadHistoryLeaves() {
                 item.total_days = Number.parseFloat(item.total_days) || 0;
                 
                 const statusBadge = renderLeaveStatusBadge(item.status);
+                const employeeName = `${item.first_name_th} ${item.last_name_th}`.trim();
+                const reviewerCancelAction = item.can_reviewer_cancel
+                    ? `<button type="button" class="btn btn-outline-danger reviewer-cancel-request-button" data-request-id="${Number(item.id)}" data-employee-name="${escapeAttr(employeeName)}" data-request-type="${escapeAttr(item.type_name)}">ยกเลิกรายการ</button>`
+                    : '-';
+                const historyNote = renderLeaveReviewerCancellationAudit(item);
 
                 return `
                     <tr>
@@ -239,7 +251,8 @@ async function loadHistoryLeaves() {
                         <td>${item.type_name}</td>
                         <td>${dateRange || sDate} (${durationText})</td>
                         <td>${statusBadge}</td>
-                        <td><small class="text-muted">${item.rejection_reason || '-'}</small></td>
+                        <td>${historyNote}</td>
+                        <td>${reviewerCancelAction}</td>
                     </tr>
                 `;
             }).join('');
@@ -247,6 +260,47 @@ async function loadHistoryLeaves() {
         }
     } catch (err) { console.error(err); }
 }
+
+function renderLeaveReviewerCancellationAudit(item) {
+    const reason = escapeHtml(item.cancellation_reason || item.rejection_reason || '-');
+    if (item.status !== 'cancelled' || (!item.cancelled_by_name && !item.cancelled_by_role && !item.cancelled_at)) {
+        return `<small class="text-muted">${reason}</small>`;
+    }
+    const actor = escapeHtml(item.cancelled_by_name || item.cancelled_by_role || 'HR/Admin');
+    const role = item.cancelled_by_name && item.cancelled_by_role ? ` (${escapeHtml(item.cancelled_by_role)})` : '';
+    const time = item.cancelled_at ? `${formatThaiDate(item.cancelled_at)} ${escapeHtml(String(item.cancelled_at).slice(11, 16))} น.` : '';
+    return `<div class="small text-danger">เหตุผลยกเลิก: ${reason}</div><div class="small text-muted">ยกเลิกโดย ${actor}${role}${time ? `, ${time}` : ''}</div>`;
+}
+
+window.reviewerCancelApprovedLeaveRequest = async function(requestId, employeeName, requestType) {
+    const result = await Swal.fire({
+        title: 'ยกเลิกรายการที่อนุมัติแล้ว?',
+        text: `${requestType} ของ ${employeeName}`,
+        input: 'textarea',
+        inputLabel: 'เหตุผลการยกเลิก',
+        inputPlaceholder: 'ระบุเหตุผลที่ HR/Admin ยกเลิกรายการ...',
+        inputValidator: value => String(value || '').trim() ? undefined : 'กรุณาระบุเหตุผลการยกเลิก',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันยกเลิกรายการ',
+        cancelButtonText: 'ไม่ยกเลิก',
+        confirmButtonColor: '#dc3545',
+    });
+    if (!result.isConfirmed) return;
+    const response = await fetch('api/leave_approval_api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'reviewer_cancel',
+            request_id: Number(requestId),
+            cancellation_reason: String(result.value || '').trim(),
+            request_unit: getLeaveApprovalRequestUnit(),
+            time_request_type: getLeaveApprovalTimeRequestType(),
+        }),
+    });
+    const payload = await response.json();
+    await Swal.fire(payload.status === 'success' ? 'สำเร็จ' : 'ไม่สำเร็จ', payload.message || '', payload.status === 'success' ? 'success' : 'error');
+    if (payload.status === 'success') await loadHistoryLeaves();
+};
 
 // เปิด Modal ยืนยัน
 window.openActionModal = function(id, type, name, status) {

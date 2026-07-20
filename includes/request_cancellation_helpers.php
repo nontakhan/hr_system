@@ -18,3 +18,11 @@ function requestCancellationReviewerTransition(string $status, string $action, s
 
     return $action === 'reject' ? 'approved' : null;
 }
+
+function requestCancellationReviewerDirectTransition(string $status, string $role): ?string {
+    if ($status !== 'approved' || !in_array($role, ['hr', 'admin'], true)) {
+        return null;
+    }
+
+    return 'cancelled';
+}

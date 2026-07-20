@@ -266,7 +266,7 @@ async function loadTimeRequestHistory() {
                 <td>${escapeHtml(formatTimeRequestType(item.time_request_type))}${proxyHtml}</td>
                 <td>${formatThaiDate(item.start_date)}</td>
                 <td>${escapeHtml(formatTimeRequestDuration(item))}</td>
-                <td>${formatRequestStatusBadge(item.status)}${renderTimeRequestCancellation(item)}</td>
+                <td><div class="request-status-actions">${formatRequestStatusBadge(item.status)}${renderTimeRequestCancellation(item)}</div></td>
             </tr>
         `;
         }).join('');
@@ -279,10 +279,11 @@ async function loadTimeRequestHistory() {
 
 function renderTimeRequestCancellation(item) {
     const cancellable = ['pending', 'pending_manager', 'pending_hr', 'approved'].includes(item.status);
-    const reason = item.cancellation_reason ? `<div class="small text-danger mt-1">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : '';
+    const reason = item.cancellation_reason ? `<div class="request-cancellation-reason small text-danger">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : '';
     if (!cancellable) return reason;
     const label = item.status === 'approved' ? 'ขอยกเลิก' : 'ยกเลิก';
-    return `${reason}<button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="cancelTimeRequest(${Number(item.id)}, '${escapeHtml(item.status)}')">${label}</button>`;
+    const action = `<button type="button" class="btn btn-sm btn-outline-danger request-cancel-button" onclick="cancelTimeRequest(${Number(item.id)}, '${escapeHtml(item.status)}')">${label}</button>`;
+    return `${action}${reason}`;
 }
 
 window.cancelTimeRequest = async function (requestId, status) {

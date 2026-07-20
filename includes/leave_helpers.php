@@ -1273,4 +1273,16 @@ function leaveEnsureTwoStepApprovalColumns(mysqli $mysqli) {
     if (!isset($columns['cancellation_reason'])) {
         $mysqli->query("ALTER TABLE leave_requests ADD COLUMN cancellation_reason TEXT NULL AFTER rejection_reason");
     }
+    if (!isset($columns['cancelled_by_user_id'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN cancelled_by_user_id INT NULL AFTER cancellation_reason");
+    }
+    if (!isset($columns['cancelled_by_employee_id'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN cancelled_by_employee_id INT NULL AFTER cancelled_by_user_id");
+    }
+    if (!isset($columns['cancelled_by_role'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN cancelled_by_role VARCHAR(30) NULL AFTER cancelled_by_employee_id");
+    }
+    if (!isset($columns['cancelled_at'])) {
+        $mysqli->query("ALTER TABLE leave_requests ADD COLUMN cancelled_at DATETIME NULL AFTER cancelled_by_role");
+    }
 }

@@ -70,7 +70,7 @@ async function loadMyLeaves() {
 
                 if (canCancel) {
                     const cancelLabel = item.status === 'approved' ? 'ขอยกเลิก' : 'ยกเลิก';
-                    actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${itemId}" data-status="${escapeAttr(item.status)}">
+                    actionBtn = `<button class="btn btn-sm btn-outline-danger btn-cancel request-cancel-button" data-id="${itemId}" data-status="${escapeAttr(item.status)}">
                                     <i class="fas fa-times"></i> ${cancelLabel}
                                  </button>`;
                 }
@@ -83,7 +83,7 @@ async function loadMyLeaves() {
                         <td>${durationText}</td>
                         <td><small class="text-muted">${reason}</small>${proxyHtml}</td>
                         <td>${statusBadge}</td>
-                        <td>${actionBtn}</td>
+                        <td class="request-status-actions">${actionBtn}</td>
                     </tr>
                 `;
             });

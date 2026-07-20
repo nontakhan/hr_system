@@ -275,7 +275,7 @@ async function loadDaySwapHistory() {
                 <td>${formatThaiDate(item.created_at)}</td>
                 <td>${escapeHtml(item.requester_name || '-')} ↔ ${escapeHtml(item.target_name || '-')}${proxyHtml}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
-                <td>${renderDaySwapStatus(item.status)}${renderDaySwapCancellation(item)}</td>
+                <td><div class="request-status-actions">${renderDaySwapStatus(item.status)}${renderDaySwapCancellation(item)}</div></td>
             </tr>
         `;
         }).join('');
@@ -288,6 +288,11 @@ async function loadDaySwapHistory() {
 function initDaySwapApprovalPage() {
     document.getElementById('day-swap-pending-tab').addEventListener('shown.bs.tab', loadDaySwapPendingApprovals);
     document.getElementById('day-swap-history-tab').addEventListener('shown.bs.tab', loadDaySwapApprovalHistory);
+    document.getElementById('daySwapApprovalHistoryBody')?.addEventListener('click', event => {
+        const button = event.target.closest('.reviewer-cancel-request-button');
+        if (!button) return;
+        reviewerCancelApprovedDaySwap(Number(button.dataset.requestId), button.dataset.employeeName || '-', button.dataset.requestDate || '-');
+    });
     document.getElementById('daySwapApprovalForm').addEventListener('submit', submitDaySwapApproval);
     loadDaySwapPendingApprovals();
 }
@@ -342,17 +347,20 @@ function renderDaySwapEmployeeCell(name, code, profileImgUrl, footerHtml = '') {
 async function loadDaySwapApprovalHistory() {
     const tbody = document.getElementById('daySwapApprovalHistoryBody');
     resetDaySwapDataTable('daySwapApprovalHistoryTable');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
     try {
         const response = await fetch('api/day_swap_api.php?action=history');
         const res = await response.json();
         if (res.status !== 'success') throw new Error(res.message || 'Load failed');
         if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีประวัติ</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีประวัติ</td></tr>';
             return;
         }
         tbody.innerHTML = res.data.map(item => {
             const proxyHtml = renderProxyCreatorLine(item);
+            const action = item.can_reviewer_cancel
+                ? `<button type="button" class="btn btn-outline-danger reviewer-cancel-request-button" data-request-id="${Number(item.id)}" data-employee-name="${escapeAttr(item.requester_name || '-')}" data-request-date="${escapeAttr(formatThaiDate(item.requester_date))}">ยกเลิกรายการ</button>`
+                : '-';
             return `
             <tr>
                 <td>${item.approval_date ? formatThaiDate(item.approval_date) : '-'}</td>
@@ -360,15 +368,51 @@ async function loadDaySwapApprovalHistory() {
                 <td>${escapeHtml(item.target_name || '-')}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
                 <td>${renderDaySwapStatus(item.status)}</td>
-                <td><small class="text-muted">${escapeHtml(item.rejection_reason || '-')}</small></td>
+                <td>${renderDaySwapReviewerCancellationAudit(item)}</td>
+                <td>${action}</td>
             </tr>
         `;
         }).join('');
-        initDaySwapDataTable('daySwapApprovalHistoryTable', [[0, 'desc']], []);
+        initDaySwapDataTable('daySwapApprovalHistoryTable', [[0, 'desc']], [6]);
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
     }
 }
+
+function renderDaySwapReviewerCancellationAudit(item) {
+    const reason = escapeHtml(item.cancellation_reason || item.rejection_reason || '-');
+    if (item.status !== 'cancelled' || (!item.cancelled_by_name && !item.cancelled_by_role && !item.cancelled_at)) {
+        return `<small class="text-muted">${reason}</small>`;
+    }
+    const actor = escapeHtml(item.cancelled_by_name || item.cancelled_by_role || 'HR/Admin');
+    const role = item.cancelled_by_name && item.cancelled_by_role ? ` (${escapeHtml(item.cancelled_by_role)})` : '';
+    const time = item.cancelled_at ? `${formatThaiDate(item.cancelled_at)} ${escapeHtml(String(item.cancelled_at).slice(11, 16))} น.` : '';
+    return `<div class="small text-danger">เหตุผลยกเลิก: ${reason}</div><div class="small text-muted">ยกเลิกโดย ${actor}${role}${time ? `, ${time}` : ''}</div>`;
+}
+
+window.reviewerCancelApprovedDaySwap = async function(requestId, employeeName, requestDate) {
+    const result = await Swal.fire({
+        title: 'ยกเลิกรายการสลับวันหยุด?',
+        text: `${employeeName}, วันที่ ${requestDate}`,
+        input: 'textarea',
+        inputLabel: 'เหตุผลการยกเลิก',
+        inputPlaceholder: 'ระบุเหตุผลที่ HR/Admin ยกเลิกรายการ...',
+        inputValidator: value => String(value || '').trim() ? undefined : 'กรุณาระบุเหตุผลการยกเลิก',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันยกเลิกรายการ',
+        cancelButtonText: 'ไม่ยกเลิก',
+        confirmButtonColor: '#dc3545',
+    });
+    if (!result.isConfirmed) return;
+    const response = await fetch('api/day_swap_api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reviewer_cancel', request_id: Number(requestId), cancellation_reason: String(result.value || '').trim() }),
+    });
+    const payload = await response.json();
+    await Swal.fire(payload.status === 'success' ? 'สำเร็จ' : 'ไม่สำเร็จ', payload.message || '', payload.status === 'success' ? 'success' : 'error');
+    if (payload.status === 'success') await loadDaySwapApprovalHistory();
+};
 
 function renderProxyCreatorLine(item) {
     if (!item || item.created_via !== 'admin_proxy') return '';
@@ -455,10 +499,11 @@ function renderDaySwapStatus(status) {
 }
 
 function renderDaySwapCancellation(item) {
-    const reason = item.cancellation_reason ? `<div class="small text-danger mt-1">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : '';
+    const reason = item.cancellation_reason ? `<div class="request-cancellation-reason small text-danger">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : '';
     if (!Number(item.can_cancel) || !['pending', 'pending_manager', 'pending_hr', 'approved'].includes(item.status)) return reason;
     const label = item.status === 'approved' ? 'ขอยกเลิก' : 'ยกเลิก';
-    return `${reason}<button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="cancelDaySwapRequest(${Number(item.id)}, '${escapeAttr(item.status)}')">${label}</button>`;
+    const action = `<button type="button" class="btn btn-sm btn-outline-danger request-cancel-button" onclick="cancelDaySwapRequest(${Number(item.id)}, '${escapeAttr(item.status)}')">${label}</button>`;
+    return `${action}${reason}`;
 }
 
 window.cancelDaySwapRequest = async function (requestId, status) {

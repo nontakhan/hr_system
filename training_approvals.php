@@ -66,10 +66,11 @@ require_once 'includes/header.php';
                                 <th>ช่วงกิจกรรม</th>
                                 <th>สถานะ</th>
                                 <th>หมายเหตุ</th>
+                                <th class="reviewer-cancel-action-column">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="trainingRequestApprovalHistoryBody">
-                            <tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
                         </tbody>
                     </table>
                 </div>

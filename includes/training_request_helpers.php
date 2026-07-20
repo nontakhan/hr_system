@@ -28,6 +28,10 @@ function trainingRequestEnsureTable(mysqli $mysqli): void
         approval_date DATETIME NULL,
         rejection_reason TEXT NULL,
         cancellation_reason TEXT NULL,
+        cancelled_by_user_id INT NULL,
+        cancelled_by_employee_id INT NULL,
+        cancelled_by_role VARCHAR(30) NULL,
+        cancelled_at DATETIME NULL,
         training_record_id INT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -95,6 +99,18 @@ function trainingRequestEnsureActivityColumns(mysqli $mysqli): void
     }
     if (!isset($columns['cancellation_reason'])) {
         $mysqli->query("ALTER TABLE training_requests ADD COLUMN cancellation_reason TEXT NULL AFTER rejection_reason");
+    }
+    if (!isset($columns['cancelled_by_user_id'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN cancelled_by_user_id INT NULL AFTER cancellation_reason");
+    }
+    if (!isset($columns['cancelled_by_employee_id'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN cancelled_by_employee_id INT NULL AFTER cancelled_by_user_id");
+    }
+    if (!isset($columns['cancelled_by_role'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN cancelled_by_role VARCHAR(30) NULL AFTER cancelled_by_employee_id");
+    }
+    if (!isset($columns['cancelled_at'])) {
+        $mysqli->query("ALTER TABLE training_requests ADD COLUMN cancelled_at DATETIME NULL AFTER cancelled_by_role");
     }
 }
 
@@ -221,12 +237,14 @@ function trainingRequestApprovalQuery(string $type, string $role, array $scopes)
                    e.supervisor_id,
                    CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
                    CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name,
+                   CONCAT_WS(' ', ca.first_name_th, ca.last_name_th) AS cancelled_by_name,
                    at.type_name AS activity_type_name
             FROM training_requests tr
             JOIN employees e ON tr.employee_id = e.id
             LEFT JOIN activity_types at ON tr.activity_type_id = at.id
             LEFT JOIN employees ae ON tr.approver_id = ae.id
             LEFT JOIN employees pce ON tr.created_by_employee_id = pce.id
+            LEFT JOIN employees ca ON tr.cancelled_by_employee_id = ca.id
             WHERE 1=1";
 
     if ($role === 'hr') {

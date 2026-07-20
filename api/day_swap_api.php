@@ -103,7 +103,14 @@ try {
                 $stmt->bind_param('i', $myEmployeeId);
             }
             $stmt->execute();
-            sendDaySwapJson(['status' => 'success', 'data' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)]);
+            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            foreach ($rows as &$row) {
+                $row['can_reviewer_cancel'] = $action === 'history'
+                    && in_array($myRole, ['hr', 'admin'], true)
+                    && ($row['status'] ?? '') === 'approved';
+            }
+            unset($row);
+            sendDaySwapJson(['status' => 'success', 'data' => $rows]);
         }
 
         sendDaySwapError('Invalid Action');
@@ -159,6 +166,10 @@ try {
                 sendDaySwapJson(['status' => 'success', 'message' => $newStatus === 'pending_cancel_hr' ? 'ส่งคำขอยกเลิกแล้ว รอ HR/Admin อนุมัติ' : 'ยกเลิกรายการเรียบร้อยแล้ว']);
             }
             sendDaySwapError('สถานะรายการเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่');
+        }
+
+        if ($postAction === 'reviewer_cancel') {
+            reviewerCancelApprovedDaySwap($mysqli, $input, $myRole, $myEmployeeId);
         }
 
         if ($postAction === 'approve' || $postAction === 'reject') {
@@ -238,6 +249,52 @@ try {
     sendDaySwapError('System Error');
 }
 
+function reviewerCancelApprovedDaySwap(mysqli $mysqli, array $input, string $role, int $employeeId): void {
+    if (!in_array($role, ['hr', 'admin'], true)) {
+        sendDaySwapError('Access Denied');
+    }
+    $requestId = (int)($input['request_id'] ?? 0);
+    $reason = trim((string)($input['cancellation_reason'] ?? ''));
+    if ($requestId <= 0 || $reason === '') {
+        sendDaySwapError('กรุณาระบุเหตุผลการยกเลิก');
+    }
+
+    $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 're');
+    $sql = "SELECT dsr.id, dsr.status
+            FROM day_swap_requests dsr
+            JOIN employees re ON dsr.requester_employee_id = re.id
+            WHERE dsr.id = ? AND dsr.status = 'approved'";
+    $types = 'i';
+    $params = [$requestId];
+    if ($role === 'hr') {
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
+    }
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $request = $result->fetch_assoc();
+    $result->free();
+    $stmt->close();
+    if (!$request || requestCancellationReviewerDirectTransition((string)$request['status'], $role) === null) {
+        sendDaySwapError('Access Denied');
+    }
+
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    $now = date('Y-m-d H:i:s');
+    $update = $mysqli->prepare("UPDATE day_swap_requests
+                                SET status = 'cancelled', cancellation_reason = ?, cancelled_by_user_id = ?,
+                                    cancelled_by_employee_id = ?, cancelled_by_role = ?, cancelled_at = ?
+                                WHERE id = ? AND status = 'approved'");
+    $update->bind_param('siissi', $reason, $userId, $employeeId, $role, $now, $requestId);
+    if (!$update->execute() || $update->affected_rows !== 1) {
+        sendDaySwapError('สถานะรายการเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่');
+    }
+    sendDaySwapJson(['status' => 'success', 'message' => 'ยกเลิกรายการเรียบร้อยแล้ว']);
+}
+
 function daySwapCanViewEmployee($mysqli, $employeeId, $role, $companyId) {
     if ($role === 'admin') return true;
     $sql = "SELECT id FROM employees e WHERE id = ? AND status IN ('active', 'probation')";
@@ -307,12 +364,14 @@ function daySwapApprovalQuery($type, $role, array $scopes) {
                    te.citizen_id AS target_code,
                    te.profile_img_url AS target_profile_img_url,
                    CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
-                   CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
+                   CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name,
+                   CONCAT_WS(' ', ca.first_name_th, ca.last_name_th) AS cancelled_by_name
             FROM day_swap_requests dsr
             JOIN employees re ON dsr.requester_employee_id = re.id
             JOIN employees te ON dsr.target_employee_id = te.id
             LEFT JOIN employees ae ON dsr.approver_id = ae.id
             LEFT JOIN employees pce ON dsr.created_by_employee_id = pce.id
+            LEFT JOIN employees ca ON dsr.cancelled_by_employee_id = ca.id
             WHERE 1=1";
 
     if ($role === 'hr') {

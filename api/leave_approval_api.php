@@ -16,6 +16,7 @@ try {
     require_once '../includes/employee_shift_assignment_helpers.php';
     require_once '../includes/leave_helpers.php';
     require_once '../includes/hr_scope_helpers.php';
+    require_once '../includes/request_cancellation_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -40,13 +41,15 @@ try {
                        lt.type_name,
                        la.file_path, la.file_name,
                        CONCAT_WS(' ', ma.first_name_th, ma.last_name_th) AS manager_approver_name,
-                       CONCAT_WS(' ', ha.first_name_th, ha.last_name_th) AS hr_approver_name
+                       CONCAT_WS(' ', ha.first_name_th, ha.last_name_th) AS hr_approver_name,
+                       CONCAT_WS(' ', ca.first_name_th, ca.last_name_th) AS cancelled_by_name
                 FROM leave_requests lr
                 JOIN employees e ON lr.employee_id = e.id
                 JOIN leave_types lt ON lr.leave_type_id = lt.id
                 LEFT JOIN leave_attachments la ON lr.id = la.leave_request_id
                 LEFT JOIN employees ma ON lr.manager_approver_id = ma.id
                 LEFT JOIN employees ha ON lr.hr_approver_id = ha.id
+                LEFT JOIN employees ca ON lr.cancelled_by_employee_id = ca.id
                 WHERE 1=1 ";
 
         $types = '';
@@ -97,6 +100,12 @@ try {
         $stmt->execute();
 
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($rows as &$row) {
+            $row['can_reviewer_cancel'] = $type === 'history'
+                && in_array($my_role, ['hr', 'admin'], true)
+                && ($row['status'] ?? '') === 'approved';
+        }
+        unset($row);
         echo json_encode(['status' => 'success', 'data' => $rows]);
     } elseif ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
@@ -105,6 +114,10 @@ try {
         $timeRequestTypeFilter = leaveApprovalNormalizeTimeRequestTypeFilter($input['time_request_type'] ?? '');
         $req_id = (int)($input['request_id'] ?? 0);
         $reason = trim((string)($input['reason'] ?? ''));
+
+        if ($action === 'reviewer_cancel') {
+            reviewerCancelApprovedLeaveRequest($mysqli, $input, $my_role, $my_emp_id, $requestUnitFilter, $timeRequestTypeFilter);
+        }
 
         if (!in_array($action, ['approve', 'reject'], true)) {
             sendJsonError('Invalid Action');
@@ -260,6 +273,71 @@ function leaveApprovalNormalizeTimeRequestTypeFilter($value) {
         return 'late_early';
     }
     return '';
+}
+
+function reviewerCancelApprovedLeaveRequest(mysqli $mysqli, array $input, string $role, int $employeeId, string $requestUnitFilter, string $timeRequestTypeFilter): void {
+    if (!in_array($role, ['hr', 'admin'], true)) {
+        sendJsonError('Access Denied');
+    }
+
+    $requestId = (int)($input['request_id'] ?? 0);
+    $reason = trim((string)($input['cancellation_reason'] ?? ''));
+    if ($requestId <= 0 || $reason === '') {
+        sendJsonError('กรุณาระบุเหตุผลการยกเลิก');
+    }
+
+    $scopeClause = hrScopeBuildEmployeeWhereClause($role, hrScopeCurrentSessionScopes(), 'e');
+    $sql = "SELECT lr.id, lr.status
+            FROM leave_requests lr
+            JOIN employees e ON lr.employee_id = e.id
+            WHERE lr.id = ? AND lr.status = 'approved'";
+    $types = 'i';
+    $params = [$requestId];
+
+    if ($requestUnitFilter === 'hour') {
+        $sql .= " AND lr.request_unit = 'hour' AND lr.time_request_type IS NOT NULL";
+        if ($timeRequestTypeFilter === 'overtime_after_work') {
+            $sql .= " AND lr.time_request_type = 'overtime_after_work'";
+        } elseif ($timeRequestTypeFilter === 'late_early') {
+            $sql .= " AND lr.time_request_type IN ('late_arrival','early_departure')";
+        }
+    } else {
+        $sql .= " AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL)";
+    }
+    if ($role === 'hr') {
+        $sql .= $scopeClause['sql'];
+        $types .= $scopeClause['types'];
+        $params = array_merge($params, $scopeClause['params']);
+    }
+
+    $stmt = $mysqli->prepare($sql);
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $request = $result->fetch_assoc();
+    $result->free();
+    $stmt->close();
+    if (!$request || requestCancellationReviewerDirectTransition((string)$request['status'], $role) === null) {
+        sendJsonError('Access Denied');
+    }
+
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    $now = date('Y-m-d H:i:s');
+    $update = $mysqli->prepare("UPDATE leave_requests
+                                SET status = 'cancelled', cancellation_reason = ?, cancelled_by_user_id = ?,
+                                    cancelled_by_employee_id = ?, cancelled_by_role = ?, cancelled_at = ?
+                                WHERE id = ? AND status = 'approved'");
+    $update->bind_param('siissi', $reason, $userId, $employeeId, $role, $now, $requestId);
+    if (!$update->execute() || $update->affected_rows !== 1) {
+        sendJsonError('สถานะรายการเปลี่ยนแปลงแล้ว กรุณาโหลดข้อมูลใหม่');
+    }
+    sendJsonSuccess(['status' => 'success', 'message' => 'ยกเลิกรายการเรียบร้อยแล้ว']);
+}
+
+function sendJsonSuccess(array $payload): void {
+    header('Content-Type: application/json');
+    echo json_encode($payload);
+    exit();
 }
 
 $mysqli->close();
