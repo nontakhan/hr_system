@@ -122,6 +122,38 @@ const personalLeaveEvent = buildAttendanceCalendarEvent({
 assertSame('ลา\nลากิจ', personalLeaveEvent.title, 'Full-day leave should show status and leave type on separate calendar lines.');
 assertIncludes(personalLeaveEvent.title, 'ลากิจ', 'Calendar event title should mention personal leave requests.');
 
+const partialLeaveRow = {
+    work_date: '2026-01-11',
+    day_name: 'Sun',
+    check_in: null,
+    check_out: null,
+    status: 'absent',
+    status_label: 'ขาด',
+    partial_leave_details: ['ลากิจ ครึ่งวันเช้า'],
+    hourly_requests: [],
+};
+const partialLeaveEvent = buildAttendanceCalendarEvent(partialLeaveRow);
+assertSame('ปกติ\nลากิจ ครึ่งวันเช้า', partialLeaveEvent.title, 'Partial leave should display as normal with leave detail.');
+assertSame('#bbf7d0', partialLeaveEvent.backgroundColor, 'Partial leave should use the normal green color.');
+assertIncludes(partialLeaveEvent.classNames.join(' '), 'attendance-event-present', 'Partial leave should use the normal event class.');
+assertSame('absent', partialLeaveEvent.extendedProps.row.status, 'Partial-leave presentation must retain the raw scanner status.');
+
+['late', 'missing_in', 'missing_out'].forEach(status => {
+    assertSame('present', attendanceCalendarPresentationStatus({
+        status,
+        partial_leave_details: ['ลาป่วย ครึ่งวันบ่าย'],
+    }), `Partial leave should present as normal when raw scanner status is ${status}.`);
+});
+
+const partialCounts = countAttendanceReportStatuses([partialLeaveRow]);
+assertSame(1, partialCounts.present, 'Partial leave should increment normal attendance.');
+assertSame(0, partialCounts.absent, 'Partial leave should not increment absence.');
+
+const partialLeaveDetails = buildAttendanceCalendarDetails(partialLeaveRow);
+assertIncludes(partialLeaveDetails, 'รายละเอียดการลา', 'Partial-leave popup should include a dedicated leave-detail section.');
+assertIncludes(partialLeaveDetails, 'ลากิจ ครึ่งวันเช้า', 'Partial-leave popup should retain the leave label.');
+assertIncludes(partialLeaveDetails, '>ปกติ<', 'Partial-leave popup should show the normal presentation badge.');
+
 const trainingEvent = buildAttendanceCalendarEvent({
     work_date: '2026-01-12',
     status: 'present',
@@ -228,6 +260,34 @@ assertSame(1, counts.training, 'Approved activity should still be counted as an 
 const calendarOptions = buildAttendanceCalendarOptions();
 assertSame(1, calendarOptions.firstDay, 'Attendance calendar should start weeks on Monday.');
 
+let attendancePopupConfig = null;
+global.Swal = {
+    fire(config) {
+        attendancePopupConfig = config;
+    },
+};
+calendarOptions.eventClick({
+    event: {
+        extendedProps: {
+            row: partialLeaveRow,
+        },
+    },
+});
+assertSame('info', attendancePopupConfig.icon, 'Partial leave presented as normal should not open with an absence warning icon.');
+calendarOptions.eventClick({
+    event: {
+        extendedProps: {
+            row: {
+                work_date: '2026-01-14',
+                day_name: 'Wed',
+                status: 'absent',
+                status_label: 'ขาด',
+            },
+        },
+    },
+});
+assertSame('warning', attendancePopupConfig.icon, 'Raw absence without partial leave should retain the warning icon.');
+
 assertSame('2026-01', normalizeAttendanceRangeEnd('', '2026-01'), 'Blank range end should default to the start month.');
 assertSame('2026-03', normalizeAttendanceRangeEnd('2026-03', '2026-01'), 'Range end should keep the selected end month.');
 assertSame(3, countAttendanceRangeMonths('2026-01', '2026-03'), 'Range helper should count inclusive months.');
@@ -259,12 +319,15 @@ attendanceCalendarDayClassMap = buildAttendanceCalendarDayClassMap([
     { work_date: '2026-01-06', status: 'present' },
     { work_date: '2026-01-07', status: 'holiday', holiday_name: 'วันหยุดบริษัท' },
     { work_date: '2026-01-08', status: 'present', training_name: 'Safety Training' },
+    partialLeaveRow,
 ]);
 const absentDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 5) });
 const companyHolidayDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 7) });
 const trainingDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 8) });
+const partialLeaveDayClasses = calendarOptions.dayCellClassNames({ date: new Date(2026, 0, 11) });
 assertIncludes(absentDayClasses.join(' '), 'attendance-day-absent', 'Calendar day cells should receive a status class for full-cell coloring.');
 assertIncludes(companyHolidayDayClasses.join(' '), 'attendance-day-company_holiday', 'Company holiday cells should receive a distinct color class.');
 assertIncludes(trainingDayClasses.join(' '), 'attendance-day-present', 'Activity cells should receive the normal present color class.');
+assertIncludes(partialLeaveDayClasses.join(' '), 'attendance-day-present', 'Partial-leave day cells should receive the normal present color class.');
 
 console.log('attendance_calendar_test passed');

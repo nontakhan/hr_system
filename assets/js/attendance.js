@@ -1461,7 +1461,9 @@ function countAttendanceReportStatuses(rows) {
 
     rows.forEach(row => {
         const presentationStatus = attendanceCalendarPresentationStatus(row);
-        const countStatus = row.status === 'late' ? presentationStatus : row.status;
+        const countStatus = presentationStatus === 'present' && row.status !== 'present'
+            ? 'present'
+            : row.status;
         counts[countStatus] = (counts[countStatus] || 0) + 1;
         if (row.training_name && row.status !== 'training') {
             counts.training += 1;
@@ -1588,7 +1590,7 @@ function buildAttendanceCalendarOptions(initialDate, events, monthCount = 1) {
             Swal.fire({
                 title: formatThaiDate(row.work_date),
                 html: buildAttendanceCalendarDetails(row),
-                icon: row.status === 'absent' ? 'warning' : 'info',
+                icon: attendanceCalendarPresentationStatus(row) === 'absent' ? 'warning' : 'info',
                 confirmButtonText: 'ปิด',
             });
         },
@@ -1631,6 +1633,9 @@ function attendanceCalendarPresentationStatus(row) {
     if (row.status === 'holiday' && String(row.holiday_name || '').trim()) {
         return 'company_holiday';
     }
+    if (row.status !== 'holiday' && attendancePartialLeaveLabels(row).length) {
+        return 'present';
+    }
     if (row.status === 'late' && attendanceHourlyRequestLabels(row).some(label => label.startsWith('ขอมาสาย'))) {
         return 'present';
     }
@@ -1640,11 +1645,12 @@ function attendanceCalendarPresentationStatus(row) {
 function attendanceCalendarEventTitle(row) {
     const status = attendanceCalendarPresentationStatus(row);
     const leaveName = String(row.leave_name || '').trim();
+    const partialLeaves = attendancePartialLeaveLabels(row);
 
     let statusTitle = row.status_label || '-';
     if (status === 'company_holiday') statusTitle = 'วันหยุดบริษัท';
     if (status === 'holiday') statusTitle = 'วันหยุดปกติ';
-    if (status === 'present' && row.status === 'late') statusTitle = 'ปกติ';
+    if (status === 'present' && (row.status === 'late' || partialLeaves.length)) statusTitle = 'ปกติ';
 
     const details = [];
     const holidayName = String(row.holiday_name || '').trim();
@@ -1653,6 +1659,9 @@ function attendanceCalendarEventTitle(row) {
     }
     if (leaveName) {
         details.push(leaveName);
+    }
+    if (partialLeaves.length) {
+        details.push(...partialLeaves);
     }
 
     const trainingName = String(row.training_name || '').trim();
@@ -1688,6 +1697,16 @@ function attendanceCalendarStatusColor(status) {
 
 function buildAttendanceCalendarDetails(row) {
     const note = row.holiday_name || row.leave_name || row.training_name || '-';
+    const partialLeaves = attendancePartialLeaveLabels(row);
+    const presentsPartialLeave = row.status !== 'holiday' && partialLeaves.length > 0;
+    const badgeStatus = presentsPartialLeave ? 'present' : row.status;
+    const badgeLabel = presentsPartialLeave ? 'ปกติ' : (row.status_label || '-');
+    const partialLeaveHtml = partialLeaves.length
+        ? `<div class="attendance-partial-leaves mt-3">
+                <div class="fw-semibold mb-1">รายละเอียดการลา</div>
+                <ul class="mb-0 ps-3">${partialLeaves.map(label => `<li>${escapeHtml(label)}</li>`).join('')}</ul>
+           </div>`
+        : '';
     const hourly = attendanceHourlyRequestLabels(row);
     const hourlyHtml = hourly.length
         ? `<div class="attendance-hourly-requests mt-3">
@@ -1705,13 +1724,14 @@ function buildAttendanceCalendarDetails(row) {
         <div class="attendance-calendar-popup text-start">
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
                 <span class="text-muted">${formatAttendanceDay(row.day_name)}</span>
-                ${attendanceStatusBadge(row.status, row.status_label || '-')}
+                ${attendanceStatusBadge(badgeStatus, badgeLabel)}
             </div>
             <dl class="attendance-detail-list">
                 <div><dt>เวลาเข้า</dt><dd>${formatAttendanceTime(row.check_in)}</dd></div>
                 <div><dt>เวลาออก</dt><dd>${formatAttendanceTime(row.check_out)}</dd></div>
                 <div><dt>รายละเอียด</dt><dd>${escapeHtml(note)}</dd></div>
             </dl>
+            ${partialLeaveHtml}
             ${hourlyHtml}
             ${overrideHtml}
         </div>`;
@@ -1720,6 +1740,12 @@ function buildAttendanceCalendarDetails(row) {
 function attendanceHourlyRequestLabels(row) {
     return Array.isArray(row.hourly_requests)
         ? row.hourly_requests.map(item => String(item || '').trim()).filter(Boolean)
+        : [];
+}
+
+function attendancePartialLeaveLabels(row) {
+    return Array.isArray(row.partial_leave_details)
+        ? row.partial_leave_details.map(item => String(item || '').trim()).filter(Boolean)
         : [];
 }
 

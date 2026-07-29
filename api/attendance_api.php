@@ -478,7 +478,9 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
     $shiftAssignments = employeeShiftAssignmentsFetchForMonth($mysqli, (int)$employee['id'], $month);
     $shiftOverrides = fetchEmployeeShiftOverridesForMonth($mysqli, (int)$employee['id'], $month);
     $holidays = fetchCompanyHolidaysForMonth($mysqli, $month);
-    $leaves = fetchApprovedLeavesForMonth($mysqli, (int)$employee['id'], $month);
+    $leaveMaps = fetchApprovedLeaveAttendanceMapsForMonth($mysqli, (int)$employee['id'], $month);
+    $leaves = $leaveMaps['full_day'];
+    $partialLeaves = $leaveMaps['partial'];
     $trainings = fetchApprovedTrainingRequestsForMonth($mysqli, (int)$employee['id'], $month);
     $hourlyRequests = fetchApprovedHourlyRequestsForMonth($mysqli, (int)$employee['id'], $month);
     $daySwaps = attendanceBuildApprovedDaySwapMap(fetchApprovedDaySwapsForMonth($mysqli, (int)$employee['id'], $month), (int)$employee['id'], $month);
@@ -509,6 +511,7 @@ function buildMonthlyAttendanceReport($mysqli, array $employee, $month) {
             'training_name' => $status['training_name'],
             'day_swap_type' => $daySwaps[$workDate] ?? null,
             'hourly_requests' => $hourlyRequests[$workDate] ?? [],
+            'partial_leave_details' => $partialLeaves[$workDate] ?? [],
             'has_override' => $record['has_override'],
             'override_check_in' => $record['override_check_in'],
             'override_check_out' => $record['override_check_out'],
@@ -1117,26 +1120,29 @@ function fetchEmployeeShiftOverridesForMonth($mysqli, $employeeId, $month) {
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
-function fetchApprovedLeavesForMonth($mysqli, $employeeId, $month) {
+function fetchApprovedLeaveAttendanceMapsForMonth($mysqli, $employeeId, $month) {
     $start = $month . '-01';
     $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
     leaveEnsureRequestPartColumns($mysqli);
-    $stmt = $mysqli->prepare("SELECT lr.start_date, lr.end_date, lt.type_name
+    $stmt = $mysqli->prepare("SELECT lr.start_date, lr.end_date, lr.start_day_part, lr.end_day_part,
+                                     lr.request_unit, lr.time_request_type, lr.request_minutes,
+                                     lr.request_start_time, lr.request_end_time, lr.total_days,
+                                     lt.type_name
                               FROM leave_requests lr
                               JOIN leave_types lt ON lr.leave_type_id = lt.id
                               WHERE lr.employee_id = ?
                                 AND lr.status IN ('approved','pending_cancel_hr')
                                 AND (lr.request_unit = 'day'
                                      OR (lr.request_unit = 'hour'
-                                         AND lr.time_request_type IS NULL
-                                         AND COALESCE(lr.total_days, 0) >= 1))
+                                         AND lr.time_request_type IS NULL))
                                 AND lr.start_date <= ?
                                 AND lr.end_date >= ?
-                              ORDER BY lr.start_date");
+                              ORDER BY lr.start_date, lr.id");
     $stmt->bind_param('iss', $employeeId, $end, $start);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    return attendanceBuildApprovedLeaveMap($rows, $month);
+    $stmt->close();
+    return attendanceBuildApprovedLeaveMaps($rows, $month);
 }
 
 function fetchApprovedTrainingRequestsForMonth($mysqli, $employeeId, $month) {
@@ -1167,8 +1173,7 @@ function fetchApprovedHourlyRequestsForMonth($mysqli, $employeeId, $month) {
                               WHERE lr.employee_id = ?
                                 AND lr.status IN ('approved','pending_cancel_hr')
                                 AND lr.request_unit = 'hour'
-                                AND NOT (lr.time_request_type IS NULL
-                                         AND COALESCE(lr.total_days, 0) >= 1)
+                                AND lr.time_request_type IS NOT NULL
                                 AND lr.start_date BETWEEN ? AND ?
                               ORDER BY lr.start_date, lr.id");
     $stmt->bind_param('iss', $employeeId, $start, $end);

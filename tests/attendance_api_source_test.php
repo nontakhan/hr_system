@@ -19,12 +19,28 @@ assertAttendanceApiSource(
     'Hourly attendance request query should join leave_types for hourly leave labels.'
 );
 assertAttendanceApiSource(
-    strpos($normalizedSource, "AND (lr.request_unit = 'day' OR (lr.request_unit = 'hour' AND lr.time_request_type IS NULL AND COALESCE(lr.total_days, 0) >= 1))") !== false,
-    'Approved attendance leave query should include hourly leave already calculated as one full day.'
+    strpos($source, 'function fetchApprovedLeaveAttendanceMapsForMonth') !== false,
+    'Attendance API should fetch actual leave once for full-day and partial classification.'
 );
 assertAttendanceApiSource(
-    strpos($normalizedSource, "AND NOT (lr.time_request_type IS NULL AND COALESCE(lr.total_days, 0) >= 1)") !== false,
-    'Hourly attendance request query should exclude hourly leave already calculated as one full day.'
+    strpos($normalizedSource, 'SELECT lr.start_date, lr.end_date, lr.start_day_part, lr.end_day_part, lr.request_unit, lr.time_request_type, lr.request_minutes, lr.request_start_time, lr.request_end_time, lr.total_days, lt.type_name') !== false,
+    'Attendance actual-leave query should fetch persisted day parts, duration, minutes, and time range.'
+);
+assertAttendanceApiSource(
+    strpos($normalizedSource, "AND (lr.request_unit = 'day' OR (lr.request_unit = 'hour' AND lr.time_request_type IS NULL))") !== false,
+    'Attendance actual-leave query should include day leave and hourly actual leave for helper classification.'
+);
+assertAttendanceApiSource(
+    strpos($normalizedSource, 'AND lr.start_date <= ? AND lr.end_date >= ?') !== false,
+    'Attendance actual-leave query should include every request overlapping the report month.'
+);
+assertAttendanceApiSource(
+    strpos($normalizedSource, 'AND lr.request_unit = \'hour\' AND lr.time_request_type IS NOT NULL') !== false,
+    'Attendance time-request query should keep actual partial leave separate from late, early, and OT labels.'
+);
+assertAttendanceApiSource(
+    strpos($source, "'partial_leave_details' =>") !== false,
+    'Monthly attendance rows should expose partial-leave details.'
 );
 assertAttendanceApiSource(
     strpos($source, "\$action === 'missing_scan_report'") !== false,

@@ -333,31 +333,111 @@ function attendanceBuildApprovedDaySwapMap(array $swapRows, $employeeId, $month)
     return $map;
 }
 
-function attendanceBuildApprovedLeaveMap(array $leaveRows, $month) {
+function attendanceLeaveDatePart(array $row, $workDate) {
+    $startDate = (string)($row['start_date'] ?? '');
+    $endDate = (string)($row['end_date'] ?? '');
+    $startPart = (string)($row['start_day_part'] ?? 'full');
+    $endPart = (string)($row['end_day_part'] ?? 'full');
+
+    if ($startDate === $endDate) {
+        if ($startPart !== 'full') {
+            return $startPart;
+        }
+        return $endPart !== 'full' ? $endPart : 'full';
+    }
+    if ($workDate === $startDate) {
+        return $startPart;
+    }
+    if ($workDate === $endDate) {
+        return $endPart;
+    }
+    return 'full';
+}
+
+function attendanceFormatPartialLeaveLabel(array $row, $part = 'full') {
+    $typeName = trim((string)($row['type_name'] ?? 'ลา'));
+    if ($typeName === '') {
+        $typeName = 'ลา';
+    }
+
+    if (($row['request_unit'] ?? 'day') !== 'hour') {
+        $partLabels = [
+            'morning' => 'ครึ่งวันเช้า',
+            'afternoon' => 'ครึ่งวันบ่าย',
+        ];
+        return $typeName . ' ' . ($partLabels[$part] ?? 'ครึ่งวัน');
+    }
+
+    $minutes = max(1, (int)($row['request_minutes'] ?? 0));
+    $range = '';
+    if (!empty($row['request_start_time']) && !empty($row['request_end_time'])) {
+        $range = substr((string)$row['request_start_time'], 0, 5)
+            . '-'
+            . substr((string)$row['request_end_time'], 0, 5)
+            . ' ';
+    }
+    return $typeName . ' ' . $range . attendanceFormatHourMinuteDuration($minutes);
+}
+
+function attendanceBuildApprovedLeaveMaps(array $leaveRows, $month) {
     $start = new DateTimeImmutable($month . '-01');
     $end = $start->modify('last day of this month');
-    $leaves = [];
+    $maps = [
+        'full_day' => [],
+        'partial' => [],
+    ];
 
     foreach ($leaveRows as $row) {
         $leaveStart = new DateTimeImmutable($row['start_date']);
         $leaveEnd = new DateTimeImmutable($row['end_date']);
-        $typeName = (string)($row['type_name'] ?? 'ลา');
+        $typeName = trim((string)($row['type_name'] ?? 'ลา'));
+        if ($typeName === '') {
+            $typeName = 'ลา';
+        }
 
         if ($leaveEnd < $start || $leaveStart > $end) {
             continue;
         }
 
+        $requestUnit = (string)($row['request_unit'] ?? 'day');
+        if ($requestUnit === 'hour' && !empty($row['time_request_type'])) {
+            continue;
+        }
+        $hourlyIsPartial = $requestUnit === 'hour'
+            && (float)($row['total_days'] ?? 0) < 1;
+
         $from = $leaveStart < $start ? $start : $leaveStart;
         $to = $leaveEnd > $end ? $end : $leaveEnd;
         for ($date = $from; $date <= $to; $date = $date->modify('+1 day')) {
             $workDate = $date->format('Y-m-d');
-            if (!isset($leaves[$workDate])) {
-                $leaves[$workDate] = $typeName;
+            $part = $requestUnit === 'hour'
+                ? 'full'
+                : attendanceLeaveDatePart($row, $workDate);
+            $isPartial = $requestUnit === 'hour'
+                ? $hourlyIsPartial
+                : $part !== 'full';
+
+            if ($isPartial) {
+                if (isset($maps['full_day'][$workDate])) {
+                    continue;
+                }
+                if (!isset($maps['partial'][$workDate])) {
+                    $maps['partial'][$workDate] = [];
+                }
+                $maps['partial'][$workDate][] = attendanceFormatPartialLeaveLabel($row, $part);
+            } elseif (!isset($maps['full_day'][$workDate])) {
+                $maps['full_day'][$workDate] = $typeName;
+                unset($maps['partial'][$workDate]);
             }
         }
     }
 
-    return $leaves;
+    return $maps;
+}
+
+function attendanceBuildApprovedLeaveMap(array $leaveRows, $month) {
+    $maps = attendanceBuildApprovedLeaveMaps($leaveRows, $month);
+    return $maps['full_day'];
 }
 
 function attendanceBuildApprovedTrainingMap(array $trainingRows, $month) {

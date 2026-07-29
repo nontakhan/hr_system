@@ -328,6 +328,79 @@ assertSameValue('Annual leave', $leaveMap['2026-01-05'], 'Approved leave map sho
 assertSameValue('Annual leave', $leaveMap['2026-01-06'], 'Approved leave map should include the last day of a leave range.');
 assertSameValue(false, isset($leaveMap['2026-02-01']), 'Approved leave map should not include dates outside the report month.');
 
+$classifiedLeaves = attendanceBuildApprovedLeaveMaps([
+    [
+        'start_date' => '2026-01-05',
+        'end_date' => '2026-01-05',
+        'request_unit' => 'day',
+        'start_day_part' => 'morning',
+        'end_day_part' => 'morning',
+        'total_days' => 0.5,
+        'type_name' => 'ลากิจ',
+    ],
+    [
+        'start_date' => '2026-01-06',
+        'end_date' => '2026-01-08',
+        'request_unit' => 'day',
+        'start_day_part' => 'afternoon',
+        'end_day_part' => 'morning',
+        'total_days' => 2.0,
+        'type_name' => 'ลาป่วย',
+    ],
+    [
+        'start_date' => '2026-01-09',
+        'end_date' => '2026-01-09',
+        'request_unit' => 'hour',
+        'time_request_type' => null,
+        'request_minutes' => 120,
+        'request_start_time' => '09:00:00',
+        'request_end_time' => '11:00:00',
+        'total_days' => 0.25,
+        'type_name' => 'ลากิจ',
+    ],
+    [
+        'start_date' => '2026-01-12',
+        'end_date' => '2026-01-12',
+        'request_unit' => 'hour',
+        'time_request_type' => null,
+        'request_minutes' => 360,
+        'request_start_time' => '08:00:00',
+        'request_end_time' => '14:00:00',
+        'total_days' => 1.0,
+        'type_name' => 'ลากิจ',
+    ],
+], '2026-01');
+assertSameValue([
+    '2026-01-07' => 'ลาป่วย',
+    '2026-01-12' => 'ลากิจ',
+], $classifiedLeaves['full_day'], 'Only full dates should enter the full-day leave map.');
+assertSameValue([
+    '2026-01-05' => ['ลากิจ ครึ่งวันเช้า'],
+    '2026-01-06' => ['ลาป่วย ครึ่งวันบ่าย'],
+    '2026-01-08' => ['ลาป่วย ครึ่งวันเช้า'],
+    '2026-01-09' => ['ลากิจ 09:00-11:00 2 ชม.'],
+], $classifiedLeaves['partial'], 'Partial dates should retain independently formatted leave details.');
+
+$overlappingLeaveMaps = attendanceBuildApprovedLeaveMaps([
+    [
+        'start_date' => '2026-01-13',
+        'end_date' => '2026-01-13',
+        'request_unit' => 'day',
+        'start_day_part' => 'full',
+        'end_day_part' => 'full',
+        'type_name' => 'ลาป่วย',
+    ],
+    [
+        'start_date' => '2026-01-13',
+        'end_date' => '2026-01-13',
+        'request_unit' => 'day',
+        'start_day_part' => 'afternoon',
+        'end_day_part' => 'afternoon',
+        'type_name' => 'ลากิจ',
+    ],
+], '2026-01');
+assertSameValue(false, isset($overlappingLeaveMaps['partial']['2026-01-13']), 'Full-day leave should suppress partial presentation on the same date.');
+
 $trainingMap = attendanceBuildApprovedTrainingMap([
     [
         'start_date' => '2026-01-12',
