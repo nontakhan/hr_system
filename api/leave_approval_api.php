@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/list_helpers.php';
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -10,6 +11,8 @@ function sendJsonError($message) {
 
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/day_swap_helpers.php';
@@ -95,18 +98,20 @@ try {
         }
 
         $sql .= " ORDER BY lr.created_at DESC";
-        $stmt = $mysqli->prepare($sql);
-        hrScopeBindParams($stmt, $types, $params);
-        $stmt->execute();
-
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $orderColumns = $type === 'pending'
+            ? ["CONCAT_WS(' ', first_name_th, last_name_th)", 'type_name', 'start_date', 'total_days', 'reason', '']
+            : ['approval_date', "CONCAT_WS(' ', first_name_th, last_name_th)", 'type_name', 'start_date', 'status', 'rejection_reason', ''];
+        $page = hrFetchList($mysqli, $sql, $types, $params,
+            ['created_at','approval_date',"CONCAT_WS(' ', first_name_th, last_name_th)", 'employee_code', 'type_name', 'start_date', 'end_date', 'reason', 'rejection_reason', 'cancellation_reason', hrRequestStatusSearchExpression()],
+            $orderColumns);
+        $rows = $page['data'];
         foreach ($rows as &$row) {
             $row['can_reviewer_cancel'] = $type === 'history'
                 && in_array($my_role, ['hr', 'admin'], true)
                 && ($row['status'] ?? '') === 'approved';
         }
         unset($row);
-        echo json_encode(['status' => 'success', 'data' => $rows]);
+        echo json_encode(array_replace($page, ['data' => $rows]));
     } elseif ($method === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true);
         $action = $input['action'] ?? '';

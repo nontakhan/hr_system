@@ -46,11 +46,11 @@ assertIncludes(historyPage, 'id="lateEarlyHistoryTable"', 'Late/early history ta
 
 assertIncludes(script, 'if (historyBody) loadTimeRequestHistory();', 'Late/early JS should load history when the history table exists.');
 assertIncludes(script, 'if (form) {', 'Late/early JS should allow history-only pages without the submit form.');
-assertIncludes(script, 'initLateEarlyHistoryDataTable', 'Late/early history JS should initialize DataTables for the history table.');
-assertIncludes(script, 'resetLateEarlyHistoryDataTable', 'Late/early history JS should reset DataTables before replacing rows.');
+assertIncludes(script, 'loadServerTable', 'Late/early history should use the shared server-paged table.');
+assertIncludes(script, 'getTimeRequestHistoryTableSelector()?.slice(1)', 'Shared paging should select the correct time/OT history table.');
 assertIncludes(script, 'getTimeRequestHistoryTableSelector', 'Late/early history table should resolve its DataTables target through a shared helper.');
 assertIncludes(script, "return '#lateEarlyHistoryTable';", 'Late/early history table should use DataTables.');
-assertIncludes(script, '$(selector).DataTable', 'Late/early history table should initialize DataTables.');
+assertIncludes(fs.readFileSync('assets/js/paged_tables.js', 'utf8'), 'jQuery(element).DataTable', 'Shared adapter should initialize DataTables.');
 
 assertIncludes(header, 'isActive(\'late_early_history.php\')', 'Sidebar should treat late/early history as an active time-request page.');
 assertIncludes(header, 'href="late_early_history.php"', 'Sidebar should link the late/early menu directly to history.');

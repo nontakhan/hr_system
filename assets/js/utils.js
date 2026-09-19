@@ -345,3 +345,30 @@ if (typeof document !== 'undefined') {
         }, 0);
     }, true);
 }
+
+// One active request per report; repeated clicks reuse the active operation.
+// A new filter set invalidates the old response even when fetch cannot abort.
+const latestReportRequests = new Map();
+function beginLatestRequest(channel, key, button = null) {
+    const previous = latestReportRequests.get(channel);
+    if (previous?.key === key) return null;
+    if (previous) {
+        previous.controller?.abort();
+        if (previous.button) previous.button.disabled = previous.wasDisabled;
+    }
+    const state = {
+        key, button, wasDisabled: button?.disabled || false,
+        controller: typeof AbortController !== 'undefined' ? new AbortController() : null,
+    };
+    if (button) button.disabled = true;
+    latestReportRequests.set(channel, state);
+    return {
+        signal: state.controller?.signal,
+        isCurrent: () => latestReportRequests.get(channel) === state,
+        finish() {
+            if (latestReportRequests.get(channel) !== state) return;
+            latestReportRequests.delete(channel);
+            if (button) button.disabled = state.wasDisabled;
+        },
+    };
+}

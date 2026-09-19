@@ -28,51 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-const leaveApprovalDataTables = {
-    pending: null,
-    history: null,
-};
-
-function resetLeaveApprovalDataTable(tableId, key) {
-    const selector = `#${tableId}`;
-    if (leaveApprovalDataTables[key]) {
-        leaveApprovalDataTables[key].destroy();
-        leaveApprovalDataTables[key] = null;
-        return;
-    }
-    if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable(selector)) {
-        $(selector).DataTable().destroy();
-    }
-}
-
-function initLeaveApprovalDataTable(tableId, key, orderColumn = 0) {
-    const selector = `#${tableId}`;
-    if (!window.jQuery || !$.fn.DataTable || !document.getElementById(tableId)) {
-        return;
-    }
-    leaveApprovalDataTables[key] = $(selector).DataTable({
-        language: {
-            lengthMenu: 'แสดง _MENU_ รายการ ต่อหน้า',
-            zeroRecords: 'ไม่พบข้อมูลที่ตรงกัน',
-            info: 'แสดง _START_ ถึง _END_ จากทั้งหมด _TOTAL_ รายการ',
-            infoEmpty: 'แสดง 0 ถึง 0 จากทั้งหมด 0 รายการ',
-            infoFiltered: '(กรองจากทั้งหมด _MAX_ รายการ)',
-            search: 'ค้นหา:',
-            paginate: {
-                first: 'หน้าแรก',
-                last: 'สุดท้าย',
-                next: 'ถัดไป',
-                previous: 'ก่อนหน้า',
-            },
-        },
-        order: [[orderColumn, 'asc']],
-        pageLength: 10,
-        deferRender: true,
-        autoWidth: false,
-        columnDefs: [{ targets: -1, orderable: false, searchable: false }],
-    });
-}
-
 function getLeaveApprovalRequestUnit() {
     return window.leaveApprovalRequestUnit === 'hour' ? 'hour' : 'day';
 }
@@ -107,27 +62,12 @@ function renderLeaveStatusBadge(status) {
 
 // โหลดรายการรออนุมัติ
 async function loadPendingLeaves() {
-    const tbody = document.getElementById('pendingTableBody');
-    resetLeaveApprovalDataTable('pendingTable', 'pending');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">กำลังโหลด...</td></tr>';
+    return loadServerTable({ tableId: 'pendingTable',
+        url: () => `api/leave_approval_api.php?type=pending&request_unit=${getLeaveApprovalRequestUnit()}&time_request_type=${getLeaveApprovalTimeRequestType()}`, renderRow: renderPendingLeaveRow,
+        order: [[0, 'asc']], unsortable: [5] });
+}
 
-    try {
-        const params = new URLSearchParams({
-            type: 'pending',
-            request_unit: getLeaveApprovalRequestUnit(),
-        });
-        const timeRequestType = getLeaveApprovalTimeRequestType();
-        if (timeRequestType) params.set('time_request_type', timeRequestType);
-        const response = await fetch(`api/leave_approval_api.php?${params.toString()}`);
-        const res = await response.json();
-
-        if (res.status === 'success') {
-            if (res.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ไม่มีรายการรออนุมัติ</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = res.data.map(item => {
+function renderPendingLeaveRow(item) {
                 const sDate = formatThaiDate(item.start_date);
                 const eDate = formatThaiDate(item.end_date);
                 const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
@@ -198,35 +138,15 @@ async function loadPendingLeaves() {
                         </td>
                     </tr>
                 `;
-            }).join('');
-            initLeaveApprovalDataTable('pendingTable', 'pending', 0);
-        }
-    } catch (err) { console.error(err); }
-}
-
-// โหลดประวัติการอนุมัติ
-async function loadHistoryLeaves() {
-    const tbody = document.getElementById('historyTableBody');
-    resetLeaveApprovalDataTable('historyTable', 'history');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">กำลังโหลด...</td></tr>';
-
-    try {
-        const params = new URLSearchParams({
-            type: 'history',
-            request_unit: getLeaveApprovalRequestUnit(),
-        });
-        const timeRequestType = getLeaveApprovalTimeRequestType();
-        if (timeRequestType) params.set('time_request_type', timeRequestType);
-        const response = await fetch(`api/leave_approval_api.php?${params.toString()}`);
-        const res = await response.json();
-
-        if (res.status === 'success') {
-            if (res.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ไม่มีประวัติ</td></tr>';
-                return;
             }
 
-            tbody.innerHTML = res.data.map(item => {
+async function loadHistoryLeaves() {
+    return loadServerTable({ tableId: 'historyTable',
+        url: () => `api/leave_approval_api.php?type=history&request_unit=${getLeaveApprovalRequestUnit()}&time_request_type=${getLeaveApprovalTimeRequestType()}`, renderRow: renderLeaveHistoryRow,
+        order: [[0, 'asc']], unsortable: [6] });
+}
+
+function renderLeaveHistoryRow(item) {
                 const appDate = item.approval_date ? formatThaiDate(item.approval_date) : '-';
                 const sDate = formatThaiDate(item.start_date);
                 const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
@@ -255,11 +175,7 @@ async function loadHistoryLeaves() {
                         <td>${reviewerCancelAction}</td>
                     </tr>
                 `;
-            }).join('');
-            initLeaveApprovalDataTable('historyTable', 'history', 0);
-        }
-    } catch (err) { console.error(err); }
-}
+            }
 
 function renderLeaveReviewerCancellationAudit(item) {
     const reason = escapeHtml(item.cancellation_reason || item.rejection_reason || '-');
@@ -358,7 +274,7 @@ function formatLeaveDuration(item) {
         const rawMinutes = Number.parseInt(item.request_minutes || 0, 10) || 0;
         if (!item.time_request_type) {
             const hours = rawMinutes / 60;
-            return `${formatLeaveDayNumber(hours)} ชม. (${formatLeaveDayNumber(item.total_days || 0)} วัน)`;
+            return `${approvalFormatLeaveDayNumber(hours)} ชม. (${approvalFormatLeaveDayNumber(item.total_days || 0)} วัน)`;
         }
         if (item.time_request_type === 'overtime_after_work') {
             const approved = Number.parseInt(item.approved_request_minutes || item.approval_overtime_minutes || 0, 10) || 0;
@@ -376,48 +292,18 @@ function formatLeaveDuration(item) {
     return `${parseFloat(item.total_days)} วัน`;
 }
 
-function formatLeaveDayNumber(value) {
+function approvalFormatLeaveDayNumber(value) {
     const number = Number.parseFloat(value) || 0;
     return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function formatHourMinuteDuration(minutes) {
-    const safeMinutes = Math.max(0, Number.parseInt(minutes || 0, 10) || 0);
-    const hours = Math.floor(safeMinutes / 60);
-    const remaining = safeMinutes % 60;
-    const parts = [];
-    if (hours > 0) parts.push(`${hours} ชม.`);
-    if (remaining > 0 || !parts.length) parts.push(`${remaining} นาที`);
-    return parts.join(' ');
-}
 
 function formatApprovalTime(value) {
     return value ? String(value).substring(0, 5) : '-';
 }
 
 // Submit การอนุมัติ/ไม่อนุมัติ
-function formatLeaveDateRange(startDate, endDate, startPart, endPart) {
-    const start = formatThaiDate(startDate);
-    const end = formatThaiDate(endDate);
-    const startLabel = getLeavePartLabel(startPart);
-    const endLabel = getLeavePartLabel(endPart);
 
-    if (!startDate || !endDate) return '';
-    if (startDate === endDate) {
-        const label = startLabel !== 'เต็มวัน' ? startLabel : endLabel;
-        return `${start}${label !== 'เต็มวัน' ? ` (${label})` : ''}`;
-    }
-
-    return `${start}${startLabel !== 'เต็มวัน' ? ` (${startLabel})` : ''} - ${end}${endLabel !== 'เต็มวัน' ? ` (${endLabel})` : ''}`;
-}
-
-function getLeavePartLabel(part) {
-    return {
-        morning: 'ครึ่งวันเช้า',
-        afternoon: 'ครึ่งวันบ่าย',
-        full: 'เต็มวัน',
-    }[part] || 'เต็มวัน';
-}
 
 async function handleSubmitApproval(e) {
     e.preventDefault();

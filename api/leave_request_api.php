@@ -10,6 +10,8 @@ function sendJsonError($message) {
 
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/upload_security.php';
     require_once '../includes/leave_helpers.php';

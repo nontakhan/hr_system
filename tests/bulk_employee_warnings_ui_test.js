@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 const script = fs.readFileSync('assets/js/bulk_employee_warnings.js', 'utf8');
-const footer = fs.readFileSync('includes/footer.php', 'utf8');
+const footer = require('./support/page_assets').footer('attendance_missing_report.php');
 
 function includes(text, needle, message) {
     if (!text.includes(needle)) {

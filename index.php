@@ -411,7 +411,7 @@ $page_title = "Login - HR System";
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="assets/main.js"></script>
+    <script src="assets/js/login.js"></script>
     <script>
         // Toggle password visibility (เสริม UX โดยไม่กระทบฟังก์ชันเดิม)
         const togglePassword = document.getElementById('togglePassword');

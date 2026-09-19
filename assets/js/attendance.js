@@ -179,43 +179,6 @@ async function loadAttendanceImportSummary() {
     }
 }
 
-function renderAttendanceImportSummaryLegacy(items) {
-    const target = document.getElementById('attendanceImportSummary');
-    if (!target) return;
-
-    if (!items.length) {
-        target.innerHTML = '<div class="col-12 text-muted small">ยังไม่มีข้อมูลสรุปการนำเข้า</div>';
-        return;
-    }
-
-    target.innerHTML = items.map(item => {
-        const hasData = Boolean(item.has_data);
-        const tone = hasData ? 'success' : 'light';
-        const textClass = hasData ? 'text-white' : 'text-dark';
-        const borderClass = hasData ? 'border-0' : 'border';
-        const icon = hasData ? 'fa-circle-check' : 'fa-circle-minus';
-        const status = hasData ? 'นำเข้าแล้ว' : 'ยังไม่มีข้อมูล';
-        const latest = item.latest_work_date ? formatThaiDate(item.latest_work_date) : '-';
-
-        return `
-            <div class="col-12 col-md-6 col-xl-4">
-                <div class="rounded-3 p-3 bg-${tone} ${textClass} ${borderClass} h-100">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                            <div class="fw-semibold">${formatThaiMonth(item.import_month)}</div>
-                            <div class="small ${hasData ? 'opacity-75' : 'text-muted'}">${status}</div>
-                        </div>
-                        <i class="fas ${icon} fs-5 ${hasData ? 'opacity-75' : 'text-muted'}"></i>
-                    </div>
-                    <div class="d-flex justify-content-between gap-3 mt-3 small">
-                        <span>รายการ <strong>${Number(item.record_count || 0).toLocaleString('th-TH')}</strong></span>
-                        <span>พนักงาน <strong>${Number(item.employee_count || 0).toLocaleString('th-TH')}</strong></span>
-                    </div>
-                    <div class="small ${hasData ? 'opacity-75' : 'text-muted'} mt-2">ล่าสุด ${latest}</div>
-                </div>
-            </div>`;
-    }).join('');
-}
 
 function renderAttendanceImportSummary(items) {
     const target = document.getElementById('attendanceImportSummary');
@@ -494,7 +457,6 @@ async function loadAttendanceMissingReport() {
     const rowsEl = document.getElementById('attendanceMissingRows');
     const month = document.getElementById('attendanceMissingMonth')?.value || '';
     if (!rowsEl || !month) return;
-    attendanceMissingWarningBulk?.clearSelection();
 
     const params = new URLSearchParams({
         action: 'missing_scan_report',
@@ -503,12 +465,17 @@ async function loadAttendanceMissingReport() {
         branch_id: document.getElementById('attendanceMissingBranch')?.value || '',
         missing_type: document.getElementById('attendanceMissingType')?.value || 'all',
     });
+    const request = beginLatestRequest('attendance-missing', params.toString(), document.getElementById('attendanceMissingLoadBtn'));
+    if (!request) return;
+    attendanceMissingWarningBulk?.clearSelection();
+
 
     resetAttendanceMissingDataTable();
     rowsEl.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
     try {
-        const response = await fetch(`api/attendance_api.php?${params.toString()}`);
+        const response = await fetch(`api/attendance_api.php?${params.toString()}`, { signal: request.signal });
         const responseText = await response.text();
+        if (!request.isCurrent()) return;
         if (!responseText.trim()) {
             throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับ กรุณาลองใหม่อีกครั้ง');
         }
@@ -521,9 +488,12 @@ async function loadAttendanceMissingReport() {
         renderAttendanceMissingRows(attendanceMissingRows);
         attendanceMissingWarningBulk?.replaceRows(attendanceMissingRows);
     } catch (err) {
+        if (!request.isCurrent()) return;
         attendanceMissingRows = [];
         attendanceMissingWarningBulk?.replaceRows([]);
         rowsEl.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+    } finally {
+        request.finish();
     }
 }
 
@@ -681,7 +651,6 @@ async function loadAttendanceLateEarlyReport() {
     const rowsEl = document.getElementById('attendanceLateEarlyRows');
     const month = document.getElementById('attendanceLateEarlyMonth')?.value || '';
     if (!rowsEl || !month) return;
-    attendanceLateEarlyWarningBulk?.clearSelection();
 
     const params = new URLSearchParams({
         action: 'late_early_report',
@@ -690,11 +659,16 @@ async function loadAttendanceLateEarlyReport() {
         branch_id: document.getElementById('attendanceLateEarlyBranch')?.value || '',
         incident_type: document.getElementById('attendanceLateEarlyType')?.value || 'all',
     });
+    const request = beginLatestRequest('attendance-late-early', params.toString(), document.getElementById('attendanceLateEarlyLoadBtn'));
+    if (!request) return;
+    attendanceLateEarlyWarningBulk?.clearSelection();
+
     resetAttendanceLateEarlyDataTable();
     rowsEl.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
     try {
-        const response = await fetch(`api/attendance_api.php?${params.toString()}`);
+        const response = await fetch(`api/attendance_api.php?${params.toString()}`, { signal: request.signal });
         const responseText = await response.text();
+        if (!request.isCurrent()) return;
         if (!responseText.trim()) throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับ กรุณาลองใหม่อีกครั้ง');
         const res = JSON.parse(responseText);
         if (res.status !== 'success') throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
@@ -703,9 +677,12 @@ async function loadAttendanceLateEarlyReport() {
         renderAttendanceLateEarlyRows(attendanceLateEarlyRows);
         attendanceLateEarlyWarningBulk?.replaceRows(attendanceLateEarlyRows);
     } catch (err) {
+        if (!request.isCurrent()) return;
         attendanceLateEarlyRows = [];
         attendanceLateEarlyWarningBulk?.replaceRows([]);
         rowsEl.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+    } finally {
+        request.finish();
     }
 }
 

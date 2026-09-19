@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+require_once __DIR__ . '/query_helpers.php';
+
 const EMPLOYEE_WARNING_SOURCE_ATTENDANCE_MISSING = 'attendance_missing';
 const EMPLOYEE_WARNING_SOURCE_ATTENDANCE_LATE_EARLY = 'attendance_late_early';
 const EMPLOYEE_WARNING_SOURCE_APPROVED_LEAVE = 'approved_leave';
@@ -156,6 +159,7 @@ function employeeWarningAnnotateReportRows(mysqli $mysqli, array $rows, string $
 
 function employeeWarningEnsureSourceColumns(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $columnResult = $mysqli->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'employee_warnings' AND COLUMN_NAME IN ('source_type', 'source_key', 'source_event_date')");
     $columns = [];
     while ($columnResult && ($row = $columnResult->fetch_assoc())) {
@@ -219,20 +223,20 @@ function employeeWarningRequireValidType(mysqli $mysqli, int $warningTypeId): in
     return $warningTypeId;
 }
 
-function employeeWarningResolveApprovedLeaveSource(mysqli $mysqli, int $requestId, string $leaveDate, string $role, array $scopes): array
+function employeeWarningResolveApprovedLeaveSource(mysqli $mysqli, int $requestId, string $leaveDate, string $role, array $scopes, ?array &$cache = null): array
 {
+    $cache ??= [];
     $scope = employeeWarningEmployeeScopeClause($role, $scopes, 'e');
     $sql = "SELECT lr.id, lr.employee_id, lr.start_date, lr.end_date, lr.start_day_part, lr.end_day_part, lr.reason,
-                   e.first_name_th, e.last_name_th, lt.type_name AS leave_type_name
+                   e.first_name_th, e.last_name_th, ws.work_days, lt.type_name AS leave_type_name
             FROM leave_requests lr
             JOIN employees e ON lr.employee_id = e.id
+            LEFT JOIN work_shifts ws ON e.default_shift_id = ws.id
             JOIN leave_types lt ON lr.leave_type_id = lt.id
             WHERE lr.id = ? AND lr.status = 'approved' AND lt.is_actual_leave = 1
               AND (lr.request_unit = 'day' OR (lr.request_unit = 'hour' AND lr.time_request_type IS NULL))" . $scope['sql'] . " LIMIT 1";
-    $stmt = $mysqli->prepare($sql);
-    employeeWarningBindParams($stmt, 'i' . $scope['types'], array_merge([$requestId], $scope['params']));
-    $stmt->execute();
-    $request = $stmt->get_result()->fetch_assoc();
+    $request = hrRememberDataset($cache, 'leave-request:' . json_encode([$role, $scopes, $requestId]),
+        fn() => hrQueryRows($mysqli, $sql, 'i' . $scope['types'], array_merge([$requestId], $scope['params']))[0] ?? null);
     if (!$request) {
         throw new InvalidArgumentException('Access Denied');
     }
@@ -240,9 +244,9 @@ function employeeWarningResolveApprovedLeaveSource(mysqli $mysqli, int $requestI
     $month = substr($leaveDate, 0, 7);
     $monthStart = $month . '-01';
     $monthEnd = (new DateTimeImmutable($monthStart))->modify('last day of this month')->format('Y-m-d');
-    $workDays = leaveFetchEmployeeWorkDays($mysqli, (int)$request['employee_id']);
-    $holidays = leaveFetchCompanyHolidays($mysqli, $monthStart, $monthEnd);
-    $expanded = leaveExpandApprovedRequestForMonth($request, $month, $workDays, $holidays);
+    $workDays = (string)($request['work_days'] ?? '');
+    $holidays = hrRememberDataset($cache, 'holidays:' . $month, fn() => leaveFetchCompanyHolidays($mysqli, $monthStart, $monthEnd));
+    $expanded = hrRememberDataset($cache, 'leave-days:' . json_encode([$role, $scopes, $requestId, $month]), fn() => leaveExpandApprovedRequestForMonth($request, $month, $workDays, $holidays));
     foreach ($expanded as $row) {
         if (($row['leave_date'] ?? '') !== $leaveDate) {
             continue;
@@ -268,16 +272,16 @@ function employeeWarningResolveApprovedLeaveSource(mysqli $mysqli, int $requestI
     throw new InvalidArgumentException('Warning source event no longer exists');
 }
 
-function employeeWarningResolveSourceEvent(mysqli $mysqli, string $sourceType, string $sourceKey, string $role, array $scopes): array
+function employeeWarningResolveSourceEvent(mysqli $mysqli, string $sourceType, string $sourceKey, string $role, array $scopes, ?array &$cache = null): array
 {
     require_once __DIR__ . '/attendance_warning_source_helpers.php';
     $parsed = employeeWarningParseSourceKey($sourceType, $sourceKey);
     if ($sourceType === EMPLOYEE_WARNING_SOURCE_ATTENDANCE_MISSING) {
-        $resolved = attendanceResolveMissingWarningSource($mysqli, $parsed['employee_id'], $parsed['work_date'], $role, $scopes);
+        $resolved = attendanceResolveMissingWarningSource($mysqli, $parsed['employee_id'], $parsed['work_date'], $role, $scopes, $cache);
     } elseif ($sourceType === EMPLOYEE_WARNING_SOURCE_ATTENDANCE_LATE_EARLY) {
-        $resolved = attendanceResolveLateEarlyWarningSource($mysqli, $parsed['employee_id'], $parsed['work_date'], $role, $scopes);
+        $resolved = attendanceResolveLateEarlyWarningSource($mysqli, $parsed['employee_id'], $parsed['work_date'], $role, $scopes, $cache);
     } else {
-        $resolved = employeeWarningResolveApprovedLeaveSource($mysqli, $parsed['request_id'], $parsed['leave_date'], $role, $scopes);
+        $resolved = employeeWarningResolveApprovedLeaveSource($mysqli, $parsed['request_id'], $parsed['leave_date'], $role, $scopes, $cache);
     }
     return $resolved + [
         'source_type' => $sourceType,
@@ -288,8 +292,9 @@ function employeeWarningResolveSourceEvent(mysqli $mysqli, string $sourceType, s
 function employeeWarningResolveBulkEvents(mysqli $mysqli, array $items, string $role, array $scopes, string $sharedNote = ''): array
 {
     $resolved = [];
+    $cache = [];
     foreach ($items as $item) {
-        $event = employeeWarningResolveSourceEvent($mysqli, $item['source_type'], $item['source_key'], $role, $scopes);
+        $event = employeeWarningResolveSourceEvent($mysqli, $item['source_type'], $item['source_key'], $role, $scopes, $cache);
         $event['detail'] = employeeWarningAppendSharedNote($event['generated_detail'], $sharedNote);
         $resolved[] = $event;
     }

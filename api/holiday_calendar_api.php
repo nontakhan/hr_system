@@ -17,6 +17,8 @@ try {
         session_start();
     }
 
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/day_swap_helpers.php';

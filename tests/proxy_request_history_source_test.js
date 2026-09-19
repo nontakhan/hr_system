@@ -23,7 +23,7 @@ const jsFiles = [
 
 for (const file of jsFiles) {
   const source = fs.readFileSync(file, 'utf8');
-  if (!source.includes('created_via') || !source.includes('สร้างโดย HR/Admin')) {
+  if (!source.includes('renderProxyCreatorLine(item)') || !fs.readFileSync('assets/js/request_display.js', 'utf8').includes('สร้างโดย HR/Admin')) {
     throw new Error(`${file} must render proxy creator text`);
   }
 }

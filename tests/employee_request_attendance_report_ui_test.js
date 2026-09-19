@@ -3,7 +3,7 @@ const fs = require('fs');
 const page = fs.readFileSync('employee_request_attendance_report.php', 'utf8');
 const script = fs.readFileSync('assets/js/employee_request_attendance_report.js', 'utf8');
 const header = fs.readFileSync('includes/header.php', 'utf8');
-const footer = fs.readFileSync('includes/footer.php', 'utf8');
+const footer = require('./support/page_assets').footer('employee_request_attendance_report.php');
 
 function assertIncludes(source, needle, message) {
     if (!source.includes(needle)) throw new Error(message);

@@ -1,6 +1,9 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 function hrScopeEnsureTable(mysqli $mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $mysqli->query("CREATE TABLE IF NOT EXISTS user_hr_scopes (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,

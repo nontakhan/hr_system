@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function renderLeaveStatusBadge(status) {
+function myLeavesRenderLeaveStatusBadge(status) {
     const map = {
         pending: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
         pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning text-dark'],
@@ -33,31 +33,22 @@ function renderLeaveStatusBadge(status) {
     return `<span class="badge bg-${item[1]}">${item[0]}</span>`;
 }
 
-function isPendingLeaveStatus(status) {
+function myLeavesIsPendingLeaveStatus(status) {
     return status === 'pending' || status === 'pending_manager' || status === 'pending_hr';
 }
 
 async function loadMyLeaves() {
-    const tbody = document.getElementById('myLeavesTableBody');
-    
-    try {
-        const response = await fetch('api/leave_history_api.php');
-        const res = await response.json();
+    return loadServerTable({ tableId: 'myLeavesTable', url: 'api/leave_history_api.php',
+        renderRow: renderMyLeaveRow, onResult: result => myLeavesRenderLeaveUsageSummary(result.usage_summary),
+        order: [[0, 'desc']], unsortable: [6] });
+}
 
-        if (res.status === 'success') {
-            renderLeaveUsageSummary(res.usage_summary);
-            tbody.innerHTML = '';
-            if (res.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">ไม่พบประวัติการลา</td></tr>`;
-                return;
-            }
-
-            res.data.forEach(item => {
+function renderMyLeaveRow(item) {
                 const createdDate = formatThaiDate(item.created_at);
                 const startDate = formatThaiDate(item.start_date);
                 const endDate = formatThaiDate(item.end_date);
                 const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
-                const durationText = formatLeaveDuration(item);
+                const durationText = myLeavesFormatLeaveDuration(item);
                 const itemId = Number.parseInt(item.id, 10) || 0;
                 const typeName = escapeHtml(item.type_name);
                 const reason = escapeHtml(item.reason);
@@ -65,7 +56,7 @@ async function loadMyLeaves() {
                 
                 // Badge สถานะ
                 let actionBtn = '';
-                const statusBadge = renderLeaveStatusBadge(item.status);
+                const statusBadge = myLeavesRenderLeaveStatusBadge(item.status);
                 const canCancel = item.status === 'pending' || item.status === 'pending_manager' || item.status === 'approved';
 
                 if (canCancel) {
@@ -75,7 +66,7 @@ async function loadMyLeaves() {
                                  </button>`;
                 }
 
-                tbody.innerHTML += `
+                return `
                     <tr>
                         <td>${createdDate}</td>
                         <td><span class="fw-bold text-primary">${typeName}</span></td>
@@ -86,15 +77,9 @@ async function loadMyLeaves() {
                         <td class="request-status-actions">${actionBtn}</td>
                     </tr>
                 `;
-            });
-        }
-    } catch (err) {
-        console.error(err);
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
-    }
 }
 
-function renderLeaveUsageSummary(summary) {
+function myLeavesRenderLeaveUsageSummary(summary) {
     const grid = document.getElementById('leaveUsageSummaryGrid');
     const overallGrid = document.getElementById('leaveUsageOverallGrid');
     const fiscalText = document.getElementById('leaveUsageFiscalYearText');
@@ -114,29 +99,24 @@ function renderLeaveUsageSummary(summary) {
 
     const typeItems = Array.isArray(summary.items) ? summary.items : [];
     if (overallGrid) {
-        overallGrid.innerHTML = renderOverallLeaveUsageCard(summary.overall);
+        overallGrid.innerHTML = myLeavesRenderOverallLeaveUsageCard(summary.overall);
     }
     grid.innerHTML = typeItems.length
-        ? typeItems.map(item => renderTypeLeaveUsageCard(item)).join('')
+        ? typeItems.map(item => myLeavesRenderTypeLeaveUsageCard(item)).join('')
         : '<div class="text-muted small">ยังไม่มีประเภทการลาที่นำมาสรุปสิทธิ์</div>';
 }
 
-function renderProxyCreatorLine(item) {
-    if (!item || item.created_via !== 'admin_proxy') return '';
-    const name = item.proxy_creator_name || item.created_by_role || '';
-    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
-}
 
-function renderOverallLeaveUsageCard(item) {
+function myLeavesRenderOverallLeaveUsageCard(item) {
     const statusClass = `leave-usage-card-${item.status || 'normal'}`;
     const percent = Number.parseFloat(item.request_usage_percent || 0);
     const progressWidth = Math.min(Math.max(percent, 0), 100);
     const requestLimitText = Number.parseInt(item.request_limit || 0, 10) > 0
-        ? `${formatLeaveDayNumber(item.request_limit)} วัน`
+        ? `${myLeavesFormatLeaveDayNumber(item.request_limit)} วัน`
         : 'ไม่จำกัด';
-    const balanceText = formatUsageBalanceText(item, 'remaining_requests');
+    const balanceText = myLeavesFormatUsageBalanceText(item, 'remaining_requests');
     const pendingText = Number.parseFloat(item.pending_days || 0) > 0
-        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
+        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${myLeavesFormatLeaveDayNumber(item.pending_days)} วัน</div>`
         : '';
 
     return `
@@ -146,13 +126,13 @@ function renderOverallLeaveUsageCard(item) {
                     <span class="leave-usage-icon"><i class="fas fa-chart-pie"></i></span>
                     <strong>รวมการลาทั้งปีงบประมาณ</strong>
                 </div>
-                <span>${formatLeaveDayNumber(item.approved_days)} / ${requestLimitText}</span>
+                <span>${myLeavesFormatLeaveDayNumber(item.approved_days)} / ${requestLimitText}</span>
             </div>
             <div class="leave-usage-progress" aria-hidden="true">
                 <span style="width: ${progressWidth}%"></span>
             </div>
             <div class="small mt-2">
-                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, ${balanceText}
+                ใช้แล้ว ${myLeavesFormatLeaveDayNumber(item.approved_days)} วัน, ${balanceText}
             </div>
             <div class="small mt-1">จำนวนใบลาที่อนุมัติแล้ว: ${item.approved_requests || 0} ครั้ง</div>
             ${pendingText}
@@ -160,18 +140,18 @@ function renderOverallLeaveUsageCard(item) {
     `;
 }
 
-function renderTypeLeaveUsageCard(item) {
-    const presentation = getLeaveTypePresentation(item.type_name || '');
+function myLeavesRenderTypeLeaveUsageCard(item) {
+    const presentation = myLeavesGetLeaveTypePresentation(item.type_name || '');
     const statusClass = `leave-usage-card-${item.status || 'normal'}`;
     const percent = Number.parseFloat(item.usage_percent || 0);
     const progressWidth = Math.min(Math.max(percent, 0), 100);
     const limitDays = Number.parseFloat(item.limit_days || 0);
     const limitText = limitDays > 0
-        ? `${formatLeaveDayNumber(limitDays)} วัน`
+        ? `${myLeavesFormatLeaveDayNumber(limitDays)} วัน`
         : 'ไม่จำกัด';
-    const balanceText = formatUsageBalanceText(item, 'remaining_days');
+    const balanceText = myLeavesFormatUsageBalanceText(item, 'remaining_days');
     const pendingText = Number.parseFloat(item.pending_days || 0) > 0
-        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${formatLeaveDayNumber(item.pending_days)} วัน</div>`
+        ? `<div class="leave-usage-pending">รออนุมัติ ${item.pending_requests || 0} ครั้ง รวม ${myLeavesFormatLeaveDayNumber(item.pending_days)} วัน</div>`
         : '';
 
     return `
@@ -181,13 +161,13 @@ function renderTypeLeaveUsageCard(item) {
                     <span class="leave-usage-icon"><i class="fas ${presentation.icon}"></i></span>
                     <strong>${escapeHtml(item.type_name || 'ประเภทการลา')}</strong>
                 </div>
-                <span>${formatLeaveDayNumber(item.approved_days)} / ${limitText}</span>
+                <span>${myLeavesFormatLeaveDayNumber(item.approved_days)} / ${limitText}</span>
             </div>
             <div class="leave-usage-progress" aria-hidden="true">
                 <span style="width: ${progressWidth}%"></span>
             </div>
             <div class="small mt-2">
-                ใช้แล้ว ${formatLeaveDayNumber(item.approved_days)} วัน, ${balanceText}
+                ใช้แล้ว ${myLeavesFormatLeaveDayNumber(item.approved_days)} วัน, ${balanceText}
             </div>
             <div class="small mt-1">สิทธิ์ตามหน้าตั้งค่าประเภทการลา: ${limitText}</div>
             ${pendingText}
@@ -195,7 +175,7 @@ function renderTypeLeaveUsageCard(item) {
     `;
 }
 
-function getLeaveTypePresentation(typeName) {
+function myLeavesGetLeaveTypePresentation(typeName) {
     const name = String(typeName || '').toLowerCase();
     const rules = [
         { match: ['ป่วย', 'sick'], icon: 'fa-user-injured', tone: 'blue' },
@@ -212,12 +192,12 @@ function getLeaveTypePresentation(typeName) {
         || { icon: 'fa-calendar-check', tone: 'slate' };
 }
 
-function formatLeaveDayNumber(value) {
+function myLeavesFormatLeaveDayNumber(value) {
     const number = Number.parseFloat(value) || 0;
     return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function formatUsageBalanceText(item, remainingKey) {
+function myLeavesFormatUsageBalanceText(item, remainingKey) {
     const remaining = item[remainingKey];
     if (remaining === null || remaining === undefined) {
         return 'ไม่จำกัด';
@@ -226,18 +206,18 @@ function formatUsageBalanceText(item, remainingKey) {
     const overLimitDays = Number.parseFloat(item.over_limit_days || 0);
     if (item.is_over_limit || overLimitDays > 0 || Number.parseFloat(remaining) < 0) {
         const exceededDays = overLimitDays > 0 ? overLimitDays : Math.abs(Number.parseFloat(remaining) || 0);
-        return `เกินสิทธิ์ ${formatLeaveDayNumber(exceededDays)} วัน`;
+        return `เกินสิทธิ์ ${myLeavesFormatLeaveDayNumber(exceededDays)} วัน`;
     }
 
-    return `คงเหลือ ${formatLeaveDayNumber(remaining)} วัน`;
+    return `คงเหลือ ${myLeavesFormatLeaveDayNumber(remaining)} วัน`;
 }
 
-function formatLeaveDuration(item) {
+function myLeavesFormatLeaveDuration(item) {
     if (item.request_unit === 'hour') {
         const rawMinutes = Number.parseInt(item.request_minutes || 0, 10) || 0;
         if (!item.time_request_type) {
             const hours = rawMinutes / 60;
-            return `${formatLeaveDayNumber(hours)} ชม. (${formatLeaveDayNumber(item.total_days || 0)} วัน)`;
+            return `${myLeavesFormatLeaveDayNumber(hours)} ชม. (${myLeavesFormatLeaveDayNumber(item.total_days || 0)} วัน)`;
         }
         const minutes = Math.max(1, Math.min(60, rawMinutes || 60));
         return item.time_request_type === 'early_departure'
@@ -294,27 +274,4 @@ function handleCancelLeave(id, status) {
             }
         }
     });
-}
-
-function formatLeaveDateRange(startDate, endDate, startPart, endPart) {
-    const start = formatThaiDate(startDate);
-    const end = formatThaiDate(endDate);
-    const startLabel = getLeavePartLabel(startPart);
-    const endLabel = getLeavePartLabel(endPart);
-
-    if (!startDate || !endDate) return '';
-    if (startDate === endDate) {
-        const label = startLabel !== 'เต็มวัน' ? startLabel : endLabel;
-        return `${start}${label !== 'เต็มวัน' ? ` (${label})` : ''}`;
-    }
-
-    return `${start}${startLabel !== 'เต็มวัน' ? ` (${startLabel})` : ''} - ${end}${endLabel !== 'เต็มวัน' ? ` (${endLabel})` : ''}`;
-}
-
-function getLeavePartLabel(part) {
-    return {
-        morning: 'ครึ่งวันเช้า',
-        afternoon: 'ครึ่งวันบ่าย',
-        full: 'เต็มวัน',
-    }[part] || 'เต็มวัน';
 }

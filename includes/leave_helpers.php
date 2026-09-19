@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 require_once __DIR__ . '/proxy_request_helpers.php';
 require_once __DIR__ . '/date_helpers.php';
 
@@ -48,6 +50,7 @@ function leaveDetectHourlyRequestType($typeName) {
 }
 
 function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     leaveEnsureLeaveTypeCalculationColumns($mysqli);
     $defaults = [
         [
@@ -102,6 +105,7 @@ function leaveEnsureHourlyRequestTypes(mysqli $mysqli) {
 }
 
 function leaveEnsureLeaveTypeCalculationColumns(mysqli $mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $columns = [];
     $result = $mysqli->query("SHOW COLUMNS FROM leave_types");
     if ($result) {
@@ -297,6 +301,7 @@ function leaveFormatHourMinuteDuration($minutes) {
 }
 
 function leaveEnsureSettingsTable(mysqli $mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $mysqli->query("CREATE TABLE IF NOT EXISTS system_settings (
         setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
         setting_value VARCHAR(255) NOT NULL,
@@ -305,6 +310,7 @@ function leaveEnsureSettingsTable(mysqli $mysqli) {
 }
 
 function leaveEnsurePoliciesTable(mysqli $mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $mysqli->query("CREATE TABLE IF NOT EXISTS leave_policies (
         id INT AUTO_INCREMENT PRIMARY KEY,
         policy_name VARCHAR(150) NOT NULL,
@@ -1194,11 +1200,12 @@ function leaveFetchCompanyHolidays(mysqli $mysqli, $startDate, $endDate) {
 }
 
 function leaveEnsureRequestPartColumns(mysqli $mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $columns = [];
     $result = $mysqli->query("SHOW COLUMNS FROM leave_requests");
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            $columns[$row['Field']] = true;
+            $columns[$row['Field']] = $row;
         }
     }
 
@@ -1216,7 +1223,7 @@ function leaveEnsureRequestPartColumns(mysqli $mysqli) {
 
     if (!isset($columns['time_request_type'])) {
         $mysqli->query("ALTER TABLE leave_requests ADD COLUMN time_request_type ENUM('late_arrival','early_departure','overtime_after_work') NULL AFTER request_unit");
-    } else {
+    } elseif (strpos($columns['time_request_type']['Type'], 'overtime_after_work') === false) {
         $mysqli->query("ALTER TABLE leave_requests MODIFY time_request_type ENUM('late_arrival','early_departure','overtime_after_work') NULL");
     }
 
@@ -1238,6 +1245,7 @@ function leaveEnsureRequestPartColumns(mysqli $mysqli) {
 }
 
 function leaveEnsureTwoStepApprovalColumns(mysqli $mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     leaveEnsureRequestPartColumns($mysqli);
 
     $columns = [];

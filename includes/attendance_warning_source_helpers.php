@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/attendance_helpers.php';
+require_once __DIR__ . '/query_helpers.php';
 require_once __DIR__ . '/leave_helpers.php';
 require_once __DIR__ . '/employee_shift_assignment_helpers.php';
 
@@ -133,35 +134,79 @@ function attendanceWarningFetchApprovedMinutes(mysqli $mysqli, int $employeeId, 
     return $minutes;
 }
 
-function attendanceWarningResolveContext(mysqli $mysqli, int $employeeId, string $workDate, string $role, array $scopes): array
+function attendanceWarningLoadMonth(mysqli $mysqli, int $employeeId, string $month, string $role, array $scopes, array &$cache): array
 {
-    $employee = attendanceWarningFetchScopedEmployee($mysqli, $employeeId, $role, $scopes);
+    $scopeKey = json_encode([$role, $scopes, $employeeId]);
+    $employee = hrRememberDataset($cache, 'employee:' . $scopeKey,
+        fn() => attendanceWarningFetchScopedEmployee($mysqli, $employeeId, $role, $scopes));
+    return hrRememberDataset($cache, 'attendance:' . $scopeKey . ':' . $month, function () use ($mysqli, $employeeId, $month, $employee, &$cache) {
+        $start = $month . '-01';
+        $end = date('Y-m-t', strtotime($start));
+        $assignments = employeeShiftAssignmentsFetchForMonth($mysqli, $employeeId, $month);
+        $shiftOverrides = hrQueryRows($mysqli, "SELECT employee_id, day_of_week, start_time, end_time, late_tolerance_mins, effective_from, effective_to
+            FROM employee_shift_overrides WHERE employee_id = ? AND is_active = 1
+              AND effective_from <= ? AND (effective_to IS NULL OR effective_to = '0000-00-00' OR effective_to >= ?)
+            ORDER BY effective_from DESC, id DESC", 'iss', [$employeeId, $end, $start]);
+        $records = array_column(hrQueryRows($mysqli, "SELECT work_date, check_in, check_out FROM attendance_records
+            WHERE employee_id = ? AND work_date BETWEEN ? AND ?", 'iss', [$employeeId, $start, $end]), null, 'work_date');
+        $overrides = array_column(hrQueryRows($mysqli, "SELECT work_date, override_check_in, override_check_out, reason, created_at, updated_at
+            FROM attendance_record_overrides WHERE employee_id = ? AND work_date BETWEEN ? AND ?", 'iss', [$employeeId, $start, $end]), null, 'work_date');
+        $holidays = hrRememberDataset($cache, 'holidays:' . $month,
+            fn() => leaveFetchCompanyHolidays($mysqli, $start, $end));
+        $leaves = attendanceBuildApprovedLeaveMap(hrQueryRows($mysqli, "SELECT lr.start_date, lr.end_date, lt.type_name
+            FROM leave_requests lr JOIN leave_types lt ON lr.leave_type_id = lt.id
+            WHERE lr.employee_id = ? AND lr.status IN ('approved','pending_cancel_hr')
+              AND (lr.request_unit = 'day' OR (lr.request_unit = 'hour' AND lr.time_request_type IS NULL AND COALESCE(lr.total_days, 0) >= 1))
+              AND lr.start_date <= ? AND lr.end_date >= ?", 'iss', [$employeeId, $end, $start]), $month);
+        $trainings = attendanceBuildApprovedTrainingMap(hrQueryRows($mysqli, "SELECT tr.start_date, tr.end_date, tr.course_name, at.type_name AS activity_type_name
+            FROM training_requests tr LEFT JOIN activity_types at ON tr.activity_type_id = at.id
+            WHERE tr.employee_id = ? AND tr.status IN ('approved','pending_cancel_hr')
+              AND tr.start_date <= ? AND tr.end_date >= ?", 'iss', [$employeeId, $end, $start]), $month);
+        $swaps = attendanceBuildApprovedDaySwapMap(hrQueryRows($mysqli, "SELECT requester_employee_id, target_employee_id, requester_date, target_date
+            FROM day_swap_requests WHERE status IN ('approved','pending_cancel_hr')
+              AND (requester_employee_id = ? OR target_employee_id = ?)
+              AND ((requester_date BETWEEN ? AND ?) OR (target_date BETWEEN ? AND ?))",
+            'iissss', [$employeeId, $employeeId, $start, $end, $start, $end]), $employeeId, $month);
+        $minutes = [];
+        foreach (hrQueryRows($mysqli, "SELECT start_date, time_request_type,
+            CASE WHEN COALESCE(approved_request_minutes, 0) > 0 THEN approved_request_minutes ELSE COALESCE(request_minutes, 0) END AS effective_minutes
+            FROM leave_requests WHERE employee_id = ? AND start_date BETWEEN ? AND ? AND status IN ('approved','pending_cancel_hr')
+              AND time_request_type IN ('late_arrival','early_departure')", 'iss', [$employeeId, $start, $end]) as $row) {
+            $date = $row['start_date']; $type = $row['time_request_type'];
+            $minutes[$date][$type] = ($minutes[$date][$type] ?? 0) + max(0, (int)$row['effective_minutes']);
+        }
+        return compact('employee','assignments','shiftOverrides','records','overrides','holidays','leaves','trainings','swaps','minutes');
+    });
+}
+
+function attendanceWarningResolveContext(mysqli $mysqli, int $employeeId, string $workDate, string $role, array $scopes, ?array &$cache = null): array
+{
+    $cache ??= [];
+    $data = attendanceWarningLoadMonth($mysqli, $employeeId, substr($workDate, 0, 7), $role, $scopes, $cache);
+    $employee = $data['employee'];
     $baseShift = [
         'start_time' => $employee['start_time'] ?? null,
         'end_time' => $employee['end_time'] ?? null,
         'late_tolerance_mins' => $employee['late_tolerance_mins'] ?? 0,
         'work_days' => $employee['work_days'] ?? '',
     ];
-    $assignments = employeeShiftAssignmentsFetchForMonth($mysqli, $employeeId, substr($workDate, 0, 7));
-    $shift = employeeShiftAssignmentsResolveForDate($assignments, $baseShift, $workDate);
-    $shift = attendanceResolveShiftForDate($shift, attendanceWarningFetchShiftOverrides($mysqli, $employeeId, $workDate), $workDate);
-    $daySwapType = attendanceWarningFetchDaySwapType($mysqli, $employeeId, $workDate);
-    if ($daySwapType !== null) {
-        $shift = attendanceApplyDayTypeOverride($shift, $workDate, $daySwapType);
-    }
+    $shift = employeeShiftAssignmentsResolveForDate($data['assignments'], $baseShift, $workDate);
+    $shift = attendanceResolveShiftForDate($shift, $data['shiftOverrides'], $workDate);
+    if (isset($data['swaps'][$workDate])) $shift = attendanceApplyDayTypeOverride($shift, $workDate, $data['swaps'][$workDate]);
     return [
         'employee' => $employee,
-        'record' => attendanceWarningFetchRecord($mysqli, $employeeId, $workDate),
+        'record' => attendanceApplyRecordOverride($data['records'][$workDate] ?? ['check_in'=>null,'check_out'=>null], $data['overrides'][$workDate] ?? null),
         'shift' => $shift,
-        'holiday_map' => attendanceWarningFetchHolidayMap($mysqli, $workDate),
-        'leave_map' => attendanceWarningFetchLeaveMap($mysqli, $employeeId, $workDate),
-        'training_map' => attendanceWarningFetchTrainingMap($mysqli, $employeeId, $workDate),
+        'holiday_map' => isset($data['holidays'][$workDate]) ? [$workDate => $data['holidays'][$workDate]] : [],
+        'leave_map' => $data['leaves'],
+        'training_map' => $data['trainings'],
+        'approved_minutes' => $data['minutes'][$workDate] ?? [],
     ];
 }
 
-function attendanceResolveMissingWarningSource(mysqli $mysqli, int $employeeId, string $workDate, string $role, array $scopes): array
+function attendanceResolveMissingWarningSource(mysqli $mysqli, int $employeeId, string $workDate, string $role, array $scopes, ?array &$cache = null): array
 {
-    $context = attendanceWarningResolveContext($mysqli, $employeeId, $workDate, $role, $scopes);
+    $context = attendanceWarningResolveContext($mysqli, $employeeId, $workDate, $role, $scopes, $cache);
     $status = attendanceEvaluateStatus(
         $workDate,
         $context['record']['check_in'],
@@ -190,9 +235,9 @@ function attendanceResolveMissingWarningSource(mysqli $mysqli, int $employeeId, 
     ];
 }
 
-function attendanceResolveLateEarlyWarningSource(mysqli $mysqli, int $employeeId, string $workDate, string $role, array $scopes): array
+function attendanceResolveLateEarlyWarningSource(mysqli $mysqli, int $employeeId, string $workDate, string $role, array $scopes, ?array &$cache = null): array
 {
-    $context = attendanceWarningResolveContext($mysqli, $employeeId, $workDate, $role, $scopes);
+    $context = attendanceWarningResolveContext($mysqli, $employeeId, $workDate, $role, $scopes, $cache);
     if ($context['holiday_map'] || isset($context['leave_map'][$workDate]) || isset($context['training_map'][$workDate])) {
         throw new InvalidArgumentException('Warning source event no longer exists');
     }
@@ -201,7 +246,7 @@ function attendanceResolveLateEarlyWarningSource(mysqli $mysqli, int $employeeId
         $context['record']['check_in'],
         $context['record']['check_out'],
         $context['shift'],
-        attendanceWarningFetchApprovedMinutes($mysqli, $employeeId, $workDate)
+        $context['approved_minutes']
     );
     if ($incident === null) {
         throw new InvalidArgumentException('Warning source event no longer exists');

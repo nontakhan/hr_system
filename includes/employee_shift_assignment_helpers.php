@@ -1,7 +1,10 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 function employeeShiftAssignmentsEnsureTable(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $sql = "CREATE TABLE IF NOT EXISTS employee_shift_assignments (
         id INT AUTO_INCREMENT PRIMARY KEY,
         employee_id INT NOT NULL,
@@ -22,6 +25,7 @@ function employeeShiftAssignmentsEnsureTable(mysqli $mysqli): void
 
 function employeeShiftAssignmentsBackfillCurrentDefaults(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $sql = "INSERT INTO employee_shift_assignments
         (employee_id, shift_id, effective_from, effective_to, reason, created_by)
         SELECT e.id,
@@ -76,11 +80,11 @@ function employeeShiftAssignmentsFetchHistory(mysqli $mysqli, int $employeeId): 
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
-function employeeShiftAssignmentsFetchForMonth(mysqli $mysqli, int $employeeId, string $month): array
+function employeeShiftAssignmentsFetchForMonth(mysqli $mysqli, int $employeeId, string $month, ?string $endMonth = null): array
 {
     employeeShiftAssignmentsEnsureTable($mysqli);
     $start = $month . '-01';
-    $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+    $end = (new DateTimeImmutable(($endMonth ?? $month) . '-01'))->modify('last day of this month')->format('Y-m-d');
     $stmt = $mysqli->prepare("SELECT esa.shift_id, esa.effective_from, esa.effective_to,
                                      ws.start_time, ws.end_time, ws.late_tolerance_mins, ws.work_days
                               FROM employee_shift_assignments esa

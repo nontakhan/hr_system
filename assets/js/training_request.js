@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-const trainingRequestDataTables = {};
+
 
 function initTrainingRequestPage() {
     const form = document.getElementById('trainingRequestForm');
@@ -66,20 +66,12 @@ async function submitTrainingRequest(event) {
 }
 
 async function loadTrainingRequestHistory() {
-    const tbody = document.getElementById('trainingRequestHistoryBody');
-    if (!tbody) return;
+    return loadServerTable({ tableId: 'trainingRequestHistoryTable',
+        url: () => `api/training_request_api.php?action=my_requests`, renderRow: renderTrainingHistoryRow,
+        order: [[0, 'desc']], unsortable: [5] });
+}
 
-    resetTrainingRequestDataTable('trainingRequestHistoryTable');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
-    try {
-        const response = await fetch('api/training_request_api.php?action=my_requests');
-        const res = await response.json();
-        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
-        if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีคำขอกิจกรรม</td></tr>';
-            return;
-        }
-        tbody.innerHTML = res.data.map(item => {
+function renderTrainingHistoryRow(item) {
             const proxyHtml = renderProxyCreatorLine(item);
             return `
             <tr>
@@ -95,28 +87,15 @@ async function loadTrainingRequestHistory() {
                 <td><small class="text-muted">${escapeHtml(item.rejection_reason || item.objective || '-')}</small>${renderTrainingRequestAttachment(item)}</td>
             </tr>
         `;
-        }).join('');
-        initTrainingRequestDataTable('trainingRequestHistoryTable', [[0, 'desc']], [5]);
-    } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
-    }
-}
+        }
 
 async function loadTrainingRequestPendingApprovals() {
-    const tbody = document.getElementById('trainingRequestPendingBody');
-    if (!tbody) return;
+    return loadServerTable({ tableId: 'trainingRequestPendingTable',
+        url: () => `api/training_request_api.php?action=pending`, renderRow: renderTrainingPendingRow,
+        order: [[2, 'asc']], unsortable: [4] });
+}
 
-    resetTrainingRequestDataTable('trainingRequestPendingTable');
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
-    try {
-        const response = await fetch('api/training_request_api.php?action=pending');
-        const res = await response.json();
-        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
-        if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ไม่มีรายการรออนุมัติ</td></tr>';
-            return;
-        }
-        tbody.innerHTML = res.data.map(item => `
+function renderTrainingPendingRow(item) { return `
             <tr>
                 <td>${renderTrainingRequestEmployeeCell(item, renderTrainingRequestStatus(item.status))}</td>
                 <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div><div class="small text-muted">${escapeHtml(item.activity_type_name || 'กิจกรรม')}</div>${item.cancellation_reason ? `<div class="small text-danger">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : ''}</td>
@@ -135,12 +114,7 @@ async function loadTrainingRequestPendingApprovals() {
                     </button>
                 </td>
             </tr>
-        `).join('');
-        initTrainingRequestDataTable('trainingRequestPendingTable', [[2, 'asc']], [4]);
-    } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
-    }
-}
+        `; }
 
 function renderTrainingRequestEmployeeCell(item, footerHtml = '') {
     return `
@@ -156,20 +130,12 @@ function renderTrainingRequestEmployeeCell(item, footerHtml = '') {
 }
 
 async function loadTrainingRequestApprovalHistory() {
-    const tbody = document.getElementById('trainingRequestApprovalHistoryBody');
-    if (!tbody) return;
+    return loadServerTable({ tableId: 'trainingRequestApprovalHistoryTable',
+        url: () => `api/training_request_api.php?action=history`, renderRow: renderTrainingApprovalHistoryRow,
+        order: [[0, 'desc']], unsortable: [6] });
+}
 
-    resetTrainingRequestDataTable('trainingRequestApprovalHistoryTable');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
-    try {
-        const response = await fetch('api/training_request_api.php?action=history');
-        const res = await response.json();
-        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
-        if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีประวัติ</td></tr>';
-            return;
-        }
-        tbody.innerHTML = res.data.map(item => {
+function renderTrainingApprovalHistoryRow(item) {
             const proxyHtml = renderProxyCreatorLine(item);
             const action = item.can_reviewer_cancel
                 ? `<button type="button" class="btn btn-outline-danger reviewer-cancel-request-button" data-request-id="${Number(item.id)}" data-employee-name="${escapeAttr(item.employee_name || '-')}" data-course-name="${escapeAttr(item.course_name || '-')}">ยกเลิกรายการ</button>`
@@ -185,12 +151,7 @@ async function loadTrainingRequestApprovalHistory() {
                 <td>${action}</td>
             </tr>
         `;
-        }).join('');
-        initTrainingRequestDataTable('trainingRequestApprovalHistoryTable', [[0, 'desc']], [6]);
-    } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
-    }
-}
+        }
 
 function renderTrainingReviewerCancellationAudit(item) {
     const reason = escapeHtml(item.cancellation_reason || item.rejection_reason || '-');
@@ -227,38 +188,6 @@ window.reviewerCancelApprovedTrainingRequest = async function(requestId, employe
     if (payload.status === 'success') await loadTrainingRequestApprovalHistory();
 };
 
-function renderProxyCreatorLine(item) {
-    if (!item || item.created_via !== 'admin_proxy') return '';
-    const name = item.proxy_creator_name || item.created_by_role || '';
-    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
-}
-
-function resetTrainingRequestDataTable(tableId) {
-    const selector = `#${tableId}`;
-    if (trainingRequestDataTables[tableId]) {
-        trainingRequestDataTables[tableId].destroy();
-        delete trainingRequestDataTables[tableId];
-    } else if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable(selector)) {
-        jQuery(selector).DataTable().destroy();
-    }
-}
-
-function initTrainingRequestDataTable(tableId, order = [[0, 'desc']], unsortableTargets = []) {
-    if (!window.jQuery || !jQuery.fn.DataTable || !document.getElementById(tableId)) {
-        return;
-    }
-
-    const options = {
-        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json' },
-        pageLength: 10,
-        order,
-    };
-    if (unsortableTargets.length) {
-        options.columnDefs = [{ orderable: false, targets: unsortableTargets }];
-    }
-
-    trainingRequestDataTables[tableId] = jQuery(`#${tableId}`).DataTable(options);
-}
 
 window.openTrainingRequestActionModal = function(id, action, name, status = '') {
     const modal = new bootstrap.Modal(document.getElementById('trainingRequestActionModal'));

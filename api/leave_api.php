@@ -11,6 +11,8 @@ function sendJsonError($message) {
 
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/leave_helpers.php';
     require_once '../includes/hr_scope_helpers.php';
@@ -223,7 +225,7 @@ try {
 $mysqli->close();
 
 function fetchApprovedLeaveReportFilters(mysqli $mysqli, $role) {
-    $sql = "SELECT e.company_id, c.company_name_th, e.branch_id, b.branch_name_th
+    $sql = "SELECT DISTINCT e.company_id, c.company_name_th, e.branch_id, b.branch_name_th
             FROM employees e
             LEFT JOIN companies c ON e.company_id = c.id
             LEFT JOIN branches b ON e.branch_id = b.id
@@ -293,11 +295,12 @@ function fetchApprovedLeaveReportRows(mysqli $mysqli, $role, array $filters) {
     $sql = "SELECT lr.id, lr.employee_id, lr.start_date, lr.end_date,
                    lr.start_day_part, lr.end_day_part, lr.reason,
                    e.citizen_id, CONCAT(e.first_name_th, ' ', e.last_name_th) AS full_name,
-                   e.company_id, e.branch_id,
+                   e.company_id, e.branch_id, ws.work_days,
                    p.position_name_th, c.company_name_th, b.branch_name_th,
                    lt.id AS leave_type_id, lt.type_name AS leave_type_name
             FROM leave_requests lr
             JOIN employees e ON lr.employee_id = e.id
+            LEFT JOIN work_shifts ws ON e.default_shift_id = ws.id
             JOIN leave_types lt ON lr.leave_type_id = lt.id
             LEFT JOIN positions p ON e.position_id = p.id
             LEFT JOIN companies c ON e.company_id = c.id
@@ -334,24 +337,22 @@ function fetchApprovedLeaveReportRows(mysqli $mysqli, $role, array $filters) {
     $stmt->close();
 
     $holidays = leaveFetchCompanyHolidays($mysqli, $monthStart, $monthEnd);
-    $workDaysByEmployee = [];
     $rows = [];
     foreach ($requests as $request) {
         $employeeId = (int)$request['employee_id'];
-        if (!array_key_exists($employeeId, $workDaysByEmployee)) {
-            $workDaysByEmployee[$employeeId] = leaveFetchEmployeeWorkDays($mysqli, $employeeId);
-        }
         $request['id'] = (int)$request['id'];
         $request['employee_id'] = $employeeId;
         $request['company_id'] = isset($request['company_id']) ? (int)$request['company_id'] : null;
         $request['branch_id'] = isset($request['branch_id']) ? (int)$request['branch_id'] : null;
         $request['leave_type_id'] = (int)$request['leave_type_id'];
-        $rows = array_merge($rows, leaveExpandApprovedRequestForMonth(
+        $workDays = (string)($request['work_days'] ?? '');
+        unset($request['work_days']);
+        foreach (leaveExpandApprovedRequestForMonth(
             $request,
             $month,
-            $workDaysByEmployee[$employeeId],
+            $workDays,
             $holidays
-        ));
+        ) as $expandedRow) $rows[] = $expandedRow;
     }
     usort($rows, function ($a, $b) {
         return [$a['leave_date'], $a['full_name'], $a['id']] <=> [$b['leave_date'], $b['full_name'], $b['id']];

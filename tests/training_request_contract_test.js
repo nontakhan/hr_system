@@ -28,7 +28,7 @@ function assertFile(path) {
 const helper = read('includes/training_request_helpers.php');
 const api = read('api/training_request_api.php');
 const header = read('includes/header.php');
-const footer = read('includes/footer.php');
+const footer = require('./support/page_assets').footer('training_history.php');
 const requestPage = read('training_request.php');
 const historyPage = read('training_history.php');
 const approvalsPage = read('training_approvals.php');
@@ -71,10 +71,10 @@ assertIncludes(script, 'loadTrainingRequestPendingApprovals', 'Frontend should l
 assertIncludes(script, 'renderTrainingRequestStatus', 'Frontend should render Thai status labels.');
 assertIncludes(script, 'renderEmployeeAvatar(item.employee_profile_img_url)', 'Training approval rows should render employee photos through the shared default-image fallback.');
 assertIncludes(script, 'pending_hr', 'Frontend should show HR pending status.');
-assertIncludes(script, 'initTrainingRequestDataTable', 'Frontend should initialize DataTables for training request tables.');
-assertIncludes(script, "initTrainingRequestDataTable('trainingRequestHistoryTable'", 'Training request history should use DataTables.');
-assertIncludes(script, "initTrainingRequestDataTable('trainingRequestPendingTable'", 'Training pending approvals should use DataTables.');
-assertIncludes(script, "initTrainingRequestDataTable('trainingRequestApprovalHistoryTable'", 'Training approval history should use DataTables.');
+assertIncludes(script, 'loadServerTable', 'Frontend should initialize DataTables for training request tables.');
+assertIncludes(script, "loadServerTable({ tableId: 'trainingRequestHistoryTable'", 'Training request history should use DataTables.');
+assertIncludes(script, "loadServerTable({ tableId: 'trainingRequestPendingTable'", 'Training pending approvals should use DataTables.');
+assertIncludes(script, "loadServerTable({ tableId: 'trainingRequestApprovalHistoryTable'", 'Training approval history should use DataTables.');
 
 assertIncludes(header, "'training' => 0", 'Sidebar badge counts should include training.');
 assertIncludes(header, "href=\"training_history.php\"", 'Sidebar should link directly to the training history landing page.');

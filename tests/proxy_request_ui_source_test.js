@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 function assertIncludes(file, needle) {
-  const source = fs.readFileSync(file, 'utf8');
+  const source = fs.readFileSync(file, 'utf8') + (file === 'request_proxy.php' ? require('./support/page_assets').footer(file) : '');
   if (!source.includes(needle)) {
     throw new Error(`${file} missing ${needle}`);
   }

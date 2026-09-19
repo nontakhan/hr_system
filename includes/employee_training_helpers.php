@@ -1,7 +1,10 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 function ensureEmployeeTrainingRecordsTable(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $mysqli->query("CREATE TABLE IF NOT EXISTS employee_training_records (
         id INT AUTO_INCREMENT PRIMARY KEY,
         employee_id INT NOT NULL,

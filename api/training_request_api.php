@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/list_helpers.php';
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -14,6 +15,8 @@ function sendTrainingRequestError($message) {
 
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/hr_scope_helpers.php';
     require_once '../includes/training_request_helpers.php';
@@ -37,7 +40,9 @@ try {
         }
 
         if ($action === 'my_requests') {
-            sendTrainingRequestJson(['status' => 'success', 'data' => fetchMyTrainingRequests($mysqli, $myEmployeeId)]);
+            $page = null;
+            fetchMyTrainingRequests($mysqli, $myEmployeeId, $page);
+            sendTrainingRequestJson($page);
         }
 
         if ($action === 'pending' || $action === 'history') {
@@ -47,22 +52,22 @@ try {
 
             $scopes = hrScopeCurrentSessionScopes();
             $sql = trainingRequestApprovalQuery($action, $myRole, $scopes);
-            $stmt = $mysqli->prepare($sql);
+            $types = ''; $params = [];
             if ($myRole === 'hr') {
                 $scopeClause = hrScopeBuildEmployeeWhereClause($myRole, $scopes, 'e');
-                hrScopeBindParams($stmt, $scopeClause['types'], $scopeClause['params']);
+                $types = $scopeClause['types']; $params = $scopeClause['params'];
             } elseif ($myRole !== 'admin') {
-                $stmt->bind_param('i', $myEmployeeId);
+                $types = 'i'; $params = [$myEmployeeId];
             }
-            $stmt->execute();
-            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $page = hrFetchList($mysqli, $sql, $types, $params, ['created_at','employee_name','employee_code','course_name','activity_type_name','start_date','end_date','location','objective','proxy_creator_name','cancellation_reason',hrRequestStatusSearchExpression()], $action === 'pending' ? ['employee_name','course_name','start_date','objective',''] : ['approval_date','employee_name','course_name','start_date','status','cancellation_reason','']);
+            $rows = $page['data'];
             foreach ($rows as &$row) {
                 $row['can_reviewer_cancel'] = $action === 'history'
                     && in_array($myRole, ['hr', 'admin'], true)
                     && ($row['status'] ?? '') === 'approved';
             }
             unset($row);
-            sendTrainingRequestJson(['status' => 'success', 'data' => $rows]);
+            sendTrainingRequestJson(array_replace($page, ['data' => $rows]));
         }
 
         sendTrainingRequestError('Invalid Action');
@@ -94,9 +99,9 @@ try {
     sendTrainingRequestError($e instanceof InvalidArgumentException ? $e->getMessage() : 'System Error');
 }
 
-function fetchMyTrainingRequests(mysqli $mysqli, int $employeeId): array
+function fetchMyTrainingRequests(mysqli $mysqli, int $employeeId, ?array &$page = null): array
 {
-    $stmt = $mysqli->prepare("SELECT tr.*, tr.created_via, tr.created_by_role, tr.proxy_note,
+    $sql = "SELECT tr.*, tr.created_via, tr.created_by_role, tr.proxy_note,
                                      at.type_name AS activity_type_name,
                                      CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
                                      CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
@@ -106,10 +111,9 @@ function fetchMyTrainingRequests(mysqli $mysqli, int $employeeId): array
                               LEFT JOIN employees pce ON tr.created_by_employee_id = pce.id
                               WHERE tr.employee_id = ?
                               ORDER BY tr.created_at DESC
-                              LIMIT 100");
-    $stmt->bind_param('i', $employeeId);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                              LIMIT 100";
+    $page = hrFetchList($mysqli, $sql, 'i', [$employeeId], ['created_at','course_name','activity_type_name','start_date','end_date','location','objective','proxy_creator_name',hrRequestStatusSearchExpression()], ['created_at','course_name','start_date','location',hrRequestStatusSearchExpression(),'']);
+    return $page['data'];
 }
 
 function createTrainingRequest(mysqli $mysqli, int $employeeId): void

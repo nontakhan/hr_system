@@ -301,6 +301,19 @@ function attendanceApplyDayTypeOverride(array $shift, $workDate, $dayType) {
     return $shift;
 }
 
+// Group once, retaining database row order and the existing last-row-wins rule.
+function attendanceBuildApprovedDaySwapMaps(array $rows, array $employeeIds, string $month): array {
+    $grouped = array_fill_keys(array_map('intval', $employeeIds), []);
+    foreach ($rows as $row) {
+        foreach (array_unique([(int)$row['requester_employee_id'], (int)$row['target_employee_id']]) as $id) {
+            if (isset($grouped[$id])) $grouped[$id][] = $row;
+        }
+    }
+    $maps = [];
+    foreach ($grouped as $id => $employeeRows) $maps[$id] = attendanceBuildApprovedDaySwapMap($employeeRows, $id, $month);
+    return $maps;
+}
+
 function attendanceBuildApprovedDaySwapMap(array $swapRows, $employeeId, $month) {
     $map = [];
     $monthPrefix = $month . '-';
@@ -832,26 +845,38 @@ function attendanceCountLateEarlyRows(array $rows) {
     return $counts;
 }
 
-function attendanceReadCsvRows($filePath) {
-    $rows = [];
+function attendanceIterateCsvRows($filePath): Generator {
     $handle = fopen($filePath, 'r');
-    if (!$handle) {
-        return $rows;
-    }
-
-    $headerSkipped = false;
-    while (($row = fgetcsv($handle)) !== false) {
-        if (!$headerSkipped) {
-            $headerSkipped = true;
-            continue;
+    if (!$handle) return;
+    try {
+        fgetcsv($handle); // Same single header row as the legacy reader.
+        while (($row = fgetcsv($handle)) !== false) {
+            $mapped = attendanceMapCsvRow($row);
+            if ($mapped['citizen_id'] !== '' && $mapped['work_date'] !== null) yield $mapped;
         }
+    } finally { fclose($handle); }
+}
 
-        $mapped = attendanceMapCsvRow($row);
-        if ($mapped['citizen_id'] !== '' && $mapped['work_date'] !== null) {
-            $rows[] = $mapped;
+function attendanceReadCsvRows($filePath) {
+    return iterator_to_array(attendanceIterateCsvRows($filePath), false);
+}
+
+function attendanceMergeImportBatch(array $candidates, array $existing): array {
+    $result = ['inserted'=>0,'updated'=>0,'skipped'=>0,'rows'=>[]];
+    foreach ($candidates as $row) {
+        $key = $row['employee_id'] . '|' . $row['work_date'];
+        if (!isset($existing[$key])) {
+            $result['inserted']++;
+            $result['rows'][] = $row;
+            $existing[$key] = ['check_in'=>$row['check_in'], 'check_out'=>$row['check_out']];
+        } elseif (attendanceExistingRecordNeedsFill($existing[$key], $row)) {
+            $result['updated']++;
+            $result['rows'][] = $row;
+            $existing[$key]['check_in'] = $existing[$key]['check_in'] ?? $row['check_in'];
+            $existing[$key]['check_out'] = $existing[$key]['check_out'] ?? $row['check_out'];
+        } else {
+            $result['skipped']++;
         }
     }
-
-    fclose($handle);
-    return $rows;
+    return $result;
 }

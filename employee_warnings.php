@@ -214,5 +214,4 @@ $today = date('Y-m-d');
     </div>
 </div>
 
-<script src="assets/js/employee_warnings.js?v=<?php echo filemtime(__DIR__ . '/assets/js/employee_warnings.js'); ?>"></script>
 <?php require_once 'includes/footer.php'; ?>

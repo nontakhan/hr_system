@@ -2,11 +2,13 @@
 /*
  * ไฟล์ Header (Layout ใหม่: Sidebar + Topbar)
  */
-if (session_status() == PHP_SESSION_NONE) {
+if (session_status() == PHP_SESSION_NONE && !isset($_SESSION)) {
     session_start();
 }
 
 require_once __DIR__ . '/date_helpers.php';
+require_once __DIR__ . '/page_assets.php';
+$pageAssets = hrPageAssets(basename($_SERVER['PHP_SELF']));
 
 // ฟังก์ชันช่วยเช็ค Active Menu
 function isActive($page) {
@@ -81,7 +83,9 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <?php if ($pageAssets['datatables']): ?>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <?php endif; ?>
     <?php if (!empty($use_select2)) : ?>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <?php endif; ?>

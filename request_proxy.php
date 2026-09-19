@@ -224,5 +224,4 @@ require_once 'includes/header.php';
     </form>
 </div>
 
-<script src="assets/js/proxy_request.js"></script>
 <?php require_once 'includes/footer.php'; ?>

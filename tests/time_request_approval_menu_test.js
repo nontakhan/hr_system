@@ -47,11 +47,11 @@ assertIncludes(overtimeApprovalsPage, 'อนุมัติ OT หลังเ�
 assertIncludes(script, 'getLeaveApprovalRequestUnit', 'Approval JS should read page-level approval scope.');
 assertIncludes(script, 'getLeaveApprovalRequestLabel', 'Approval JS should use time request wording on the time approval page.');
 assertIncludes(script, 'getLeaveApprovalTimeRequestType', 'Approval JS should read page-level hourly request type scope.');
-assertIncludes(script, 'initLeaveApprovalDataTable', 'Approval JS should initialize DataTables after rendering approval rows.');
-assertIncludes(script, 'resetLeaveApprovalDataTable', 'Approval JS should destroy existing DataTables before replacing rows.');
-assertIncludes(script, "initLeaveApprovalDataTable('pendingTable', 'pending'", 'Pending approval rows should use DataTables.');
-assertIncludes(script, "initLeaveApprovalDataTable('historyTable', 'history'", 'History approval rows should use DataTables.');
-assertIncludes(script, '$(selector).DataTable', 'Approval table helper should initialize DataTables through jQuery.');
+assertIncludes(script, 'loadServerTable', 'Approval JS should initialize DataTables after rendering approval rows.');
+assertIncludes(script, 'loadServerTable', 'Approval tables should reload through the shared paging adapter.');
+assertIncludes(script, "loadServerTable({ tableId: 'pendingTable'", 'Pending approval rows should use DataTables.');
+assertIncludes(script, "loadServerTable({ tableId: 'historyTable'", 'History approval rows should use DataTables.');
+assertIncludes(fs.readFileSync('assets/js/paged_tables.js', 'utf8'), 'jQuery(element).DataTable', 'Approval table helper should initialize DataTables through jQuery.');
 assertIncludes(script, 'renderEmployeeAvatar(item.profile_img_url)', 'Approval rows should render employee photos through the shared default-image fallback.');
 assertIncludes(api, 'e.profile_img_url', 'Approval API should return employee profile images.');
 assertIncludes(script, 'request_unit', 'Approval JS should send request_unit to the API.');

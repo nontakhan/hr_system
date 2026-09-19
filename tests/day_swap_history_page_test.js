@@ -44,10 +44,10 @@ assertIncludes(approvalsPage, 'id="daySwapApprovalHistoryTable"', 'Day-swap appr
 
 assertIncludes(script, 'if (document.getElementById(\'daySwapHistoryBody\')) {', 'Day-swap JS should initialize history-only pages.');
 assertIncludes(script, 'loadDaySwapHistory();', 'Day-swap JS should load my request history.');
-assertIncludes(script, 'initDaySwapDataTable', 'Day-swap JS should initialize DataTables for day-swap tables.');
-assertIncludes(script, "initDaySwapDataTable('daySwapHistoryTable'", 'Day-swap history should use DataTables.');
-assertIncludes(script, "initDaySwapDataTable('daySwapPendingTable'", 'Day-swap pending approvals should use DataTables.');
-assertIncludes(script, "initDaySwapDataTable('daySwapApprovalHistoryTable'", 'Day-swap approval history should use DataTables.');
+assertIncludes(script, 'loadServerTable', 'Day-swap JS should initialize DataTables for day-swap tables.');
+assertIncludes(script, "loadServerTable({ tableId: 'daySwapHistoryTable'", 'Day-swap history should use DataTables.');
+assertIncludes(script, "loadServerTable({ tableId: 'daySwapPendingTable'", 'Day-swap pending approvals should use DataTables.');
+assertIncludes(script, "loadServerTable({ tableId: 'daySwapApprovalHistoryTable'", 'Day-swap approval history should use DataTables.');
 assertIncludes(script, 'renderEmployeeAvatar(profileImgUrl)', 'Day-swap approval rows should render employee photos through the shared default-image fallback.');
 assertIncludes(api, 're.profile_img_url AS requester_profile_img_url', 'Day-swap approval API should return requester profile images.');
 assertIncludes(api, 'te.profile_img_url AS target_profile_img_url', 'Day-swap approval API should return target profile images.');

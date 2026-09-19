@@ -1,10 +1,12 @@
 <?php
+require_once __DIR__ . '/../includes/list_helpers.php';
 // 1. ตั้งค่า Error Handling
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/../includes/date_helpers.php';
+require_once __DIR__ . '/../includes/schema_helpers.php';
 
 // Helper Functions
 function getVal($arr, $key, $default = null) {
@@ -17,14 +19,7 @@ function getEmployeePrefixVal($arr, $titleKey, $prefixKey, $default = null) {
 
 function ensureEmployeePostalCodeColumn(mysqli $mysqli): void
 {
-    $result = $mysqli->query("SHOW COLUMNS FROM employees LIKE 'postal_code'");
-    if ($result && $result->num_rows > 0) {
-        return;
-    }
-
-    if (!$mysqli->query("ALTER TABLE employees ADD COLUMN postal_code VARCHAR(10) NULL AFTER province")) {
-        throw new Exception('Ensure employees.postal_code failed: ' . $mysqli->error);
-    }
+    hrSchemaEnsureEmployeePostalCode($mysqli);
 }
 
 function normalizeTrainingDate($value, bool $required = false): ?string
@@ -72,6 +67,8 @@ try {
     if (!file_exists('../includes/db_connect.php')) {
         sendJsonError('Database connection file not found');
     }
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/upload_security.php';
     require_once '../includes/hr_scope_helpers.php';
@@ -613,54 +610,24 @@ function getAllEmployees($mysqli) {
                 LEFT JOIN branches b ON e.branch_id = b.id
                 WHERE 1=1 ";
 
+        $types = '';
+        $params = [];
         if ($role === 'hr') {
-            $scopeClause = hrScopeBuildEmployeeWhereClause($role, $scopes, 'e');
-            $sql .= $scopeClause['sql'];
-            if ($filter_branch_id > 0) {
-                $sql .= " AND e.branch_id = ? ";
-                $scopeClause['types'] .= 'i';
-                $scopeClause['params'][] = $filter_branch_id;
-            }
-            $sql .= " ORDER BY e.id DESC";
-            $stmt = $mysqli->prepare($sql);
-            hrScopeBindParams($stmt, $scopeClause['types'], $scopeClause['params']);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            return ['status'=>'success', 'data'=>$res->fetch_all(MYSQLI_ASSOC)];
+            $scope = hrScopeBuildEmployeeWhereClause($role, $scopes, 'e');
+            $sql .= $scope['sql'];
+            $types = $scope['types'];
+            $params = $scope['params'];
         }
-
-        // --- Filter Logic ---
-        
-        // 1. HR + เลือกสาขา
-        if ($role === 'hr' && $filter_branch_id > 0) {
-            $sql .= " AND e.company_id = ? AND e.branch_id = ? ";
-            $sql .= " ORDER BY e.id DESC";
-            $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('ii', $company_id, $filter_branch_id);
+        if ($filter_branch_id > 0) {
+            $sql .= " AND e.branch_id = ?";
+            $types .= 'i';
+            $params[] = $filter_branch_id;
         }
-        // 2. HR ไม่เลือกสาขา
-        elseif ($role === 'hr') {
-            $sql .= " AND e.company_id = ? ";
-            $sql .= " ORDER BY e.id DESC";
-            $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('i', $company_id);
-        }
-        // 3. Admin + เลือกสาขา
-        elseif ($filter_branch_id > 0) {
-            $sql .= " AND e.branch_id = ? ";
-            $sql .= " ORDER BY e.id DESC";
-            $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('i', $filter_branch_id);
-        }
-        // 4. Admin ไม่เลือกสาขา
-        else {
-            $sql .= " ORDER BY e.id DESC";
-            $stmt = $mysqli->prepare($sql);
-        }
-
-        $stmt->execute();
-        $res = $stmt->get_result();
-        return ['status'=>'success', 'data'=>$res->fetch_all(MYSQLI_ASSOC)];
+        $sql .= " ORDER BY e.id DESC";
+        return hrFetchList($mysqli, $sql, $types, $params,
+            ['citizen_id', "CONCAT_WS(' ', first_name_th, last_name_th)", 'nickname', 'position_name_th', 'dept_name_th', 'company_name_th', 'branch_name_th',
+             "CASE status WHEN 'active' THEN 'ปฏิบัติงาน' WHEN 'probation' THEN 'ทดลองงาน' WHEN 'resigned' THEN 'ลาออก' ELSE status END"],
+            ['citizen_id', "CONCAT_WS(' ', first_name_th, last_name_th)", 'nickname', 'position_name_th', 'dept_name_th', 'company_name_th', 'status', '']);
 
     } catch (Throwable $e) {
         error_log($e->getMessage());

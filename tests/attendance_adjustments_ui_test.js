@@ -241,6 +241,6 @@ assertIncludes(source, 'select2:clear.attendanceAdjustment', 'Adjustment Select2
 assertIncludes(source, 'initAttendanceSingleEmployeeSelect', 'Single adjustment employee Select2 should have its own employee lookup initialization.');
 assertIncludes(source, 'action: \'adjustment_employees\'', 'Single adjustment employee Select2 should fetch adjustment employees directly instead of waiting for bulk load.');
 assertIncludes(source, 'processAttendanceSingleEmployeeResults', 'Single adjustment employee Select2 should translate API rows into Select2 result items.');
-assertIncludes(fs.readFileSync('includes/footer.php', 'utf8'), "attendance.js?v=", 'Footer should cache-bust attendance.js after adjustment UI fixes.');
+assertIncludes(require('./support/page_assets').footer('attendance_adjustments.php'), "attendance.js?v=", 'Footer should cache-bust attendance.js after adjustment UI fixes.');
 
 console.log('attendance_adjustments_ui_test passed');

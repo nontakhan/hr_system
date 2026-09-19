@@ -1,4 +1,4 @@
-let lateEarlyHistoryDataTable = null;
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('lateEarlyRequestForm');
@@ -239,26 +239,12 @@ function parseTimeToMinutes(value) {
 }
 
 async function loadTimeRequestHistory() {
-    const tbody = document.getElementById('lateEarlyHistoryBody');
-    if (!tbody) return;
-    resetLateEarlyHistoryDataTable();
-    tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">กำลังโหลดข้อมูล...</td></tr>';
+    return loadServerTable({ tableId: getTimeRequestHistoryTableSelector()?.slice(1),
+        url: () => `api/late_early_request_api.php?action=history&time_request_type=${window.timeRequestHistoryType || 'late_early'}`, renderRow: renderTimeRequestHistoryRow,
+        order: [[0, 'desc']], unsortable: [4] });
+}
 
-    try {
-        const params = new URLSearchParams({ action: 'history' });
-        params.set('time_request_type', window.timeRequestHistoryType || 'late_early');
-        const response = await fetch(`api/late_early_request_api.php?${params.toString()}`);
-        const result = await response.json();
-        if (result.status !== 'success') {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${escapeHtml(result.message || 'โหลดข้อมูลไม่สำเร็จ')}</td></tr>`;
-            return;
-        }
-        if (!result.data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">ยังไม่มีคำขอเวลา</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = result.data.map(item => {
+function renderTimeRequestHistoryRow(item) {
             const proxyHtml = renderProxyCreatorLine(item);
             return `
             <tr>
@@ -269,13 +255,7 @@ async function loadTimeRequestHistory() {
                 <td><div class="request-status-actions">${formatRequestStatusBadge(item.status)}${renderTimeRequestCancellation(item)}</div></td>
             </tr>
         `;
-        }).join('');
-        initLateEarlyHistoryDataTable();
-    } catch (error) {
-        console.error(error);
-        tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">โหลดข้อมูลไม่สำเร็จ</td></tr>';
-    }
-}
+        }
 
 function renderTimeRequestCancellation(item) {
     const cancellable = ['pending', 'pending_manager', 'pending_hr', 'approved'].includes(item.status);
@@ -296,39 +276,6 @@ window.cancelTimeRequest = async function (requestId, status) {
     if (payload.status === 'success') loadTimeRequestHistory();
 };
 
-function renderProxyCreatorLine(item) {
-    if (!item || item.created_via !== 'admin_proxy') return '';
-    const name = item.proxy_creator_name || item.created_by_role || '';
-    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
-}
-
-function resetLateEarlyHistoryDataTable() {
-    const selector = getTimeRequestHistoryTableSelector();
-    if (!selector) {
-        return;
-    }
-    if (lateEarlyHistoryDataTable) {
-        lateEarlyHistoryDataTable.destroy();
-        lateEarlyHistoryDataTable = null;
-    } else if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable(selector)) {
-        $(selector).DataTable().destroy();
-    }
-}
-
-function initLateEarlyHistoryDataTable() {
-    const selector = getTimeRequestHistoryTableSelector();
-    if (!window.jQuery || !$.fn.DataTable || !selector) {
-        return;
-    }
-    lateEarlyHistoryDataTable = $(selector).DataTable({
-        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json' },
-        pageLength: 10,
-        order: [[0, 'desc']],
-        columnDefs: [
-            { orderable: false, targets: [4] },
-        ],
-    });
-}
 
 function getTimeRequestHistoryTableSelector() {
     if (document.getElementById('lateEarlyHistoryTable')) {
@@ -358,15 +305,6 @@ function formatTimeRequestDuration(item) {
     return `${formatTimeRequestType(item.time_request_type)} ${minutes} นาที`;
 }
 
-function formatHourMinuteDuration(minutes) {
-    const safeMinutes = Math.max(0, Number.parseInt(minutes || 0, 10) || 0);
-    const hours = Math.floor(safeMinutes / 60);
-    const remaining = safeMinutes % 60;
-    const parts = [];
-    if (hours > 0) parts.push(`${hours} ชม.`);
-    if (remaining > 0 || !parts.length) parts.push(`${remaining} นาที`);
-    return parts.join(' ');
-}
 
 function formatRequestStatusBadge(status) {
     const labels = {

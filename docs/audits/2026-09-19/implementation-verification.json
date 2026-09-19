@@ -1,0 +1,172 @@
+{
+  "date": "2026-09-19",
+  "branch": "codex/performance-review-20260919",
+  "base": "f17e889afc2ff4c6396f8346b1ff48115e34db17",
+  "scope": "Local code and isolated synthetic MariaDB/CLI browser verification; no production deployment or benchmark",
+  "tests": {
+    "total": 76,
+    "passed": 76,
+    "skipped": [],
+    "failures": []
+  },
+  "syntax": {
+    "php": 134,
+    "javascript": 67,
+    "failures": []
+  },
+  "probes": {
+    "simulated_dataset_sql": {
+      "month": 9,
+      "twelve_months": 9,
+      "badges": 3
+    },
+    "scope": "Helper statement attempts only, excluding database bootstrap and actual DB latency",
+    "page_assets_excluding_vendors": {
+      "dashboard.php": {
+        "modules": 2,
+        "raw_bytes": 27792,
+        "datatables": false,
+        "chart": true
+      },
+      "employees.php": {
+        "modules": 3,
+        "raw_bytes": 49255,
+        "datatables": true,
+        "chart": false
+      },
+      "my_leaves.php": {
+        "modules": 4,
+        "raw_bytes": 34318,
+        "datatables": true,
+        "chart": false
+      },
+      "attendance.php": {
+        "modules": 2,
+        "raw_bytes": 91986,
+        "datatables": false,
+        "chart": false
+      },
+      "leave_request.php": {
+        "modules": 3,
+        "raw_bytes": 49034,
+        "datatables": false,
+        "chart": false
+      }
+    },
+    "synthetic_swaps_1000_employees_2000_rows": {
+      "legacy": {
+        "median_ms": 159.724,
+        "trials": 5,
+        "checksum": "a53335ddf1f2ce6e5caed0c900232174827808e721a4cd011dc1d7a8d1e943cd"
+      },
+      "grouped": {
+        "median_ms": 1.08,
+        "trials": 5,
+        "checksum": "a53335ddf1f2ce6e5caed0c900232174827808e721a4cd011dc1d7a8d1e943cd"
+      }
+    }
+  },
+  "csv": {
+    "synthetic_rows": 100000,
+    "results": [
+      {
+        "mode": "materialized",
+        "rows": 100000,
+        "checksum": "0f52560a5c2f88b39e1a8eafd863f87f4fe5e3ee5926ced67ea01d68909d098e",
+        "peak_bytes": 144703488,
+        "elapsed_ms": 383.82
+      },
+      {
+        "mode": "stream",
+        "rows": 100000,
+        "checksum": "0f52560a5c2f88b39e1a8eafd863f87f4fe5e3ee5926ced67ea01d68909d098e",
+        "peak_bytes": 2097152,
+        "elapsed_ms": 392.04
+      }
+    ],
+    "scope": "Parser peak memory only; excludes database and import writes"
+  },
+  "browser": {
+    "driver": "Playwright CLI",
+    "host": "loopback PHP server",
+    "session": "synthetic admin, GET-only router",
+    "checks": [
+      {
+        "page": "employees.php",
+        "observed": [
+          "42 total; next page shows 11-20",
+          "Smart search สมชาย Officer: 1 of 42",
+          "Console 0 errors"
+        ]
+      },
+      {
+        "page": "my_leaves.php",
+        "observed": [
+          "35 total; 10 on page",
+          "Thai date 02/01/2569: 1 of 35",
+          "Console 0 errors"
+        ]
+      },
+      {
+        "page": "training_history.php",
+        "observed": [
+          "35 total; 10 on page",
+          "Click status ascending renders pending-manager records first",
+          "Console 0 errors"
+        ]
+      },
+      {
+        "page": "day_swap_approvals.php",
+        "observed": [
+          "Pending 18; history 17; 10 per page",
+          "History tab loads successfully",
+          "Console 0 errors on pending page"
+        ]
+      },
+      {
+        "page": "leave_approvals.php",
+        "observed": [
+          "Pending 18; history 17; 10 per page",
+          "History tab loads successfully",
+          "Console 0 errors on pending page"
+        ]
+      },
+      {
+        "page": "training_approvals.php",
+        "observed": [
+          "Pending 18; history 17; 10 per page",
+          "History tab loads successfully",
+          "Console 0 errors on pending page"
+        ]
+      },
+      {
+        "page": "employee_request_attendance_report.php",
+        "observed": [
+          "Select employee 1 and month 2026-01",
+          "Report 40 events; 25 displayed per page",
+          "DataTables and console 0 errors"
+        ]
+      }
+    ]
+  },
+  "review": {
+    "findings": 3,
+    "priority": "P2",
+    "fixed": [
+      "DataTables asset for employee request report",
+      "Training history status-column sort",
+      "Smart multi-token and Buddhist-date search"
+    ],
+    "additional": "Removed unused table initializers; timeline shares already loaded workday/holiday data"
+  },
+  "limitations": [
+    "No production latency/concurrency/EXPLAIN results",
+    "Browser writes and real login/HR-role sessions not exercised; API scope and write rollback covered by fixtures",
+    "Schema preparation must precede serving this release",
+    "No commit, push or deployment"
+  ],
+  "patch_validation": {
+    "git_diff_check": "passed",
+    "new_file_whitespace": "passed after trailing whitespace cleanup"
+  }
+}

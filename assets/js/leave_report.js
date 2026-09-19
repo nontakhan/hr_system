@@ -84,7 +84,6 @@ async function loadApprovedLeaveReport() {
     const rowsEl = document.getElementById('approvedLeaveReportRows');
     const month = document.getElementById('approvedLeaveReportMonth')?.value || '';
     if (!rowsEl || !month) return;
-    approvedLeaveWarningBulk?.clearSelection();
 
     const params = new URLSearchParams({
         action: 'approved_leave_report',
@@ -93,11 +92,16 @@ async function loadApprovedLeaveReport() {
         branch_id: document.getElementById('approvedLeaveReportBranch')?.value || '',
         leave_type_id: document.getElementById('approvedLeaveReportType')?.value || '',
     });
+    const request = beginLatestRequest('approved-leave', params.toString(), document.getElementById('approvedLeaveReportLoadBtn'));
+    if (!request) return;
+    approvedLeaveWarningBulk?.clearSelection();
+
     resetApprovedLeaveReportDataTable();
     rowsEl.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">กำลังโหลดรายงาน...</td></tr>';
     try {
-        const response = await fetch(`api/leave_api.php?${params.toString()}`);
+        const response = await fetch(`api/leave_api.php?${params.toString()}`, { signal: request.signal });
         const responseText = await response.text();
+        if (!request.isCurrent()) return;
         if (!responseText.trim()) throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับ กรุณาลองใหม่อีกครั้ง');
         const res = JSON.parse(responseText);
         if (res.status !== 'success') throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
@@ -106,7 +110,10 @@ async function loadApprovedLeaveReport() {
         renderApprovedLeaveReportRows(approvedLeaveReportRows);
         approvedLeaveWarningBulk?.replaceRows(approvedLeaveReportRows);
     } catch (error) {
+        if (!request.isCurrent()) return;
         renderApprovedLeaveReportError(error.message);
+    } finally {
+        request.finish();
     }
 }
 

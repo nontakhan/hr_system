@@ -1,0 +1,130 @@
+{
+  "date": "2026-09-19",
+  "checkout": "C:/xampp/htdocs/hr_system",
+  "branch": "master",
+  "commit": "f17e889",
+  "runtime_changes": false,
+  "database_connection": "failed HY000/2002 before query; no live indexes, EXPLAIN or timing",
+  "authenticated_browser_test": false,
+  "production_benchmark": false,
+  "runtimes": {
+    "php_cli": "8.2.12",
+    "node": "24.15.0",
+    "php_cli_session_handler": "files",
+    "apache_session_handler": "not verified"
+  },
+  "inventory": {
+    "runtime_php": 81,
+    "api_php": 19,
+    "modular_js": 22,
+    "legacy_main_js": 1,
+    "common_footer_js": 19,
+    "common_footer_js_raw_bytes": 381305
+  },
+  "syntax": {
+    "php": {
+      "checked": 83,
+      "failed": 0,
+      "includes_audit_probes": 2
+    },
+    "javascript": {
+      "checked": 24,
+      "failed": 0,
+      "includes_audit_probes": 1
+    }
+  },
+  "baseline_tests": {
+    "php_files": {
+      "passed": 28,
+      "failed": 0
+    },
+    "javascript_files": {
+      "passed": 33,
+      "failed": 3,
+      "failures": [
+        {
+          "file": "tests/attendance_import_detail_ui_test.js",
+          "reason": "window is not defined at utils.js:334; incomplete VM browser mock"
+        },
+        {
+          "file": "tests/holiday_calendar_ui_test.js",
+          "reason": "window.addEventListener is not a function at utils.js:334; incomplete VM browser mock"
+        },
+        {
+          "file": "tests/holiday_calendar_menu_test.js",
+          "reason": "expected previous holiday menu text; current header has updated label"
+        }
+      ]
+    }
+  },
+  "simulated_sql": {
+    "note": "Real helper control flow, fake fully populated schema, empty report rows; SQL attempts not database executions or protocol round trips",
+    "monthly": {
+      "total": 24,
+      "SELECT": 10,
+      "CREATE": 5,
+      "INSERT": 1,
+      "SHOW": 6,
+      "ALTER": 2
+    },
+    "twelve_month": {
+      "total": 288,
+      "SELECT": 120,
+      "CREATE": 60,
+      "INSERT": 12,
+      "SHOW": 72,
+      "ALTER": 24
+    },
+    "admin_sidebar_badges": {
+      "total": 17,
+      "SELECT": 6,
+      "CREATE": 3,
+      "SHOW": 7,
+      "ALTER": 1
+    },
+    "existing_hourly_type_ensure": {
+      "total": 7,
+      "SELECT": 3,
+      "SHOW": 1,
+      "UPDATE": 3
+    }
+  },
+  "javascript_probes": {
+    "projected_card": {
+      "isolated_projection": true,
+      "footer_projection": false
+    },
+    "escape_null": {
+      "isolated": "",
+      "footer": "null"
+    },
+    "report_race": {
+      "requests": 2,
+      "newer_resolved_first": true,
+      "final_render": "older"
+    }
+  },
+  "algorithm_benchmark": {
+    "note": "Synthetic current day-swap helper, median of five trials, not end-to-end or optimized performance",
+    "samples": [
+      {
+        "employees": 100,
+        "swaps": 200,
+        "row_visits": 20000,
+        "median_ms": 2.112
+      },
+      {
+        "employees": 500,
+        "swaps": 1000,
+        "row_visits": 500000,
+        "median_ms": 52.256
+      },
+      {
+        "employees": 1000,
+        "swaps": 2000,
+        "row_visits": 2000000,
+        "median_ms": 213.75
+      }
+    ]
+  }
+}

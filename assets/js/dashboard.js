@@ -57,15 +57,6 @@ function hexToRgba(hex, alpha) {
 }
 
 // --- (NEW) ฟังก์ชันสร้างการ์ดสรุป สาขาแยกตามบริษัท ---
-function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, char => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    }[char]));
-}
 
 function formatMonthLabel(month) {
     if (!month || !/^\d{4}-\d{2}$/.test(month)) return '-';

@@ -1,11 +1,13 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 function proxyRequestRoleCanCreate($role) {
     return in_array((string)$role, ['admin', 'hr'], true);
 }
 
 function proxyRequestRequireAccess() {
-    if (session_status() === PHP_SESSION_NONE) {
+    if (session_status() === PHP_SESSION_NONE && !isset($_SESSION)) {
         session_start();
     }
     if (empty($_SESSION['user_id']) || !proxyRequestRoleCanCreate($_SESSION['role'] ?? '')) {
@@ -35,6 +37,7 @@ function proxyRequestCreatorLabel(array $row) {
 }
 
 function proxyRequestEnsureAuditColumns(mysqli $mysqli, $tableName) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__ . ':' . $tableName)) return;
     $allowed = ['leave_requests', 'day_swap_requests', 'training_requests'];
     if (!in_array($tableName, $allowed, true)) {
         throw new InvalidArgumentException('Invalid proxy audit table');
@@ -57,6 +60,7 @@ function proxyRequestEnsureAuditColumns(mysqli $mysqli, $tableName) {
 }
 
 function proxyRequestAddColumnIfMissing(mysqli $mysqli, $tableName, array &$columns, $columnName, $definition, $afterColumn = null) {
+    if (!hrSchemaMigrationEnabled()) return;
     if (isset($columns[$columnName])) {
         return;
     }

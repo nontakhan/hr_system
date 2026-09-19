@@ -41,13 +41,30 @@ function approvalBadgeFetchCounts(mysqli $mysqli, $role, $employeeId, array $sco
         trainingRequestEnsureTable($mysqli);
     }
 
-    return approvalBadgeNormalizeCounts([
-        'leave' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'day', $stages),
-        'time_request' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'hour', $stages, 'late_early'),
-        'overtime' => approvalBadgeCountLeaveRequests($mysqli, $role, (int)$employeeId, $scopes, 'hour', $stages, 'overtime_after_work'),
+    return approvalBadgeNormalizeCounts(approvalBadgeCountLeaveCategories($mysqli, $role, (int)$employeeId, $scopes, $stages) + [
         'day_swap' => approvalBadgeCountDaySwapRequests($mysqli, $role, (int)$employeeId, $scopes, $stages),
         'training' => approvalBadgeCountTrainingRequests($mysqli, $role, (int)$employeeId, $scopes, $stages),
     ]);
+}
+
+function approvalBadgeCountLeaveCategories(mysqli $mysqli, $role, $employeeId, array $scopes, array $stages): array {
+    $stageList = approvalBadgeSqlStringList($stages);
+    $sql = "SELECT
+        SUM(lr.request_unit = 'day') AS leave_count,
+        SUM(lr.request_unit = 'hour' AND lr.time_request_type IN ('late_arrival','early_departure')) AS time_count,
+        SUM(lr.request_unit = 'hour' AND lr.time_request_type = 'overtime_after_work') AS overtime_count
+        FROM leave_requests lr JOIN employees e ON lr.employee_id = e.id
+        WHERE lr.status IN ($stageList)";
+    $types = '';
+    $params = [];
+    approvalBadgeAppendRoleScope($sql, $types, $params, $role, $employeeId, $scopes, 'e');
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) return [];
+    hrScopeBindParams($stmt, $types, $params);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc() ?: [];
+    $stmt->close();
+    return ['leave' => (int)($row['leave_count'] ?? 0), 'time_request' => (int)($row['time_count'] ?? 0), 'overtime' => (int)($row['overtime_count'] ?? 0)];
 }
 
 function approvalBadgeCountLeaveRequests(mysqli $mysqli, $role, $employeeId, array $scopes, $requestUnit, array $stages, $timeRequestType = '') {

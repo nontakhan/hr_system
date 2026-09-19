@@ -1,3 +1,4 @@
+global.window = { addEventListener() {} };
 const fs = require('fs');
 const vm = require('vm');
 

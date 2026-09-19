@@ -98,23 +98,12 @@ function setupFormInteractions() {
 
 // --- ฟังก์ชันสำหรับหน้า List (ใช้ DataTables) ---
 async function loadEmployeeData() {
-    const tbody = document.getElementById('employeeTableBody');
-    const branchId = document.getElementById('filterBranch')?.value || '';
+    return loadServerTable({ tableId: 'employeeTable',
+        url: () => `api/employee_api.php?branch_id=${encodeURIComponent(document.getElementById('filterBranch')?.value || '')}`, renderRow: renderEmployeeListRow,
+        order: [[0, 'asc']], unsortable: [7] });
+}
 
-    try {
-        const response = await fetch(`api/employee_api.php?branch_id=${branchId}`, { method: 'GET' });
-        const result = await response.json();
-        
-        if (result.status === 'success') {
-            // Destroy Old DataTable
-            if ($.fn.DataTable.isDataTable('#employeeTable')) {
-                $('#employeeTable').DataTable().destroy();
-            }
-
-            if (result.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">ไม่พบข้อมูลพนักงาน</td></tr>`;
-            } else {
-                const rowsHtml = result.data.map(emp => {
+function renderEmployeeListRow(emp) {
                     const empId = Number.parseInt(emp.id, 10) || 0;
                     const firstName = escapeHtml(emp.first_name_th);
                     const lastName = escapeHtml(emp.last_name_th);
@@ -155,32 +144,7 @@ async function loadEmployeeData() {
                                 </div>
                             </td>
                         </tr>`;
-                }).join('');
-
-                tbody.innerHTML = rowsHtml;
-            }
-
-            // Re-init DataTable (Config ภาษาไทย และแสดงจำนวน)
-            $('#employeeTable').DataTable({
-                "language": {
-                    "lengthMenu": "แสดง _MENU_ รายการ ต่อหน้า",
-                    "zeroRecords": "ไม่พบข้อมูลที่ตรงกัน",
-                    // (แก้ไข) แสดงรายละเอียดจำนวนแถวชัดเจน
-                    "info": "แสดง _START_ ถึง _END_ จากทั้งหมด _TOTAL_ รายการ",
-                    "infoEmpty": "แสดง 0 ถึง 0 จากทั้งหมด 0 รายการ",
-                    "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
-                    "search": "ค้นหา:",
-                    "paginate": { "first": "หน้าแรก", "last": "สุดท้าย", "next": "ถัดไป", "previous": "ก่อนหน้า" }
-                },
-                "order": [[ 0, "asc" ]],
-                "pageLength": 10,
-                "deferRender": true,
-                "autoWidth": false
-            });
-
-        }
-    } catch (error) { console.error('Load Error:', error); }
-}
+                }
 
 function renderEmployeeStatus(status) {
     const badges = {

@@ -23,6 +23,8 @@ try {
         sendAccountJsonError('กรุณาเข้าสู่ระบบก่อนใช้งาน');
     }
 
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
 
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';

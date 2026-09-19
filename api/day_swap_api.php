@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/list_helpers.php';
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -14,6 +15,8 @@ function sendDaySwapError($message) {
 
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/day_swap_helpers.php';
@@ -72,7 +75,7 @@ try {
         }
 
         if ($action === 'my_requests') {
-            $stmt = $mysqli->prepare("SELECT dsr.*, (dsr.requester_employee_id = ?) AS can_cancel, dsr.created_via, dsr.created_by_role, dsr.proxy_note,
+            $sql = "SELECT dsr.*, (dsr.requester_employee_id = ?) AS can_cancel, dsr.created_via, dsr.created_by_role, dsr.proxy_note,
                                              CONCAT_WS(' ', te.first_name_th, te.last_name_th) AS target_name,
                                              CONCAT_WS(' ', re.first_name_th, re.last_name_th) AS requester_name,
                                              CONCAT_WS(' ', ae.first_name_th, ae.last_name_th) AS approver_name,
@@ -83,10 +86,10 @@ try {
                                       LEFT JOIN employees ae ON dsr.approver_id = ae.id
                                       LEFT JOIN employees pce ON dsr.created_by_employee_id = pce.id
                                       WHERE dsr.requester_employee_id = ? OR dsr.target_employee_id = ?
-                                      ORDER BY dsr.created_at DESC");
-            $stmt->bind_param('iii', $myEmployeeId, $myEmployeeId, $myEmployeeId);
-            $stmt->execute();
-            sendDaySwapJson(['status' => 'success', 'data' => $stmt->get_result()->fetch_all(MYSQLI_ASSOC)]);
+                                      ORDER BY dsr.created_at DESC";
+            sendDaySwapJson(hrFetchList($mysqli, $sql, 'iii', [$myEmployeeId, $myEmployeeId, $myEmployeeId],
+                ['created_at','requester_name','target_name','requester_date','target_date','proxy_creator_name',hrRequestStatusSearchExpression()],
+                ['created_at','requester_name','requester_date','']));
         }
 
         if ($action === 'pending' || $action === 'history') {
@@ -95,22 +98,24 @@ try {
             }
             $scopes = hrScopeCurrentSessionScopes();
             $sql = daySwapApprovalQuery($action, $myRole, $scopes);
-            $stmt = $mysqli->prepare($sql);
+            $types = ''; $params = [];
             if ($myRole === 'hr') {
                 $scopeClause = hrScopeBuildEmployeeWhereClause($myRole, $scopes, 're');
-                hrScopeBindParams($stmt, $scopeClause['types'], $scopeClause['params']);
+                $types = $scopeClause['types']; $params = $scopeClause['params'];
             } elseif ($myRole !== 'admin') {
-                $stmt->bind_param('i', $myEmployeeId);
+                $types = 'i'; $params = [$myEmployeeId];
             }
-            $stmt->execute();
-            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $page = hrFetchList($mysqli, $sql, $types, $params,
+                ['created_at','requester_name','target_name','requester_date','target_date','reason','proxy_creator_name','cancellation_reason',hrRequestStatusSearchExpression()],
+                $action === 'pending' ? ['requester_name','target_name','requester_date','reason',''] : ['approval_date','requester_name','target_name','requester_date','status','cancellation_reason','']);
+            $rows = $page['data'];
             foreach ($rows as &$row) {
                 $row['can_reviewer_cancel'] = $action === 'history'
                     && in_array($myRole, ['hr', 'admin'], true)
                     && ($row['status'] ?? '') === 'approved';
             }
             unset($row);
-            sendDaySwapJson(['status' => 'success', 'data' => $rows]);
+            sendDaySwapJson(array_replace($page, ['data' => $rows]));
         }
 
         sendDaySwapError('Invalid Action');

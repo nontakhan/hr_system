@@ -3,3 +3,9 @@ includes/db_config.php
 assets/uploads/leaves/*
 !assets/uploads/leaves/.gitkeep
 .worktrees/
+
+/.superpowers/
+
+/.playwright-cli/
+
+/output/playwright/

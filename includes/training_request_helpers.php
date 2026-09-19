@@ -1,10 +1,13 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 require_once __DIR__ . '/proxy_request_helpers.php';
 require_once __DIR__ . '/date_helpers.php';
 
 function trainingRequestEnsureTable(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     trainingRequestEnsureActivityTypesTable($mysqli);
 
     $mysqli->query("CREATE TABLE IF NOT EXISTS training_requests (
@@ -47,6 +50,7 @@ function trainingRequestEnsureTable(mysqli $mysqli): void
 
 function trainingRequestEnsureActivityTypesTable(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $mysqli->query("CREATE TABLE IF NOT EXISTS activity_types (
         id INT AUTO_INCREMENT PRIMARY KEY,
         type_name VARCHAR(255) NOT NULL,
@@ -78,6 +82,7 @@ function trainingRequestEnsureActivityTypesTable(mysqli $mysqli): void
 
 function trainingRequestEnsureActivityColumns(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $columns = [];
     $result = $mysqli->query("SHOW COLUMNS FROM training_requests");
     while ($result && ($row = $result->fetch_assoc())) {

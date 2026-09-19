@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/list_helpers.php';
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -10,6 +11,8 @@ function sendJsonError($message) {
 
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/leave_helpers.php';
     header('Content-Type: application/json');
@@ -33,16 +36,11 @@ try {
                   AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL)
                 ORDER BY lr.created_at DESC";
         
-        $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('i', $emp_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        echo json_encode([
-            'status' => 'success',
-            'data' => $result->fetch_all(MYSQLI_ASSOC),
-            'usage_summary' => leaveFetchUsageSummary($mysqli, (int)$emp_id),
-        ]);
+        $page = hrFetchList($mysqli, $sql, 'i', [(int)$emp_id],
+            ['created_at','type_name','start_date','end_date','reason','proxy_creator_name',hrRequestStatusSearchExpression()],
+            ['created_at','type_name','start_date','total_days','reason','status','']);
+        $page['usage_summary'] = leaveFetchUsageSummary($mysqli, (int)$emp_id);
+        echo json_encode($page);
     }
 
     // --- POST: ยกเลิกใบลา ---

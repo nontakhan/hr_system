@@ -65,5 +65,4 @@ $myEmployeeId = (int)($_SESSION['employee_id'] ?? 0);
 </div>
 <?php endif; ?>
 
-<script src="assets/js/employee_warnings.js?v=<?php echo filemtime(__DIR__ . '/assets/js/employee_warnings.js'); ?>"></script>
 <?php require_once 'includes/footer.php'; ?>

@@ -8,7 +8,7 @@ function assertIncludes(text, expected, message) {
 
 const page = fs.readFileSync('leave_report.php', 'utf8');
 const script = fs.readFileSync('assets/js/leave_report.js', 'utf8');
-const footer = fs.readFileSync('includes/footer.php', 'utf8');
+const footer = require('./support/page_assets').footer('leave_report.php');
 
 [
     'approvedLeaveReportPage',

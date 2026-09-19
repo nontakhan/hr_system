@@ -1,9 +1,12 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 require_once __DIR__ . '/employee_warning_bulk_helpers.php';
 
 function employeeWarningEnsureTables(mysqli $mysqli): void
 {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $mysqli->query("CREATE TABLE IF NOT EXISTS warning_types (
         id INT AUTO_INCREMENT PRIMARY KEY,
         type_name VARCHAR(255) NOT NULL,

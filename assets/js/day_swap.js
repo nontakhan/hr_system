@@ -14,7 +14,7 @@ let requesterHolidayCalendar = null;
 let targetHolidayCalendar = null;
 let requesterHolidayEvents = [];
 let targetHolidayEvents = [];
-const daySwapDataTables = {};
+
 
 function initDaySwapRequestPage() {
     if (window.jQuery && jQuery.fn.select2) {
@@ -255,20 +255,12 @@ async function submitDaySwapRequest(event) {
 }
 
 async function loadDaySwapHistory() {
-    const tbody = document.getElementById('daySwapHistoryBody');
-    if (!tbody) return;
+    return loadServerTable({ tableId: 'daySwapHistoryTable',
+        url: () => `api/day_swap_api.php?action=my_requests`, renderRow: renderDaySwapHistoryRow,
+        order: [[0, 'desc']], unsortable: [3] });
+}
 
-    resetDaySwapDataTable('daySwapHistoryTable');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
-    try {
-        const response = await fetch('api/day_swap_api.php?action=my_requests');
-        const res = await response.json();
-        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
-        if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">ยังไม่มีคำขอ</td></tr>';
-            return;
-        }
-        tbody.innerHTML = res.data.map(item => {
+function renderDaySwapHistoryRow(item) {
             const proxyHtml = renderProxyCreatorLine(item);
             return `
             <tr>
@@ -278,12 +270,7 @@ async function loadDaySwapHistory() {
                 <td><div class="request-status-actions">${renderDaySwapStatus(item.status)}${renderDaySwapCancellation(item)}</div></td>
             </tr>
         `;
-        }).join('');
-        initDaySwapDataTable('daySwapHistoryTable', [[0, 'desc']], [3]);
-    } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
-    }
-}
+        }
 
 function initDaySwapApprovalPage() {
     document.getElementById('day-swap-pending-tab').addEventListener('shown.bs.tab', loadDaySwapPendingApprovals);
@@ -298,18 +285,12 @@ function initDaySwapApprovalPage() {
 }
 
 async function loadDaySwapPendingApprovals() {
-    const tbody = document.getElementById('daySwapPendingBody');
-    resetDaySwapDataTable('daySwapPendingTable');
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
-    try {
-        const response = await fetch('api/day_swap_api.php?action=pending');
-        const res = await response.json();
-        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
-        if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ไม่มีรายการรออนุมัติ</td></tr>';
-            return;
-        }
-        tbody.innerHTML = res.data.map(item => `
+    return loadServerTable({ tableId: 'daySwapPendingTable',
+        url: () => `api/day_swap_api.php?action=pending`, renderRow: renderDaySwapPendingRow,
+        order: [[2, 'asc']], unsortable: [4] });
+}
+
+function renderDaySwapPendingRow(item) { return `
             <tr>
                 <td>${renderDaySwapEmployeeCell(item.requester_name, item.requester_code, item.requester_profile_img_url, renderDaySwapStatus(item.status))}</td>
                 <td>${renderDaySwapEmployeeCell(item.target_name, item.target_code, item.target_profile_img_url)}</td>
@@ -324,12 +305,7 @@ async function loadDaySwapPendingApprovals() {
                     </button>
                 </td>
             </tr>
-        `).join('');
-        initDaySwapDataTable('daySwapPendingTable', [[2, 'asc']], [4]);
-    } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
-    }
-}
+        `; }
 
 function renderDaySwapEmployeeCell(name, code, profileImgUrl, footerHtml = '') {
     return `
@@ -345,18 +321,12 @@ function renderDaySwapEmployeeCell(name, code, profileImgUrl, footerHtml = '') {
 }
 
 async function loadDaySwapApprovalHistory() {
-    const tbody = document.getElementById('daySwapApprovalHistoryBody');
-    resetDaySwapDataTable('daySwapApprovalHistoryTable');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">กำลังโหลด...</td></tr>';
-    try {
-        const response = await fetch('api/day_swap_api.php?action=history');
-        const res = await response.json();
-        if (res.status !== 'success') throw new Error(res.message || 'Load failed');
-        if (!res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีประวัติ</td></tr>';
-            return;
-        }
-        tbody.innerHTML = res.data.map(item => {
+    return loadServerTable({ tableId: 'daySwapApprovalHistoryTable',
+        url: () => `api/day_swap_api.php?action=history`, renderRow: renderDaySwapApprovalHistoryRow,
+        order: [[0, 'desc']], unsortable: [6] });
+}
+
+function renderDaySwapApprovalHistoryRow(item) {
             const proxyHtml = renderProxyCreatorLine(item);
             const action = item.can_reviewer_cancel
                 ? `<button type="button" class="btn btn-outline-danger reviewer-cancel-request-button" data-request-id="${Number(item.id)}" data-employee-name="${escapeAttr(item.requester_name || '-')}" data-request-date="${escapeAttr(formatThaiDate(item.requester_date))}">ยกเลิกรายการ</button>`
@@ -372,12 +342,7 @@ async function loadDaySwapApprovalHistory() {
                 <td>${action}</td>
             </tr>
         `;
-        }).join('');
-        initDaySwapDataTable('daySwapApprovalHistoryTable', [[0, 'desc']], [6]);
-    } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">โหลดข้อมูลไม่สำเร็จ</td></tr>';
-    }
-}
+        }
 
 function renderDaySwapReviewerCancellationAudit(item) {
     const reason = escapeHtml(item.cancellation_reason || item.rejection_reason || '-');
@@ -414,38 +379,6 @@ window.reviewerCancelApprovedDaySwap = async function(requestId, employeeName, r
     if (payload.status === 'success') await loadDaySwapApprovalHistory();
 };
 
-function renderProxyCreatorLine(item) {
-    if (!item || item.created_via !== 'admin_proxy') return '';
-    const name = item.proxy_creator_name || item.created_by_role || '';
-    return `<div class="small text-muted mt-1">สร้างโดย HR/Admin${name ? `: ${escapeHtml(name)}` : ''}</div>`;
-}
-
-function resetDaySwapDataTable(tableId) {
-    const selector = `#${tableId}`;
-    if (daySwapDataTables[tableId]) {
-        daySwapDataTables[tableId].destroy();
-        delete daySwapDataTables[tableId];
-    } else if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable(selector)) {
-        jQuery(selector).DataTable().destroy();
-    }
-}
-
-function initDaySwapDataTable(tableId, order = [[0, 'desc']], unsortableTargets = []) {
-    if (!window.jQuery || !jQuery.fn.DataTable || !document.getElementById(tableId)) {
-        return;
-    }
-
-    const options = {
-        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json' },
-        pageLength: 10,
-        order,
-    };
-    if (unsortableTargets.length) {
-        options.columnDefs = [{ orderable: false, targets: unsortableTargets }];
-    }
-
-    daySwapDataTables[tableId] = jQuery(`#${tableId}`).DataTable(options);
-}
 
 window.openDaySwapActionModal = function(id, action, name, status = '') {
     const modal = new bootstrap.Modal(document.getElementById('daySwapActionModal'));

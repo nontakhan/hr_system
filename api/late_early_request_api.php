@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/list_helpers.php';
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -14,6 +15,8 @@ function sendJsonError($message) {
 
 try {
     if (session_status() == PHP_SESSION_NONE) session_start();
+    require_once __DIR__ . '/../includes/session_helpers.php';
+    hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/attendance_helpers.php';
     require_once '../includes/day_swap_helpers.php';
@@ -30,7 +33,9 @@ try {
     if ($method === 'GET') {
         if ($action === 'history') {
             $typeFilter = normalizeTimeRequestHistoryFilter($_GET['time_request_type'] ?? 'late_early');
-            sendJson(['status' => 'success', 'data' => fetchMyTimeRequests($mysqli, $typeFilter)]);
+            $page = null;
+            fetchMyTimeRequests($mysqli, $typeFilter, $page);
+            sendJson($page);
         }
 
         if ($action === 'calculate') {
@@ -88,13 +93,13 @@ function timeRequestTypeName($type) {
     return $type === 'early_departure' ? 'ขอออกก่อน' : 'ขอมาสาย';
 }
 
-function fetchMyTimeRequests(mysqli $mysqli, $typeFilter = 'late_early') {
+function fetchMyTimeRequests(mysqli $mysqli, $typeFilter = 'late_early', ?array &$page = null) {
     leaveEnsureTwoStepApprovalColumns($mysqli);
     $employeeId = (int)($_SESSION['employee_id'] ?? 0);
     $typeSql = $typeFilter === 'overtime_after_work'
         ? " AND lr.time_request_type = 'overtime_after_work'"
         : " AND lr.time_request_type IN ('late_arrival','early_departure')";
-    $stmt = $mysqli->prepare("SELECT lr.*, lr.created_via, lr.created_by_role, lr.proxy_note, lt.type_name,
+    $sql = "SELECT lr.*, lr.created_via, lr.created_by_role, lr.proxy_note, lt.type_name,
                                      CONCAT_WS(' ', pce.first_name_th, pce.last_name_th) AS proxy_creator_name
                               FROM leave_requests lr
                               JOIN leave_types lt ON lr.leave_type_id = lt.id
@@ -103,10 +108,9 @@ function fetchMyTimeRequests(mysqli $mysqli, $typeFilter = 'late_early') {
                                 AND lr.request_unit = 'hour'
                                 {$typeSql}
                               ORDER BY lr.created_at DESC
-                              LIMIT 50");
-    $stmt->bind_param('i', $employeeId);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                              LIMIT 50";
+    $page = hrFetchList($mysqli, $sql, 'i', [$employeeId], ['created_at','type_name','start_date','request_minutes','proxy_creator_name',hrRequestStatusSearchExpression()], ['created_at','type_name','start_date','request_minutes','']);
+    return $page['data'];
 }
 
 function submitTimeRequest(mysqli $mysqli) {

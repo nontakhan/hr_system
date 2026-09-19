@@ -42,4 +42,5 @@ if (!empty($_SESSION['employee_id'])) {
         $stmt->close();
     }
 }
-?>
+require_once __DIR__ . '/session_helpers.php';
+hrSessionRelease();

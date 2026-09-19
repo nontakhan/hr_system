@@ -12,7 +12,7 @@ const historyApi = fs.readFileSync('api/leave_history_api.php', 'utf8');
 const approvalApi = fs.readFileSync('api/leave_approval_api.php', 'utf8');
 const myLeavesScript = fs.readFileSync('assets/js/my_leaves.js', 'utf8');
 const approvalScript = fs.readFileSync('assets/js/leave_approval.js', 'utf8');
-const footer = fs.readFileSync('includes/footer.php', 'utf8');
+const footer = require('./support/page_assets').footer('leave_approvals.php');
 
 assertIncludes(historyApi, "status IN ('pending','pending_manager','approved')", 'Leave history API should allow approved leave to enter cancellation approval.');
 assertIncludes(historyApi, "cancel_reason", 'Leave history API should require and store a cancellation reason.');
@@ -33,6 +33,6 @@ assertIncludes(approvalScript, "cancel_reason", 'Approval page should show the e
 assertIncludes(approvalScript, "อนุมัติยกเลิก", 'Approval page should label cancellation approval distinctly.');
 assertIncludes(approvalScript, "item.cancel_reason || item.cancellation_reason", 'Approval page should read the stable cancellation reason field first.');
 
-assertIncludes(footer, "filemtime(__DIR__ . '/../assets/js/leave_approval.js')", 'Footer should cache-bust leave approval JS so HR sees updated Thai status labels.');
+assertIncludes(footer, "assets/js/leave_approval.js?v=", 'Footer should cache-bust leave approval JS so HR sees updated Thai status labels.');
 
 console.log('leave_cancellation_request_test passed');

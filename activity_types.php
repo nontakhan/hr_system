@@ -75,5 +75,4 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<script src="assets/js/activity_types.js"></script>
 <?php require_once 'includes/footer.php'; ?>

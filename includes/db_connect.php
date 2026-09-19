@@ -53,4 +53,11 @@ if (!$mysqli->set_charset('utf8mb4')) {
     echo 'Database initialization failed';
     exit();
 }
-?>
+require_once __DIR__ . '/schema_helpers.php';
+try {
+    hrSchemaAssertReady($mysqli);
+} catch (Throwable $e) {
+    http_response_code(503);
+    echo 'Database upgrade required. Run scripts/prepare_schema.php before serving this release.';
+    exit(1);
+}

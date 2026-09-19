@@ -1,8 +1,11 @@
 <?php
 
+require_once __DIR__ . '/schema_helpers.php';
+
 require_once __DIR__ . '/proxy_request_helpers.php';
 
 function daySwapEnsureTable($mysqli) {
+    if (!hrSchemaMigrationStep($mysqli, __FUNCTION__)) return;
     $mysqli->query("CREATE TABLE IF NOT EXISTS day_swap_requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
         requester_employee_id INT NOT NULL,
@@ -114,10 +117,10 @@ function daySwapFetchCompanyHolidaysForMonth($mysqli, $month) {
     return $holidays;
 }
 
-function daySwapFetchApprovedRowsForMonth($mysqli, $employeeId, $month) {
+function daySwapFetchApprovedRowsForMonth($mysqli, $employeeId, $month, $endMonth = null) {
     daySwapEnsureTable($mysqli);
     $start = $month . '-01';
-    $end = (new DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+    $end = (new DateTimeImmutable(($endMonth ?? $month) . '-01'))->modify('last day of this month')->format('Y-m-d');
     $stmt = $mysqli->prepare("SELECT requester_employee_id, target_employee_id, requester_date, target_date
                               FROM day_swap_requests
                               WHERE status IN ('approved','pending_cancel_hr')
