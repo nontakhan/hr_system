@@ -138,9 +138,9 @@ function renderEmployeeListRow(emp) {
                                     <a href="employee_edit.php?id=${emp.id}" class="btn btn-warning btn-sm" title="แก้ไข">
                                         <i class="fas fa-pencil-alt"></i> แก้ไข
                                     </a>
-                                    <button class="btn btn-danger btn-sm btn-delete" data-id="${emp.id}" title="ลบ">
+                                    ${document.getElementById('employeeTable')?.dataset.canDelete === 'true' ? `<button class="btn btn-danger btn-sm btn-delete" data-id="${empId}" title="ลบ">
                                         <i class="fas fa-trash-alt"></i> ลบ
-                                    </button>
+                                    </button>` : ''}
                                 </div>
                             </td>
                         </tr>`;

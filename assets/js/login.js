@@ -1,62 +1,48 @@
+let loginInProgress = false;
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loginForm')?.addEventListener('submit', handleLoginForm);
 });
 
 async function handleLoginForm(e) {
-    e.preventDefault(); // หยุดการ Submit ฟอร์มแบบปกติ (ไม่ให้หน้า Reload)
-
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    // (แสดง Popup "กำลังโหลด")
-    Swal.fire({
-        title: 'กำลังตรวจสอบ...',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
+    e.preventDefault();
+    if (loginInProgress) return;
+    loginInProgress = true;
+    const button = document.getElementById('loginBtn');
+    const spinner = button?.querySelector('.spinner-border');
+    if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
+    if (spinner) spinner.style.display = 'inline-block';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let navigating = false;
     try {
+        Swal.fire({ title: 'กำลังตรวจสอบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const response = await fetch('api/login_process.php', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            }),
+            signal: controller.signal
         });
-
+        if (!response.ok) throw new Error('Login unavailable');
         const data = await response.json();
-
         if (data.status === 'success') {
-            // (Login สำเร็จ)
-            Swal.fire({
-                icon: 'success',
-                title: 'เข้าสู่ระบบสำเร็จ!',
-                text: 'กำลังพาคุณไปยัง Dashboard...',
-                timer: 1500, // (หน่วงเวลา 1.5 วินาที)
-                showConfirmButton: false
-            }).then(() => {
-                // (Redirect ไปหน้า Dashboard)
-                window.location.href = 'dashboard.php';
-            });
-
+            navigating = true;
+            await Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จ!', text: 'กำลังพาคุณไปยังหน้าหลัก...', timer: 1500, showConfirmButton: false });
+            window.location.href = 'dashboard.php';
         } else {
-            // (Login ไม่สำเร็จ)
-            Swal.fire({
-                icon: 'error',
-                title: 'ผิดพลาด',
-                text: data.message || 'Username หรือ Password ไม่ถูกต้อง'
-            });
+            Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: data.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบแล้วลองใหม่' });
         }
-
     } catch (error) {
-        // (Error การเชื่อมต่อ)
-        Swal.fire({
-            icon: 'error',
-            title: 'เชื่อมต่อล้มเหลว',
-            text: 'ไม่สามารถเชื่อมต่อ API ได้ (login_process)'
-        });
-        console.error('Error:', error);
+        Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: 'กรุณาตรวจสอบการเชื่อมต่อ แล้วกดเข้าสู่ระบบอีกครั้ง' });
+    } finally {
+        clearTimeout(timeout);
+        if (!navigating) {
+            loginInProgress = false;
+            if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
+            if (spinner) spinner.style.display = 'none';
+        }
     }
 }

@@ -72,6 +72,7 @@ try {
     require_once '../includes/db_connect.php';
     require_once '../includes/upload_security.php';
     require_once '../includes/hr_scope_helpers.php';
+    require_once '../includes/employee_access_helpers.php';
     require_once '../includes/employee_training_helpers.php';
     require_once '../includes/employee_shift_assignment_helpers.php';
     header('Content-Type: application/json');
@@ -85,6 +86,13 @@ try {
     ensureEmployeePostalCodeColumn($mysqli);
 
     $method = $_SERVER['REQUEST_METHOD'];
+
+    // Self-service profile writes keep their existing session-owned allowlist.
+    $action = $method === 'POST' ? ($_POST['action'] ?? ($_GET['action'] ?? '')) : ($_GET['action'] ?? '');
+    if (!($method === 'POST' && $action === 'update_my_profile')) {
+        employeeAccessRefresh($mysqli);
+        employeeAccessAuthorizeAction($mysqli, $method, $action, $method === 'POST' ? $_POST : $_GET);
+    }
 
     // 3. Handle POST
     if ($method === 'POST') {
@@ -143,6 +151,9 @@ try {
         else sendJsonError('Invalid ID');
     }
 
+} catch (EmployeeAccessDenied $e) {
+    http_response_code(403);
+    sendJsonError($e->getMessage());
 } catch (Throwable $e) {
     error_log($e->getMessage());
     sendJsonError('System Error');
@@ -462,48 +473,50 @@ function updateEmployee($mysqli, $data, $files) {
         // 3. Update User
         $username = getVal($data, 'username');
         $password = getVal($data, 'password');
-        $role     = getVal($data, 'role', 'employee');
 
         // Check existing user
-        $chk = $mysqli->prepare("SELECT id, username FROM users WHERE employee_id = ?");
+        $chk = $mysqli->prepare("SELECT id, username, role FROM users WHERE employee_id = ?");
         $chk->bind_param('i', $id);
         $chk->execute();
         $user_exists = $chk->get_result()->fetch_assoc();
 
-        if ($user_exists) {
-            $usernameToSave = $username ?: $user_exists['username'];
-            if ($usernameToSave !== $user_exists['username']) {
-                $dup = $mysqli->prepare("SELECT id FROM users WHERE username = ? AND employee_id <> ?");
-                $dup->bind_param('si', $usernameToSave, $id);
-                $dup->execute();
-                if ($dup->get_result()->num_rows > 0) throw new Exception("Username '$usernameToSave' ถูกใช้แล้ว");
-            }
+        $role = getVal($data, 'role', $user_exists['role'] ?? 'employee');
+        if (employeeAccessCanManageEmployeeAccounts($mysqli, $id)) {
+            if ($user_exists) {
+                $usernameToSave = $username ?: $user_exists['username'];
+                if ($usernameToSave !== $user_exists['username']) {
+                    $dup = $mysqli->prepare("SELECT id FROM users WHERE username = ? AND id <> ?");
+                    $dup->bind_param('si', $usernameToSave, $user_exists['id']);
+                    $dup->execute();
+                    if ($dup->get_result()->num_rows > 0) throw new Exception("Username '$usernameToSave' ถูกใช้แล้ว");
+                }
 
-            // UPDATE
-            if ($password) {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                $u_stmt = $mysqli->prepare("UPDATE users SET username=?, password=?, role=? WHERE employee_id=?");
-                $u_stmt->bind_param('sssi', $usernameToSave, $hash, $role, $id);
-                if (!$u_stmt->execute()) throw new Exception("User update failed: " . $u_stmt->error);
+                // UPDATE
+                if ($password) {
+                    $hash = password_hash($password, PASSWORD_DEFAULT);
+                    $u_stmt = $mysqli->prepare("UPDATE users SET username=?, password=?, role=? WHERE id=?");
+                    $u_stmt->bind_param('sssi', $usernameToSave, $hash, $role, $user_exists['id']);
+                    if (!$u_stmt->execute()) throw new Exception("User update failed: " . $u_stmt->error);
+                } else {
+                    $u_stmt = $mysqli->prepare("UPDATE users SET username=?, role=? WHERE id=?");
+                    $u_stmt->bind_param('ssi', $usernameToSave, $role, $user_exists['id']);
+                    if (!$u_stmt->execute()) throw new Exception("User role update failed: " . $u_stmt->error);
+                }
+                syncUserHrScopes($mysqli, (int)$user_exists['id'], $role, $data);
             } else {
-                $u_stmt = $mysqli->prepare("UPDATE users SET username=?, role=? WHERE employee_id=?");
-                $u_stmt->bind_param('ssi', $usernameToSave, $role, $id);
-                if (!$u_stmt->execute()) throw new Exception("User role update failed: " . $u_stmt->error);
-            }
-            syncUserHrScopes($mysqli, (int)$user_exists['id'], $role, $data);
-        } else {
-            // INSERT NEW
-            if ($username && $password) {
-                $dup = $mysqli->prepare("SELECT id FROM users WHERE username = ?");
-                $dup->bind_param('s', $username);
-                $dup->execute();
-                if ($dup->get_result()->num_rows > 0) throw new Exception("Username '$username' ถูกใช้แล้ว");
+                // INSERT NEW
+                if ($username && $password) {
+                    $dup = $mysqli->prepare("SELECT id FROM users WHERE username = ?");
+                    $dup->bind_param('s', $username);
+                    $dup->execute();
+                    if ($dup->get_result()->num_rows > 0) throw new Exception("Username '$username' ถูกใช้แล้ว");
 
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                $u_stmt = $mysqli->prepare("INSERT INTO users (employee_id, username, password, role) VALUES (?,?,?,?)");
-                $u_stmt->bind_param('isss', $id, $username, $hash, $role);
-                if (!$u_stmt->execute()) throw new Exception("User insert failed: " . $u_stmt->error);
-                syncUserHrScopes($mysqli, $mysqli->insert_id, $role, $data);
+                    $hash = password_hash($password, PASSWORD_DEFAULT);
+                    $u_stmt = $mysqli->prepare("INSERT INTO users (employee_id, username, password, role) VALUES (?,?,?,?)");
+                    $u_stmt->bind_param('isss', $id, $username, $hash, $role);
+                    if (!$u_stmt->execute()) throw new Exception("User insert failed: " . $u_stmt->error);
+                    syncUserHrScopes($mysqli, $mysqli->insert_id, $role, $data);
+                }
             }
         }
 
@@ -610,14 +623,10 @@ function getAllEmployees($mysqli) {
                 LEFT JOIN branches b ON e.branch_id = b.id
                 WHERE 1=1 ";
 
-        $types = '';
-        $params = [];
-        if ($role === 'hr') {
-            $scope = hrScopeBuildEmployeeWhereClause($role, $scopes, 'e');
-            $sql .= $scope['sql'];
-            $types = $scope['types'];
-            $params = $scope['params'];
-        }
+        $scope = hrScopeBuildEmployeeWhereClause($role, $scopes, 'e');
+        $sql .= $scope['sql'];
+        $types = $scope['types'];
+        $params = $scope['params'];
         if ($filter_branch_id > 0) {
             $sql .= " AND e.branch_id = ?";
             $types .= 'i';
@@ -720,6 +729,7 @@ function updateTransferHistory($mysqli, $data) {
         $latest_row = $latest->get_result()->fetch_assoc();
 
         if ($latest_row) {
+            employeeAccessRequireAssignment($mysqli, (int)$latest_row['to_company_id'], (int)$latest_row['to_branch_id']);
             $current_company = (int)$latest_row['to_company_id'];
             $current_branch = (int)$latest_row['to_branch_id'];
             $current_dept = (int)$latest_row['to_department_id'];

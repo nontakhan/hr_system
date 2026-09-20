@@ -7,6 +7,7 @@
     const allowedActions = new Set(['create_leave', 'create_late_early', 'create_overtime', 'create_day_swap', 'create_training']);
     let employees = [];
     let proxyLeaveTypes = [];
+    const optionState = { employees: 'idle', leave: 'idle', activity: 'idle' };
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -59,40 +60,79 @@
         initSelect2(targetEmployeeSelect, 'เลือกพนักงานคู่สลับ');
     }
 
+    function showOptionMessage(id, message, retry) {
+        const target = document.getElementById(id);
+        if (!target) return;
+        target.innerHTML = message ? `<div class="small text-muted" role="status">${escapeHtml(message)}${retry ? ' <button type="button" class="btn btn-outline-secondary btn-sm ms-2">ลองใหม่</button>' : ''}</div>` : '';
+        if (retry) target.querySelector('button').addEventListener('click', retry);
+    }
+
     async function loadEmployees() {
-        const result = await loadJson(employeesUrl);
-        if (result.status !== 'success') throw new Error(result.message || 'Load employees failed');
-        employees = result.data || [];
-        const options = '<option value="">เลือกพนักงาน</option>' + employees.map(employeeOption).join('');
-        if (employeeSelect) employeeSelect.innerHTML = options;
-        if (targetEmployeeSelect) targetEmployeeSelect.innerHTML = options;
-        initEmployeeSelect2();
+        if (optionState.employees === 'loading') return;
+        optionState.employees = 'loading';
+        const selected = employeeSelect?.value || '';
+        const targetSelected = targetEmployeeSelect?.value || '';
+        if (employeeSelect) employeeSelect.disabled = true;
+        if (targetEmployeeSelect) targetEmployeeSelect.disabled = true;
+        showOptionMessage('proxyEmployeeLoadStatus', 'กำลังโหลดรายชื่อพนักงาน...');
+        try {
+            const result = await loadJson(employeesUrl);
+            if (result.status !== 'success' || !Array.isArray(result.data)) throw new Error('Employees unavailable');
+            employees = result.data;
+            const options = '<option value="">เลือกพนักงาน</option>' + employees.map(employeeOption).join('');
+            if (employeeSelect) { employeeSelect.innerHTML = options; employeeSelect.value = employees.some(row => String(row.id) === selected) ? selected : ''; employeeSelect.disabled = !employees.length; }
+            if (targetEmployeeSelect) { targetEmployeeSelect.innerHTML = options; targetEmployeeSelect.value = employees.some(row => String(row.id) === targetSelected) ? targetSelected : ''; targetEmployeeSelect.disabled = !employees.length; }
+            optionState.employees = employees.length ? 'ready' : 'empty';
+            initEmployeeSelect2();
+            showOptionMessage('proxyEmployeeLoadStatus', employees.length ? '' : 'ไม่พบพนักงานในขอบเขตที่คุณดูแล กรุณาติดต่อผู้ดูแลระบบ', employees.length ? null : loadEmployees);
+        } catch (error) {
+            optionState.employees = 'error';
+            showOptionMessage('proxyEmployeeLoadStatus', 'โหลดรายชื่อพนักงานไม่สำเร็จ ข้อมูลในแบบฟอร์มยังอยู่', loadEmployees);
+        }
     }
 
     async function loadLeaveTypes() {
         const select = document.getElementById('proxyLeaveTypeId');
-        if (!select) return;
-        const result = await loadJson(`${apiBase}?action=leave_types`);
-        if (result.status !== 'success') return;
-        proxyLeaveTypes = result.data || [];
-        select.innerHTML = '<option value="">เลือกประเภทการลา</option>' + (result.data || []).map((row) => (
-            `<option value="${escapeHtml(row.id)}">${escapeHtml(row.type_name)}</option>`
-        )).join('');
-        select.addEventListener('change', updateProxyLeaveMode);
-        updateProxyLeaveMode();
+        if (!select || optionState.leave === 'loading') return;
+        optionState.leave = 'loading';
+        const selected = select.value;
+        select.disabled = true;
+        showOptionMessage('proxyLeaveTypeLoadStatus', 'กำลังโหลดประเภทการลา...');
+        try {
+            const result = await loadJson(`${apiBase}?action=leave_types`);
+            if (result.status !== 'success' || !Array.isArray(result.data)) throw new Error('Leave types unavailable');
+            proxyLeaveTypes = result.data;
+            select.innerHTML = '<option value="">เลือกประเภทการลา</option>' + proxyLeaveTypes.map(row => `<option value="${escapeHtml(row.id)}">${escapeHtml(row.type_name)}</option>`).join('');
+            select.value = proxyLeaveTypes.some(row => String(row.id) === selected) ? selected : '';
+            select.disabled = !proxyLeaveTypes.length;
+            optionState.leave = proxyLeaveTypes.length ? 'ready' : 'empty';
+            updateProxyLeaveMode();
+            showOptionMessage('proxyLeaveTypeLoadStatus', proxyLeaveTypes.length ? '' : 'ยังไม่มีประเภทการลา กรุณาตรวจสอบการตั้งค่าประเภทลา', proxyLeaveTypes.length ? null : loadLeaveTypes);
+        } catch (error) {
+            optionState.leave = 'error';
+            showOptionMessage('proxyLeaveTypeLoadStatus', 'โหลดประเภทการลาไม่สำเร็จ ข้อมูลในแบบฟอร์มยังอยู่', loadLeaveTypes);
+        }
     }
 
     async function loadActivityTypes() {
         const select = document.getElementById('proxyActivityTypeId');
-        if (!select) return;
-        const result = await loadJson(`${apiBase}?action=activity_types`);
-        if (result.status !== 'success') {
-            select.innerHTML = '<option value="">โหลดประเภทกิจกรรมไม่สำเร็จ</option>';
-            return;
+        if (!select || optionState.activity === 'loading') return;
+        optionState.activity = 'loading';
+        const selected = select.value;
+        select.disabled = true;
+        showOptionMessage('proxyActivityTypeLoadStatus', 'กำลังโหลดประเภทกิจกรรม...');
+        try {
+            const result = await loadJson(`${apiBase}?action=activity_types`);
+            if (result.status !== 'success' || !Array.isArray(result.data)) throw new Error('Activity types unavailable');
+            select.innerHTML = '<option value="">เลือกประเภทกิจกรรม</option>' + result.data.map(row => `<option value="${escapeHtml(row.id)}">${escapeHtml(row.type_name)}</option>`).join('');
+            select.value = result.data.some(row => String(row.id) === selected) ? selected : '';
+            select.disabled = !result.data.length;
+            optionState.activity = result.data.length ? 'ready' : 'empty';
+            showOptionMessage('proxyActivityTypeLoadStatus', result.data.length ? '' : 'ยังไม่มีประเภทกิจกรรม กรุณาตรวจสอบการตั้งค่าประเภทกิจกรรม', result.data.length ? null : loadActivityTypes);
+        } catch (error) {
+            optionState.activity = 'error';
+            showOptionMessage('proxyActivityTypeLoadStatus', 'โหลดประเภทกิจกรรมไม่สำเร็จ ข้อมูลในแบบฟอร์มยังอยู่', loadActivityTypes);
         }
-        select.innerHTML = '<option value="">เลือกประเภทกิจกรรม</option>' + (result.data || []).map((row) => (
-            `<option value="${escapeHtml(row.id)}">${escapeHtml(row.type_name)}</option>`
-        )).join('');
     }
 
     function formatProxyTime(value) {
@@ -271,6 +311,10 @@
             Swal.fire('ไม่สำเร็จ', 'Invalid Action', 'error');
             return;
         }
+        if (optionState.employees !== 'ready' || (action === 'create_leave' && optionState.leave !== 'ready') || (action === 'create_training' && optionState.activity !== 'ready')) {
+            Swal.fire('ข้อมูลแบบฟอร์มยังไม่พร้อม', 'กรุณากดลองใหม่ใต้ช่องที่โหลดไม่สำเร็จ ข้อมูลที่กรอกยังอยู่', 'warning');
+            return;
+        }
         if (!selectedEmployeeId()) {
             Swal.fire('กรุณาเลือกพนักงาน', '', 'warning');
             return;
@@ -308,9 +352,10 @@
     });
     panels.forEach((panel) => panel.addEventListener('submit', submitProxyForm));
 
-    loadEmployees().catch((error) => Swal.fire('ไม่สำเร็จ', error.message, 'error'));
+    loadEmployees();
     loadLeaveTypes();
     loadActivityTypes();
+    document.getElementById('proxyLeaveTypeId')?.addEventListener('change', updateProxyLeaveMode);
     initProxyLeaveHelpers();
     initProxyOvertimeHelpers();
     showPanel('leave');

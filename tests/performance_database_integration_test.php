@@ -103,7 +103,9 @@ try {
     } finally { unlink($csv); }
 
     $admin = ['user_id'=>1,'employee_id'=>1,'role'=>'admin','company_id'=>10];
-    $hr = array_merge($admin,['role'=>'hr','hr_company_ids'=>[10],'hr_branch_ids'=>[]]);
+    $db->query("INSERT INTO users (id, employee_id, username, role) VALUES (10, NULL, 'fixture-hr', 'hr')");
+    $db->query("INSERT INTO user_hr_scopes (user_id, scope_type, scope_id) VALUES (10, 'company', 10)");
+    $hr = array_merge($admin,['user_id'=>10,'role'=>'hr','hr_company_ids'=>[10],'hr_branch_ids'=>[]]);
     $employeeSession = array_merge($admin,['role'=>'employee']);
     foreach (['employee_api.php'=>[], 'leave_approval_api.php'=>['type'=>'history'], 'leave_history_api.php'=>[],
               'late_early_request_api.php'=>['action'=>'history'], 'day_swap_api.php'=>['action'=>'my_requests'],

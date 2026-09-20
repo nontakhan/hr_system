@@ -82,7 +82,8 @@ require_once 'includes/header.php';
 <div class="card shadow-sm border-0 mb-4 proxy-request-employee-card">
     <div class="card-body">
         <label class="form-label" for="proxyEmployeeId">พนักงาน <span class="text-danger">*</span></label>
-        <select id="proxyEmployeeId" class="form-select" required></select>
+        <select id="proxyEmployeeId" class="form-select" required disabled></select>
+        <div id="proxyEmployeeLoadStatus" class="mt-2"></div>
     </div>
 </div>
 
@@ -109,7 +110,8 @@ require_once 'includes/header.php';
         <div class="card-body row g-3">
             <div class="col-md-6">
                 <label class="form-label">ประเภทการลา <span class="text-danger">*</span></label>
-                <select name="leave_type_id" id="proxyLeaveTypeId" class="form-select" required></select>
+                <select name="leave_type_id" id="proxyLeaveTypeId" class="form-select" required disabled></select>
+                <div id="proxyLeaveTypeLoadStatus" class="mt-2"></div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label>
@@ -209,7 +211,7 @@ require_once 'includes/header.php';
 
     <form class="card shadow-sm border-0 proxy-panel d-none" data-proxy-panel="training" data-action="create_training" enctype="multipart/form-data">
         <div class="card-body row g-3">
-            <div class="col-md-6"><label class="form-label">ประเภทกิจกรรม <span class="text-danger">*</span></label><select name="activity_type_id" id="proxyActivityTypeId" class="form-select" required><option value="">กำลังโหลดประเภทกิจกรรม...</option></select></div>
+            <div class="col-md-6"><label class="form-label">ประเภทกิจกรรม <span class="text-danger">*</span></label><select name="activity_type_id" id="proxyActivityTypeId" class="form-select" required><option value="">กำลังโหลดประเภทกิจกรรม...</option></select><div id="proxyActivityTypeLoadStatus" class="mt-2"></div></div>
             <div class="col-md-6"><label class="form-label">ชื่อกิจกรรม/รายละเอียด <span class="text-danger">*</span></label><input type="text" name="course_name" class="form-control" required></div>
             <div class="col-md-6"><label class="form-label">สถานที่/รูปแบบ</label><input type="text" name="location" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">วันที่เริ่ม <span class="text-danger">*</span></label><input type="date" name="start_date" class="form-control" required></div>

@@ -382,7 +382,7 @@ $page_title = "Login - HR System";
                             <div class="input-elegant">
                                 <i class="bi bi-lock-fill input-icon"></i>
                                 <input type="password" class="form-control" id="password" name="password" placeholder="กรอกรหัสผ่าน" required autocomplete="current-password">
-                                <button type="button" class="toggle-password" id="togglePassword" tabindex="-1">
+                                <button type="button" class="toggle-password" id="togglePassword" aria-label="แสดงรหัสผ่าน" aria-pressed="false">
                                     <i class="bi bi-eye-fill"></i>
                                 </button>
                             </div>
@@ -393,8 +393,10 @@ $page_title = "Login - HR System";
                                 <input class="form-check-input" type="checkbox" id="rememberMe" name="remember">
                                 <label class="form-check-label" for="rememberMe">จดจำฉันไว้</label>
                             </div>
-                            <a href="#" class="small text-danger text-decoration-none" style="color:#8b0000 !important;">ลืมรหัสผ่าน?</a>
+                            <button type="button" id="passwordHelpToggle" class="btn btn-link btn-sm text-danger p-0" aria-expanded="false" aria-controls="passwordHelp">ลืมรหัสผ่าน?</button>
                         </div>
+
+                        <p id="passwordHelp" class="small text-muted mt-3 mb-0" hidden>ติดต่อฝ่ายบุคคลหรือผู้ดูแลระบบเพื่อขอรีเซ็ตรหัสผ่าน โดยแจ้งชื่อผู้ใช้ของคุณ</p>
 
                         <button type="submit" class="btn btn-login btn-danger w-100 mt-3 text-white" id="loginBtn">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -420,23 +422,18 @@ $page_title = "Login - HR System";
             togglePassword.addEventListener('click', function () {
                 const isPassword = passwordInput.getAttribute('type') === 'password';
                 passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+                this.setAttribute('aria-label', isPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+                this.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
                 this.querySelector('i').classList.toggle('bi-eye-fill');
                 this.querySelector('i').classList.toggle('bi-eye-slash-fill');
             });
         }
 
-        // แสดง loading state บนปุ่ม (ไม่แทรกแซง submit handler เดิมใน main.js)
-        const loginForm = document.getElementById('loginForm');
-        const loginBtn = document.getElementById('loginBtn');
-        if (loginForm && loginBtn) {
-            loginForm.addEventListener('submit', function () {
-                const spinner = loginBtn.querySelector('.spinner-border');
-                if (spinner) spinner.style.display = 'inline-block';
-                loginBtn.disabled = true;
-                // หาก main.js มีการ preventDefault และจัดการ AJAX เอง
-                // ให้ปลด disabled กลับในไฟล์ main.js ตาม flow เดิมของระบบ
-            });
-        }
+        document.getElementById('passwordHelpToggle')?.addEventListener('click', function () {
+            const help = document.getElementById('passwordHelp');
+            help.hidden = !help.hidden;
+            this.setAttribute('aria-expanded', help.hidden ? 'false' : 'true');
+        });
     </script>
 </body>
 </html>

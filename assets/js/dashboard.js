@@ -14,10 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadDashboardData() {
+    const container = document.getElementById('employeeDashboardContainer') || document.getElementById('companyBranchStatsContainer');
+    if (!container) return;
+    container.innerHTML = '<div class="col-12 text-muted py-4" role="status">กำลังโหลดข้อมูล...</div>';
     try {
         const response = await fetch('api/dashboard_api.php');
         const res = await response.json();
 
+        if (res.status !== 'success') throw new Error('Dashboard unavailable');
         if (res.status === 'success') {
             const data = res.data;
             dbCompanyColors = data.company_colors_map || {};
@@ -36,7 +40,14 @@ async function loadDashboardData() {
             // 3. Render Right List (เหมือนเดิม)
             renderCompanySummary(data.employee_types_by_company);
         }
-    } catch (err) { console.error('Dashboard Error:', err); }
+    } catch (err) {
+        container.innerHTML = '<div class="col-12"><div class="alert alert-warning" role="alert">โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง <button type="button" class="btn btn-outline-dark btn-sm ms-2">ลองใหม่</button></div></div>';
+        container.querySelector('button').addEventListener('click', loadDashboardData);
+        const summary = document.getElementById('employeeTypeSummaryContainer');
+        if (summary) summary.innerHTML = '<p class="text-muted">ข้อมูลยังไม่พร้อม กรุณากดลองใหม่ด้านบน</p>';
+        const overview = document.getElementById('todayLeaveList');
+        if (overview) overview.innerHTML = '<p class="text-muted p-3">ข้อมูลยังไม่พร้อม กรุณากดลองใหม่ด้านบน</p>';
+    }
 }
 
 // --- Helper Functions ---
@@ -74,12 +85,15 @@ function formatDateLabel(dateText) {
 function getLeaveStatusBadge(status) {
     const map = {
         pending: ['รออนุมัติ', 'warning'],
+        pending_manager: ['รอหัวหน้างานอนุมัติ', 'warning'],
+        pending_hr: ['รอ HR อนุมัติ', 'warning'],
+        pending_cancel_hr: ['รอ HR/Admin อนุมัติยกเลิก', 'warning'],
         approved: ['อนุมัติแล้ว', 'success'],
         rejected: ['ไม่อนุมัติ', 'danger'],
         cancelled: ['ยกเลิก', 'secondary']
     };
-    const [label, color] = map[status] || [status || '-', 'secondary'];
-    return `<span class="badge bg-${color}">${escapeHtml(label)}</span>`;
+    const [label, color] = map[status] || ['ไม่ทราบสถานะ', 'secondary'];
+    return `<span class="badge bg-${color}${color === 'warning' ? ' text-dark' : ''}">${escapeHtml(label)}</span>`;
 }
 
 function renderEmployeeDashboard(data) {
@@ -164,6 +178,7 @@ function renderEmployeeDashboard(data) {
                         <div><span>อนุมัติแล้ว</span><strong>${escapeHtml(leaveSummary.approved || 0)}</strong></div>
                         <div><span>ไม่อนุมัติ</span><strong>${escapeHtml(leaveSummary.rejected || 0)}</strong></div>
                         <div><span>ยกเลิก</span><strong>${escapeHtml(leaveSummary.cancelled || 0)}</strong></div>
+                        <div><span>รออนุมัติยกเลิก</span><strong>${escapeHtml(leaveSummary.pending_cancel_hr || 0)}</strong></div>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
                         <a href="leave_request.php" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> ยื่นใบลา</a>

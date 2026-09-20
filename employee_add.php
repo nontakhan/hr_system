@@ -3,22 +3,22 @@
  * หน้าฟอร์มสำหรับ "เพิ่ม" พนักงานใหม่ (Updated for Shift Assignment)
  */
 require_once 'includes/auth_check.php';
-require_once 'includes/db_connect.php'; 
+require_once 'includes/db_connect.php';
+require_once 'includes/employee_access_helpers.php';
+employeeAccessRequirePage($mysqli, null, true);
 require_once 'includes/hr_scope_helpers.php';
 
 // ----- ดึงข้อมูล Master Data -----
 try {
-    @$companies = $mysqli->query("SELECT id, company_name_th FROM companies ORDER BY company_name_th")->fetch_all(MYSQLI_ASSOC);
-    @$branches = $mysqli->query("SELECT id, branch_name_th, company_id FROM branches ORDER BY branch_name_th")->fetch_all(MYSQLI_ASSOC);
+    $employeeOptions = employeeAccessFormOptions($mysqli);
+    $companies = $employeeOptions['companies'];
+    $branches = $employeeOptions['branches'];
     @$departments = $mysqli->query("SELECT id, dept_name_th FROM departments ORDER BY dept_name_th")->fetch_all(MYSQLI_ASSOC);
     @$positions = $mysqli->query("SELECT id, position_name_th FROM positions ORDER BY position_name_th")->fetch_all(MYSQLI_ASSOC);
     @$emp_types = $mysqli->query("SELECT id, type_name FROM employment_types ORDER BY type_name")->fetch_all(MYSQLI_ASSOC);
-    @$supervisors = $mysqli->query("SELECT id, first_name_th, last_name_th FROM employees WHERE status = 'active' ORDER BY first_name_th")->fetch_all(MYSQLI_ASSOC);
-    @$hrCompanies = $mysqli->query("SELECT id, company_name_th FROM companies ORDER BY company_name_th")->fetch_all(MYSQLI_ASSOC);
-    @$hrBranches = $mysqli->query("SELECT b.id, b.branch_name_th, b.company_id, c.company_name_th
-                                   FROM branches b
-                                   JOIN companies c ON b.company_id = c.id
-                                   ORDER BY c.company_name_th, b.branch_name_th")->fetch_all(MYSQLI_ASSOC);
+    $supervisors = $employeeOptions['supervisors'];
+    $hrCompanies = $_SESSION['role'] === 'admin' ? $companies : [];
+    $hrBranches = $_SESSION['role'] === 'admin' ? $branches : [];
     
     // (NEW) ดึงข้อมูลกะการทำงาน
     @$shifts = $mysqli->query("SELECT id, shift_name, start_time, end_time FROM work_shifts ORDER BY id ASC")->fetch_all(MYSQLI_ASSOC);
@@ -376,11 +376,14 @@ require_once 'includes/header.php';
                             <label class="form-label">Role</label>
                             <select name="role" class="form-select">
                                 <option value="employee">Employee</option>
+                                <?php if ($_SESSION['role'] === 'admin'): ?>
                                 <option value="manager">Manager</option>
                                 <option value="hr">HR</option>
                                 <option value="admin">Admin</option>
+                                <?php endif; ?>
                             </select>
                         </div>
+                        <?php if ($_SESSION['role'] === 'admin'): ?>
                         <div class="col-12 hr-scope-section" style="display: none;">
                             <div class="border rounded p-3 bg-light">
                                 <div class="fw-semibold mb-2">ขอบเขตสิทธิ์ HR</div>
@@ -410,6 +413,7 @@ require_once 'includes/header.php';
                                 </div>
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

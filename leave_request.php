@@ -111,7 +111,7 @@ require_once 'includes/header.php';
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="submit" id="leaveSubmitButton" class="btn btn-primary btn-lg" disabled>
                             <i class="fas fa-paper-plane"></i> ส่งใบลา
                         </button>
                     </div>

@@ -7,6 +7,8 @@
  */
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php';
+require_once 'includes/employee_access_helpers.php';
+employeeAccessRequirePage($mysqli, (int)($_GET['id'] ?? 0));
 require_once 'includes/employee_training_helpers.php';
 
 ensureEmployeeTrainingRecordsTable($mysqli);
@@ -100,8 +102,9 @@ $employeeNickname = trim((string)($emp['nickname'] ?? $emp['nick_name'] ?? $emp[
 
 // ดึง Master Data สำหรับ Modal โยกย้าย
 try {
-    @$companies = $mysqli->query("SELECT id, company_name_th FROM companies ORDER BY company_name_th")->fetch_all(MYSQLI_ASSOC);
-    @$branches = $mysqli->query("SELECT id, branch_name_th, company_id FROM branches ORDER BY branch_name_th")->fetch_all(MYSQLI_ASSOC);
+    $employeeOptions = employeeAccessFormOptions($mysqli);
+    $companies = $employeeOptions['companies'];
+    $branches = $employeeOptions['branches'];
     @$departments = $mysqli->query("SELECT id, dept_name_th FROM departments ORDER BY dept_name_th")->fetch_all(MYSQLI_ASSOC);
     @$positions = $mysqli->query("SELECT id, position_name_th FROM positions ORDER BY position_name_th")->fetch_all(MYSQLI_ASSOC);
 } catch (Exception $e) { /* Ignore */ }

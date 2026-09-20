@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const leaveRequestForm = document.getElementById('leaveRequestForm');
 
 if (leaveRequestForm) {
+        document.getElementById('leaveTypeSelect')?.addEventListener('change', updateLeaveTypeCondition);
         loadLeaveOptions();
         loadLeaveUsageSummary();
         setupDateCalculation();
@@ -18,41 +19,67 @@ let leaveUsageSummary = null;
 let latestLeaveSummary = null;
 let leaveCalculationTimer = null;
 
+let leaveOptionsLoading = false;
+let leaveUsageLoading = false;
+
+function showLeaveLoadMessage(id, message, retry) {
+    const grid = document.getElementById(id);
+    if (!grid) return;
+    grid.innerHTML = `<div class="small text-muted" role="status">${escapeHtml(message)}${retry ? ' <button type="button" class="btn btn-outline-secondary btn-sm ms-2">ลองใหม่</button>' : ''}</div>`;
+    if (retry) grid.querySelector('button').addEventListener('click', retry);
+}
+
 async function loadLeaveUsageSummary() {
+    if (leaveUsageLoading) return;
+    leaveUsageLoading = true;
+    showLeaveLoadMessage('leaveUsageSummaryGrid', 'กำลังโหลดสิทธิ์ลา...');
     try {
         const response = await fetch('api/leave_request_api.php?action=get_leave_usage');
         const res = await response.json();
-        if (res.status !== 'success') {
-            throw new Error(res.message || 'โหลดสรุปสิทธิ์ลาไม่สำเร็จ');
-        }
-
+        if (res.status !== 'success' || !res.data || typeof res.data !== 'object') throw new Error('Leave usage unavailable');
         leaveUsageSummary = res.data;
         renderProjectedLeaveUsageSummary();
         updateLeaveTypeCondition();
     } catch (error) {
-        const grid = document.getElementById('leaveUsageSummaryGrid');
-        if (grid) {
-            grid.innerHTML = `<div class="text-danger small">${escapeHtml(error.message)}</div>`;
-        }
+        leaveUsageSummary = null;
+        const fiscalText = document.getElementById('leaveUsageFiscalYearText');
+        if (fiscalText) fiscalText.textContent = 'ยังแสดงสรุปสิทธิ์ลาไม่ได้';
+        showLeaveLoadMessage('leaveUsageSummaryGrid', 'โหลดสรุปสิทธิ์ลาไม่สำเร็จ คุณยังกรอกใบลาได้', loadLeaveUsageSummary);
+    } finally {
+        leaveUsageLoading = false;
     }
 }
 
 async function loadLeaveOptions() {
+    if (leaveOptionsLoading) return;
     const select = document.getElementById('leaveTypeSelect');
+    if (!select) return;
+    const previousValue = select.value;
+    const submit = document.getElementById('leaveSubmitButton');
+    leaveOptionsLoading = true;
+    if (submit) submit.disabled = true;
+    showLeaveLoadMessage('leaveTypeIconGrid', 'กำลังโหลดประเภทการลา...');
     try {
         const response = await fetch('api/leave_request_api.php?action=get_leave_types');
         const res = await response.json();
-
-        if (res.status === 'success') {
-            leaveTypesData = res.data;
-            renderLeaveTypeCards(res.data);
+        if (res.status !== 'success' || !Array.isArray(res.data)) throw new Error('Leave types unavailable');
+        leaveTypesData = res.data;
+        if (!leaveTypesData.length) {
+            select.value = '';
+            showLeaveLoadMessage('leaveTypeIconGrid', 'ยังไม่มีประเภทการลา กรุณาติดต่อฝ่ายบุคคล', loadLeaveOptions);
+            return;
         }
+        renderLeaveTypeCards(res.data);
+        if (leaveTypesData.some(type => String(type.id) === previousValue)) selectLeaveType(previousValue);
+        else { select.value = ''; updateLeaveRequestMode(); }
+        if (submit) submit.disabled = false;
     } catch (error) {
-        console.error(error);
+        leaveTypesData = [];
+        select.value = '';
+        showLeaveLoadMessage('leaveTypeIconGrid', 'โหลดประเภทการลาไม่สำเร็จ ข้อมูลที่กรอกยังอยู่ กรุณาลองใหม่', loadLeaveOptions);
+    } finally {
+        leaveOptionsLoading = false;
     }
-
-    select.addEventListener('change', () => updateLeaveTypeCondition());
-    updateLeaveRequestMode();
 }
 
 function renderLeaveTypeCards(types) {
@@ -110,6 +137,7 @@ function renderLeaveUsageSummary(summary) {
 }
 
 function renderProjectedLeaveUsageSummary() {
+    if (!leaveUsageSummary) return;
     renderLeaveUsageSummary(buildProjectedLeaveUsageSummary());
 }
 

@@ -4,6 +4,8 @@
  */
 require_once 'includes/auth_check.php';
 require_once 'includes/db_connect.php';
+require_once 'includes/employee_access_helpers.php';
+employeeAccessRequirePage($mysqli, (int)($_GET['id'] ?? 0));
 require_once 'includes/hr_scope_helpers.php';
 require_once 'includes/employee_shift_assignment_helpers.php';
 
@@ -30,19 +32,17 @@ try {
     if (!$emp) die("ไม่พบข้อมูลพนักงาน");
 
     // ดึง Master Data
-    @$companies = $mysqli->query("SELECT id, company_name_th FROM companies ORDER BY company_name_th")->fetch_all(MYSQLI_ASSOC);
-    @$branches = $mysqli->query("SELECT id, branch_name_th, company_id FROM branches ORDER BY branch_name_th")->fetch_all(MYSQLI_ASSOC);
+    $employeeOptions = employeeAccessFormOptions($mysqli, $id, (int)($emp['supervisor_id'] ?? 0));
+    $companies = $employeeOptions['companies'];
+    $branches = $employeeOptions['branches'];
     @$departments = $mysqli->query("SELECT id, dept_name_th FROM departments ORDER BY dept_name_th")->fetch_all(MYSQLI_ASSOC);
     @$positions = $mysqli->query("SELECT id, position_name_th FROM positions ORDER BY position_name_th")->fetch_all(MYSQLI_ASSOC);
     @$emp_types = $mysqli->query("SELECT id, type_name FROM employment_types ORDER BY type_name")->fetch_all(MYSQLI_ASSOC);
-    @$supervisors = $mysqli->query("SELECT id, first_name_th, last_name_th FROM employees WHERE status = 'active' AND id != $id ORDER BY first_name_th")->fetch_all(MYSQLI_ASSOC);
+    $supervisors = $employeeOptions['supervisors'];
     @$shifts = $mysqli->query("SELECT id, shift_name, start_time, end_time FROM work_shifts ORDER BY id ASC")->fetch_all(MYSQLI_ASSOC);
-    @$hrCompanies = $mysqli->query("SELECT id, company_name_th FROM companies ORDER BY company_name_th")->fetch_all(MYSQLI_ASSOC);
-    @$hrBranches = $mysqli->query("SELECT b.id, b.branch_name_th, b.company_id, c.company_name_th
-                                   FROM branches b
-                                   JOIN companies c ON b.company_id = c.id
-                                   ORDER BY c.company_name_th, b.branch_name_th")->fetch_all(MYSQLI_ASSOC);
-    $hrScopes = !empty($emp['user_id']) ? hrScopeFetchForUser($mysqli, (int)$emp['user_id']) : ['company_ids' => [], 'branch_ids' => []];
+    $hrCompanies = $_SESSION['role'] === 'admin' ? $companies : [];
+    $hrBranches = $_SESSION['role'] === 'admin' ? $branches : [];
+    $hrScopes = $_SESSION['role'] === 'admin' && !empty($emp['user_id']) ? hrScopeFetchForUser($mysqli, (int)$emp['user_id']) : ['company_ids' => [], 'branch_ids' => []];
     $shiftOverride = null;
     $shiftOverrideStmt = $mysqli->prepare("SELECT day_of_week, start_time, end_time, late_tolerance_mins, effective_from, effective_to
                                            FROM employee_shift_overrides
@@ -509,6 +509,7 @@ require_once 'includes/header.php';
                 </div>
             </div>
 
+            <?php if (employeeAccessCanManageEmployeeAccounts($mysqli, $id)): ?>
             <!-- User Account -->
             <div class="card mb-3">
                 <div class="card-header bg-light">User Account (แก้ไข Login)</div>
@@ -537,9 +538,10 @@ require_once 'includes/header.php';
                         <div class="col-md-4">
                             <label class="form-label">Role</label>
                             <select name="role" class="form-select">
-                                <?php foreach(['employee','manager','hr','admin'] as $r) echo "<option value='$r' ".($emp['role']==$r?'selected':'').">".ucfirst($r)."</option>"; ?>
+                                <?php foreach(($_SESSION['role'] === 'admin' ? ['employee','manager','hr','admin'] : ['employee']) as $r) echo "<option value='$r' ".($emp['role']==$r?'selected':'').">".ucfirst($r)."</option>"; ?>
                             </select>
                         </div>
+                        <?php if ($_SESSION['role'] === 'admin'): ?>
                         <div class="col-12 hr-scope-section" style="display: none;">
                             <div class="border rounded p-3 bg-light">
                                 <div class="fw-semibold mb-2">ขอบเขตสิทธิ์ HR</div>
@@ -569,9 +571,14 @@ require_once 'includes/header.php';
                                 </div>
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
+
+            <?php else: ?>
+            <p class="text-muted small">บัญชีระดับหัวหน้างาน, HR และ admin ให้ผู้ดูแลระบบเป็นผู้แก้ไขบัญชีและรหัสผ่าน</p>
+            <?php endif; ?>
 
             <div class="text-center mt-4 mb-5">
                 <button type="submit" class="btn btn-warning btn-lg px-5"><i class="fas fa-save"></i> บันทึกการแก้ไข</button>

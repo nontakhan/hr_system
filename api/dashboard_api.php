@@ -8,6 +8,7 @@ try {
     hrSessionRelease();
     require_once '../includes/db_connect.php';
     require_once '../includes/hr_scope_helpers.php';
+    require_once '../includes/dashboard_helpers.php';
     header('Content-Type: application/json');
 
     if (!isset($_SESSION['user_id'])) {
@@ -186,25 +187,17 @@ function fetchEmployeeDashboardData($mysqli, $employeeId, $currentMonth) {
         $stmt->close();
     }
 
-    $leaveSummary = [
-        'pending' => 0,
-        'approved' => 0,
-        'rejected' => 0,
-        'cancelled' => 0,
-    ];
+    $leaveSummary = dashboardSummarizeLeaveStatuses([]);
     $stmt = $mysqli->prepare("SELECT status, COUNT(*) AS total
                               FROM leave_requests
                               WHERE employee_id = ?
+                                AND (request_unit IS NULL OR request_unit <> 'hour' OR time_request_type IS NULL)
                               GROUP BY status");
     if ($stmt) {
         $stmt->bind_param('i', $employeeId);
         $stmt->execute();
         $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            if (array_key_exists($row['status'], $leaveSummary)) {
-                $leaveSummary[$row['status']] = (int)$row['total'];
-            }
-        }
+        $leaveSummary = dashboardSummarizeLeaveStatuses($result->fetch_all(MYSQLI_ASSOC));
         $stmt->close();
     }
 
@@ -213,6 +206,7 @@ function fetchEmployeeDashboardData($mysqli, $employeeId, $currentMonth) {
                               FROM leave_requests lr
                               JOIN leave_types lt ON lr.leave_type_id = lt.id
                               WHERE lr.employee_id = ?
+                                AND (lr.request_unit IS NULL OR lr.request_unit <> 'hour' OR lr.time_request_type IS NULL)
                               ORDER BY lr.created_at DESC
                               LIMIT 3");
     if ($stmt) {

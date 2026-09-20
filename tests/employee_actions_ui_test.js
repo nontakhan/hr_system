@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const table={dataset:{canDelete:'false'}};
+const ctx=vm.createContext({window:{},document:{addEventListener(){},getElementById:id=>id==='employeeTable'?table:null},escapeHtml:s=>String(s||''),escapeAttr:s=>String(s||''),safeUploadPath:(s,f)=>f});
+vm.runInContext(fs.readFileSync('assets/js/employee.js','utf8'),ctx);
+let html=ctx.renderEmployeeListRow({id:3,status:'active'});
+assert.ok(!html.includes('btn-delete'),'HR must not see an unavailable delete action');
+assert.ok(html.includes('employee_edit.php?id=3'),'HR retains edit action');
+table.dataset.canDelete='true'; html=ctx.renderEmployeeListRow({id:3,status:'active'});
+assert.ok(html.includes('btn-delete'),'Admin retains delete action');
+console.log('PASS employee actions reflect server capability');

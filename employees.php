@@ -4,7 +4,9 @@
  * แก้ไข: เพิ่ม Dropdown กรองสาขา
  */
 require_once 'includes/auth_check.php';
-require_once 'includes/db_connect.php'; // (ต้องใช้ DB เพื่อดึงสาขา)
+require_once 'includes/db_connect.php';
+require_once 'includes/employee_access_helpers.php';
+employeeAccessRequirePage($mysqli); // (ต้องใช้ DB เพื่อดึงสาขา)
 require_once 'includes/hr_scope_helpers.php';
 
 $page_title = "จัดการข้อมูลพนักงาน";
@@ -64,7 +66,7 @@ try {
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle" id="employeeTable">
+            <table class="table table-striped table-hover align-middle" id="employeeTable" data-can-delete="<?php echo $_SESSION['role'] === 'admin' ? 'true' : 'false'; ?>">
                 <thead class="table-light">
                     <tr>
                         <th>เลขบัตรประชาชน</th>
