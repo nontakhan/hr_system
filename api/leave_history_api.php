@@ -63,24 +63,24 @@ try {
             $check->execute();
             $request = $check->get_result()->fetch_assoc();
             if (!$request) {
-                sendJsonError('ไม่สามารถยกเลิกได้ (อาจอนุมัติไปแล้ว หรือไม่ใช่ใบลาของคุณ)');
+                sendJsonError('ใบลาไม่ได้อยู่ในสถานะที่ถอนเองได้ หรือไม่ใช่ใบลาของคุณ กรุณาโหลดรายการใหม่หรือติดต่อ HR');
             }
 
             if ($request['status'] === 'approved') {
-                $update = $mysqli->prepare("UPDATE leave_requests SET status = 'pending_cancel_hr', cancellation_reason = ? WHERE id = ? AND status = 'approved'");
-                $update->bind_param('si', $cancel_reason, $id);
+                $update = $mysqli->prepare("UPDATE leave_requests SET status = 'pending_cancel_hr', cancellation_reason = ? WHERE id = ? AND employee_id = ? AND status = 'approved'");
+                $update->bind_param('sii', $cancel_reason, $id, $emp_id);
                 $successMessage = 'ส่งคำขอยกเลิกใบลาเรียบร้อยแล้ว รอ HR/Admin อนุมัติ';
             } else {
                 // อัปเดตสถานะเป็น cancelled
-                $update = $mysqli->prepare("UPDATE leave_requests SET status = 'cancelled', cancellation_reason = ? WHERE id = ?");
-                $update->bind_param('si', $cancel_reason, $id);
+                $update = $mysqli->prepare("UPDATE leave_requests SET status = 'cancelled', cancellation_reason = ? WHERE id = ? AND employee_id = ? AND status = ?");
+                $update->bind_param('siis', $cancel_reason, $id, $emp_id, $request['status']);
                 $successMessage = 'ยกเลิกใบลาเรียบร้อยแล้ว';
             }
             
-            if ($update->execute()) {
+            if ($update->execute() && $update->affected_rows === 1) {
                 echo json_encode(['status' => 'success', 'message' => $successMessage]);
             } else {
-                throw new Exception($update->error);
+                sendJsonError('สถานะใบลาเปลี่ยนแล้ว กรุณาโหลดรายการใหม่ก่อนทำรายการอีกครั้ง');
             }
         }
     }

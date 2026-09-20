@@ -36,7 +36,7 @@ async function main() {
         combined_escape_null: vm.runInContext('escapeHtml(null)', combined)}));
     // Complete two synthetic report requests in reverse order, without a browser.
     const report = context();
-    const elements = {attendanceMissingRows: {innerHTML: ''}, attendanceMissingMonth: {value: '2026-07'}};
+    const elements = {attendanceMissingSummary: {innerHTML: ''}, attendanceMissingAppliedFilters: {textContent: ''}, attendanceMissingRows: {innerHTML: ''}, attendanceMissingMonth: {value: '2026-07'}};
     report.document.getElementById = id => elements[id] || null;
     const pending = [];
     report.fetch = url => new Promise(resolve => pending.push({url, resolve}));
@@ -46,11 +46,13 @@ async function main() {
     const first = vm.runInContext('loadAttendanceMissingReport()', report);
     elements.attendanceMissingMonth.value = '2026-08';
     const second = vm.runInContext('loadAttendanceMissingReport()', report);
+    elements.attendanceMissingMonth.value = '2026-09';
     const response = marker => ({text: async () => JSON.stringify({status: 'success', data: [{marker}], summary: {}})});
     pending[1].resolve(response('newer'));
     await second;
     pending[0].resolve(response('older'));
     await first;
+    if (!elements.attendanceMissingAppliedFilters.textContent.includes('2026-08') || elements.attendanceMissingAppliedFilters.textContent.includes('2026-09')) throw new Error('Applied filter snapshot must match the rendered request, not edited controls');
     if (report.probeRendered !== 'newer') throw new Error('Stale report overwritten newer response');
     console.log(JSON.stringify({probe: 'out_of_order_report', requests: pending.length,
         final_render: report.probeRendered, stale_response_overwrites_newer: report.probeRendered === 'older'}));

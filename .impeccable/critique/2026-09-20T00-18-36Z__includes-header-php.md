@@ -8,6 +8,8 @@ slug: includes-header-php
 ---
 # ผลตรวจ UX/UI และเส้นทางใช้งาน NR Backoffice
 
+ผลแก้รอบครบตามรายงานและหลักฐานล่าสุด: [Complete UX fixes](../../docs/audits/2026-09-20/complete-ux-fixes.md)
+
 บันทึกนี้เป็นผลตรวจก่อนปรับปรุง ดูรายการที่แก้แล้วและหลักฐานล่าสุดใน [รายงานแก้ UX เร่งด่วน](../../docs/audits/2026-09-20/urgent-ux-fixes.md)
 
 วันที่ตรวจ 20 กันยายน 2026 · ขอบเขต: ระบบ HR ที่ C:/xampp/htdocs/hr_system โดยใช้ includes/header.php เป็นจุดอ้างอิงโครงสร้างเมนู และตรวจหน้าหลัก คำขอ ประวัติ การอนุมัติ รายงาน งาน HR และการตั้งค่า admin

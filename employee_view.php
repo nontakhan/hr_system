@@ -131,6 +131,8 @@ require_once 'includes/header.php';
         </button>
         <?php endif; ?>
 
+        <a href="request_proxy.php?employee_id=<?php echo (int)$emp['id']; ?>" class="btn btn-outline-primary">ทำรายการแทน</a>
+        <a href="employee_edit.php?id=<?php echo (int)$emp['id']; ?>#accountPermissions" class="btn btn-outline-secondary">บัญชีและสิทธิ์</a>
         <a href="employee_edit.php?id=<?php echo $emp['id']; ?>" class="btn btn-warning"><i class="fas fa-pencil-alt"></i> แก้ไขข้อมูล</a>
     </div>
 </div>

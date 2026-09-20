@@ -101,8 +101,10 @@ function proxyRequestRequireEmployee(mysqli $mysqli, int $employeeId): void {
 
 function proxyRequestFetchEmployees(mysqli $mysqli): array {
     $role = proxyRequestCurrentRole();
-    $sql = "SELECT e.id, e.citizen_id, e.first_name_th, e.last_name_th
+    $sql = "SELECT e.id, e.citizen_id, e.first_name_th, e.last_name_th, c.company_name_th, b.branch_name_th
             FROM employees e
+            LEFT JOIN companies c ON e.company_id = c.id
+            LEFT JOIN branches b ON e.branch_id = b.id
             WHERE e.status IN ('active', 'probation')";
     $types = '';
     $params = [];

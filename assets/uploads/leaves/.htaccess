@@ -1,0 +1,2 @@
+# Private HR documents are served through attachment.php after authorization.
+Require all denied

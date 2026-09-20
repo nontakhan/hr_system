@@ -290,18 +290,18 @@ async function loadDaySwapPendingApprovals() {
         order: [[2, 'asc']], unsortable: [4] });
 }
 
-function renderDaySwapPendingRow(item) { return `
+function renderDaySwapPendingRow(item) { rememberApprovalRequest('day_swap', item); return `
             <tr>
                 <td>${renderDaySwapEmployeeCell(item.requester_name, item.requester_code, item.requester_profile_img_url, renderDaySwapStatus(item.status))}</td>
                 <td>${renderDaySwapEmployeeCell(item.target_name, item.target_code, item.target_profile_img_url)}</td>
                 <td>${formatThaiDate(item.requester_date)} ↔ ${formatThaiDate(item.target_date)}</td>
-                <td><small class="text-muted">${escapeHtml(item.reason || '-')}</small>${item.cancellation_reason ? `<div class="small text-danger">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : ''}</td>
+                <td>${approvalRequestDetails('day_swap', item.id)}</td>
                 <td>
-                    <button class="btn btn-sm btn-success me-1" onclick="openDaySwapActionModal(${item.id}, 'approve', '${escapeAttr(item.requester_name || '')}', '${escapeAttr(item.status)}')">
+                    <button class="btn btn-sm btn-success me-1" onclick="openDaySwapActionModal(${item.id}, 'approve', '', '${escapeAttr(item.status)}')">
                         <i class="fas fa-check"></i> ${item.status === 'pending_cancel_hr' ? 'อนุมัติยกเลิก' : 'อนุมัติ'}
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="openDaySwapActionModal(${item.id}, 'reject', '${escapeAttr(item.requester_name || '')}', '${escapeAttr(item.status)}')">
-                        <i class="fas fa-times"></i> ${item.status === 'pending_cancel_hr' ? 'ไม่อนุมัติยกเลิก' : 'ไม่'}
+                    <button class="btn btn-sm btn-danger" onclick="openDaySwapActionModal(${item.id}, 'reject', '', '${escapeAttr(item.status)}')">
+                        <i class="fas fa-times"></i> ${item.status === 'pending_cancel_hr' ? 'ไม่อนุมัติยกเลิก' : 'ไม่อนุมัติ'}
                     </button>
                 </td>
             </tr>
@@ -388,17 +388,19 @@ window.openDaySwapActionModal = function(id, action, name, status = '') {
     document.getElementById('daySwapActionType').value = action;
     document.getElementById('daySwapActionTitle').textContent = isCancellation ? (isApprove ? 'ยืนยันอนุมัติยกเลิก' : 'ยืนยันไม่อนุมัติยกเลิก') : (isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ');
     document.getElementById('daySwapActionTitle').className = `modal-title ${isApprove ? 'text-success' : 'text-danger'}`;
-    document.getElementById('daySwapActionMessage').innerHTML = `ต้องการ${isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ'}คำขอสลับวันหยุดของ <strong>${escapeHtml(name)}</strong> ใช่หรือไม่?`;
+    document.getElementById('daySwapActionMessage').innerHTML = (isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ') + (isCancellation ? 'การยกเลิก' : '') + 'คำขอสลับวันหยุดนี้' + approvalRequestSummary('day_swap', id);
     document.getElementById('daySwapConfirmBtn').className = `btn ${isApprove ? 'btn-success' : 'btn-danger'}`;
-    document.getElementById('daySwapConfirmBtn').textContent = isApprove ? 'ยืนยันอนุมัติ' : 'ยืนยันไม่อนุมัติ';
+    document.getElementById('daySwapConfirmBtn').textContent = (isApprove ? 'ยืนยันอนุมัติ' : 'ยืนยันไม่อนุมัติ') + (isCancellation ? 'ยกเลิก' : '');
     document.getElementById('daySwapRejectReasonWrap').style.display = isApprove ? 'none' : 'block';
     document.getElementById('daySwapRejectReason').required = !isApprove;
-    document.getElementById('daySwapRejectReason').value = '';
+    prepareApprovalReason(document.getElementById('daySwapRejectReason'), 'day_swap:' + id);
     modal.show();
 };
 
 async function submitDaySwapApproval(event) {
     event.preventDefault();
+    const finish = beginApprovalSubmission(event.target);
+    if (!finish) return;
     const data = Object.fromEntries(new FormData(event.target).entries());
     data.action = data.action_type;
     try {
@@ -409,11 +411,15 @@ async function submitDaySwapApproval(event) {
         });
         const res = await response.json();
         if (res.status !== 'success') throw new Error(res.message || 'Save failed');
+        finish();
+        clearApprovalReason(event.target);
         Swal.fire('สำเร็จ', res.message, 'success');
         bootstrap.Modal.getInstance(document.getElementById('daySwapActionModal')).hide();
         loadDaySwapPendingApprovals();
     } catch (err) {
         Swal.fire('ผิดพลาด', err.message, 'error');
+    } finally {
+        finish();
     }
 }
 

@@ -24,14 +24,17 @@ function serverTableCells(html) {
 function loadServerTable(options) {
     const element = document.getElementById(options.tableId);
     if (!element || !window.jQuery || !jQuery.fn.DataTable) return Promise.resolve();
+    const base = String(typeof options.url === 'function' ? options.url() : options.url);
     const existing = serverTableStates.get(element);
     if (existing) {
+        const reset = options.resetPaging === true || existing.base !== base;
+        existing.base = base;
         existing.options = options;
         const ready = new Promise(resolve => existing.waiters.push(resolve));
-        existing.table.ajax.reload(null, true);
+        existing.table.ajax.reload(null, reset);
         return ready;
     }
-    const state = { options, waiters: [], sequence: 0, controller: null, table: null };
+    const state = { options, base, waiters: [], sequence: 0, controller: null, table: null };
     const ready = new Promise(resolve => state.waiters.push(resolve));
     serverTableStates.set(element, state);
     element.querySelector('tbody').innerHTML = '';
@@ -62,6 +65,12 @@ function loadServerTable(options) {
                 const result = await response.json();
                 if (sequence !== state.sequence) return;
                 if (result.status !== 'success') throw new Error(result.message || 'โหลดข้อมูลไม่สำเร็จ');
+                // An approval/deletion can remove the last row on the current page.
+                if (request.start > 0 && request.start >= Number(result.recordsFiltered)) {
+                    callback({ draw: request.draw, recordsTotal: result.recordsTotal, recordsFiltered: result.recordsFiltered, data: [] });
+                    state.table.page(result.recordsFiltered > 0 ? 'last' : 'first').draw('page');
+                    return;
+                }
                 state.options.onResult?.(result);
                 const rows = result.data.map(item => serverTableCells(state.options.renderRow(item)));
                 callback({ draw: request.draw, recordsTotal: result.recordsTotal, recordsFiltered: result.recordsFiltered, data: rows });
@@ -77,6 +86,13 @@ function loadServerTable(options) {
                     element.before(notice);
                 }
                 notice.textContent = error.message || 'โหลดข้อมูลไม่สำเร็จ';
+                notice.setAttribute('role', 'alert');
+                const retry = document.createElement('button');
+                retry.type = 'button';
+                retry.className = 'btn btn-outline-dark btn-sm ms-2';
+                retry.textContent = 'ลองใหม่';
+                retry.addEventListener('click', () => state.table.ajax.reload(null, false));
+                notice.appendChild(retry);
             } finally {
                 if (sequence === state.sequence) state.waiters.splice(0).forEach(resolve => resolve());
             }

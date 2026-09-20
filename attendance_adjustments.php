@@ -16,7 +16,7 @@ require_once 'includes/header.php';
             <h1 class="h3 mb-0 text-gray-800">ปรับแก้เวลาสแกน</h1>
             <p class="text-muted small mb-0">แก้ไขเวลาเข้าออกเมื่อเครื่องสแกนไม่บันทึก โดยไม่ทับข้อมูลสแกนจริง</p>
         </div>
-        <a href="attendance.php" class="btn btn-outline-secondary">
+        <a href="attendance.php?view=team" class="btn btn-outline-secondary">
             <i class="fas fa-calendar-days me-1"></i> ดูปฏิทินเวลา
         </a>
     </div>

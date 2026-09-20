@@ -95,22 +95,20 @@ async function loadTrainingRequestPendingApprovals() {
         order: [[2, 'asc']], unsortable: [4] });
 }
 
-function renderTrainingPendingRow(item) { return `
+function renderTrainingPendingRow(item) { rememberApprovalRequest('training', item); return `
             <tr>
                 <td>${renderTrainingRequestEmployeeCell(item, renderTrainingRequestStatus(item.status))}</td>
                 <td><div class="fw-semibold">${escapeHtml(item.course_name || '-')}</div><div class="small text-muted">${escapeHtml(item.activity_type_name || 'กิจกรรม')}</div>${item.cancellation_reason ? `<div class="small text-danger">เหตุผลขอยกเลิก: ${escapeHtml(item.cancellation_reason)}</div>` : ''}</td>
                 <td>${formatTrainingRequestDateRangeWithParts(item)}</td>
                 <td>
-                    <div>${escapeHtml(item.location || '-')}</div>
-                    <div class="small text-muted mt-1">${escapeHtml(item.objective || '-')}</div>
-                    ${renderTrainingRequestAttachment(item)}
+                    ${approvalRequestDetails('training', item.id)}
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-success me-1" onclick="openTrainingRequestActionModal(${item.id}, 'approve', '${escapeAttr(item.employee_name || '')}', '${escapeAttr(item.status)}')">
+                    <button class="btn btn-sm btn-success me-1" onclick="openTrainingRequestActionModal(${item.id}, 'approve', '', '${escapeAttr(item.status)}')">
                         <i class="fas fa-check"></i> ${item.status === 'pending_cancel_hr' ? 'อนุมัติยกเลิก' : 'อนุมัติ'}
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="openTrainingRequestActionModal(${item.id}, 'reject', '${escapeAttr(item.employee_name || '')}', '${escapeAttr(item.status)}')">
-                        <i class="fas fa-times"></i> ${item.status === 'pending_cancel_hr' ? 'ไม่อนุมัติยกเลิก' : 'ไม่'}
+                    <button class="btn btn-sm btn-danger" onclick="openTrainingRequestActionModal(${item.id}, 'reject', '', '${escapeAttr(item.status)}')">
+                        <i class="fas fa-times"></i> ${item.status === 'pending_cancel_hr' ? 'ไม่อนุมัติยกเลิก' : 'ไม่อนุมัติ'}
                     </button>
                 </td>
             </tr>
@@ -197,17 +195,19 @@ window.openTrainingRequestActionModal = function(id, action, name, status = '') 
     document.getElementById('trainingRequestActionType').value = action;
     document.getElementById('trainingRequestActionTitle').textContent = isCancellation ? (isApprove ? 'ยืนยันอนุมัติยกเลิก' : 'ยืนยันไม่อนุมัติยกเลิก') : (isApprove ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ');
     document.getElementById('trainingRequestActionTitle').className = `modal-title ${isApprove ? 'text-success' : 'text-danger'}`;
-    document.getElementById('trainingRequestActionMessage').innerHTML = `ต้องการ${isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ'}คำขอกิจกรรมของ <strong>${escapeHtml(name)}</strong> ใช่หรือไม่?`;
+    document.getElementById('trainingRequestActionMessage').innerHTML = (isApprove ? 'อนุมัติ' : 'ไม่อนุมัติ') + (isCancellation ? 'การยกเลิก' : '') + 'คำขอกิจกรรมนี้' + approvalRequestSummary('training', id);
     document.getElementById('trainingRequestConfirmBtn').className = `btn ${isApprove ? 'btn-success' : 'btn-danger'}`;
-    document.getElementById('trainingRequestConfirmBtn').textContent = isApprove ? 'ยืนยันอนุมัติ' : 'ยืนยันไม่อนุมัติ';
+    document.getElementById('trainingRequestConfirmBtn').textContent = (isApprove ? 'ยืนยันอนุมัติ' : 'ยืนยันไม่อนุมัติ') + (isCancellation ? 'ยกเลิก' : '');
     document.getElementById('trainingRequestRejectReasonWrap').style.display = isApprove ? 'none' : 'block';
     document.getElementById('trainingRequestRejectReason').required = !isApprove;
-    document.getElementById('trainingRequestRejectReason').value = '';
+    prepareApprovalReason(document.getElementById('trainingRequestRejectReason'), 'training:' + id);
     modal.show();
 };
 
 async function submitTrainingRequestApproval(event) {
     event.preventDefault();
+    const finish = beginApprovalSubmission(event.target);
+    if (!finish) return;
     const data = Object.fromEntries(new FormData(event.target).entries());
     data.action = data.action_type;
 
@@ -219,11 +219,15 @@ async function submitTrainingRequestApproval(event) {
         });
         const res = await response.json();
         if (res.status !== 'success') throw new Error(res.message || 'Save failed');
+        finish();
+        clearApprovalReason(event.target);
         Swal.fire('สำเร็จ', res.message, 'success');
         bootstrap.Modal.getInstance(document.getElementById('trainingRequestActionModal')).hide();
         loadTrainingRequestPendingApprovals();
     } catch (err) {
         Swal.fire('ผิดพลาด', err.message, 'error');
+    } finally {
+        finish();
     }
 }
 
@@ -375,5 +379,5 @@ function syncTrainingEndDayPart() {
 
 function renderTrainingRequestAttachment(item) {
     if (!item.attachment_path) return '';
-    return `<div class="mt-1"><a href="${escapeAttr(item.attachment_path)}" target="_blank" class="small"><i class="fas fa-paperclip"></i> เปิดไฟล์แนบ</a></div>`;
+    return `<div class="mt-1"><a href="${escapeAttr(attachmentUrl('training_request', item.id))}" target="_blank" rel="noopener" class="small"><i class="fas fa-paperclip"></i> เปิดไฟล์แนบ</a></div>`;
 }

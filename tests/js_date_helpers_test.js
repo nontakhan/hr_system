@@ -70,7 +70,7 @@ global.document = {
         };
     },
 };
-global.window = { scrollX: 0, scrollY: 0 };
+global.window = { scrollX: 0, scrollY: 0, innerWidth: 320 };
 
 const interactiveThaiDateInput = {
     dataset: { thaiDatePicker: 'true' },
@@ -81,6 +81,7 @@ const interactiveThaiDateInput = {
     dispatchEvent() {},
 };
 showThaiDatePicker(interactiveThaiDateInput);
+assertSame(true, parseFloat(fakePopover.style.left) + parseFloat(fakePopover.style.minWidth) <= 312, 'Date picker must fit the mobile viewport');
 assertSame(true, fakePopover.innerHTML.includes('มกราคม 2569') || fakePopover.innerHTML.includes('à¸¡à¸à¸£à¸²à¸„à¸¡ 2569'), 'Thai date picker should open on the current Buddhist Era month.');
 let stoppedPropagation = false;
 fakePopover.handlers.click({

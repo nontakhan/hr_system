@@ -50,14 +50,15 @@ require_once 'includes/header.php';
                     <select id="employeeRequestAttendanceReportType" class="form-select" disabled><option value="">ทั้งหมด</option></select>
                 </div>
                 <div class="col-md-6">
-                    <label for="employeeRequestAttendanceReportSource" class="form-label">แหล่งข้อมูล</label>
+                    <label for="employeeRequestAttendanceReportSource" class="form-label">กรองแหล่งข้อมูลในผลที่โหลด</label>
                     <select id="employeeRequestAttendanceReportSource" class="form-select" disabled>
                         <option value="">ทั้งหมด</option><option value="approved_request">คำขออนุมัติ</option><option value="scanner">เครื่องสแกน</option>
                     </select>
                 </div>
             </div>
             <div id="employeeRequestAttendanceReportStatus" class="small text-muted mb-3" role="status">เลือกพนักงานและเดือน แล้วกดแสดงรายงาน</div>
-            <div class="table-responsive">
+            <p id="employeeRequestAttendanceReportAppliedFilters" class="small text-muted" role="status">ยังไม่ได้แสดงรายงาน</p>
+                <div class="table-responsive">
                 <table id="employeeRequestAttendanceReportTable" class="table table-sm table-hover align-middle w-100">
                     <thead><tr><th>วันที่</th><th>ประเภท</th><th>แหล่งข้อมูล</th><th>ช่วงเวลา</th><th>จำนวน</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
                     <tbody id="employeeRequestAttendanceReportRows"><tr><td colspan="7" class="text-center text-muted py-4">ยังไม่ได้โหลดรายงาน</td></tr></tbody>

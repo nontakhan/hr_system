@@ -41,6 +41,12 @@ async function loadEmployeeRequestAttendanceReport() {
         setEmployeeRequestAttendanceStatus('กรุณาเลือกพนักงานและเดือน', 'danger');
         return;
     }
+    const filterSnapshot = captureReportFilters(['employeeRequestAttendanceReportEmployee', 'employeeRequestAttendanceReportMonth']);
+    const request = beginLatestRequest('employee-request-attendance', employeeId + ':' + month, document.getElementById('employeeRequestAttendanceReportLoad'));
+    if (!request) return;
+    employeeRequestAttendanceReportRows = [];
+    renderEmployeeRequestAttendanceSummary({});
+    showAppliedReportFilters('employeeRequestAttendanceReportAppliedFilters', '', 'loading');
     setEmployeeRequestAttendanceStatus('กำลังโหลดรายงาน...', 'muted');
     setEmployeeRequestAttendanceLoading();
     const params = new URLSearchParams();
@@ -48,23 +54,27 @@ async function loadEmployeeRequestAttendanceReport() {
     params.set('employee_id', employeeId);
     params.set('month', month);
     try {
-        const payload = await fetchEmployeeRequestAttendanceJson(`api/attendance_api.php?${params}`);
+        const payload = await fetchEmployeeRequestAttendanceJson(`api/attendance_api.php?${params}`, {signal:request.signal});
+        if (!request.isCurrent()) return;
         if (payload.status !== 'success') throw new Error(payload.message || 'โหลดรายงานไม่สำเร็จ');
+        showAppliedReportFilters('employeeRequestAttendanceReportAppliedFilters', filterSnapshot);
         employeeRequestAttendanceReportRows = Array.isArray(payload.data) ? payload.data : [];
         renderEmployeeRequestAttendanceSummary(payload.summary || {});
         populateEmployeeRequestAttendanceTypes(employeeRequestAttendanceReportRows);
         renderEmployeeRequestAttendanceReportRows();
         setEmployeeRequestAttendanceStatus(employeeRequestAttendanceReportRows.length ? `พบ ${employeeRequestAttendanceReportRows.length} เหตุการณ์` : 'ไม่พบข้อมูลในเดือนที่เลือก', 'muted');
     } catch (error) {
+        if (!request.isCurrent()) return;
+        showAppliedReportFilters('employeeRequestAttendanceReportAppliedFilters', '', 'error');
         employeeRequestAttendanceReportRows = [];
         renderEmployeeRequestAttendanceSummary({});
         renderEmployeeRequestAttendanceState(error.message, 'danger');
         setEmployeeRequestAttendanceStatus(error.message, 'danger');
-    }
+    } finally { request.finish(); }
 }
 
-async function fetchEmployeeRequestAttendanceJson(url) {
-    const response = await fetch(url);
+async function fetchEmployeeRequestAttendanceJson(url, options) {
+    const response = await fetch(url, options);
     const text = await response.text();
     if (!text.trim()) throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับ');
     try {

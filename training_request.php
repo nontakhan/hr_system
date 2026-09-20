@@ -29,24 +29,24 @@ require_once 'includes/header.php';
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">ชื่อกิจกรรม/รายละเอียด <span class="text-danger">*</span></label>
-                    <input type="text" name="course_name" class="form-control" maxlength="255" required>
+                    <label class="form-label fw-semibold" for="training_requestField1">ชื่อกิจกรรม/รายละเอียด <span class="text-danger">*</span></label>
+                    <input id="training_requestField1" type="text" name="course_name" class="form-control" maxlength="255" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">สถานที่/รูปแบบ</label>
-                    <input type="text" name="location" class="form-control" maxlength="255" placeholder="สถานที่ หรือ Online">
+                    <label class="form-label" for="training_requestField2">สถานที่/รูปแบบ</label>
+                    <input id="training_requestField2" type="text" name="location" class="form-control" maxlength="255" placeholder="สถานที่ หรือ Online">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">วันที่เริ่ม <span class="text-danger">*</span></label>
-                    <input type="date" name="start_date" class="form-control" required>
+                    <label class="form-label fw-semibold" for="training_requestField3">วันที่เริ่ม <span class="text-danger">*</span></label>
+                    <input id="training_requestField3" type="date" name="start_date" class="form-control" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">วันที่สิ้นสุด <span class="text-danger">*</span></label>
-                    <input type="date" name="end_date" class="form-control" required>
+                    <label class="form-label fw-semibold" for="training_requestField4">วันที่สิ้นสุด <span class="text-danger">*</span></label>
+                    <input id="training_requestField4" type="date" name="end_date" class="form-control" required>
                 </div>
                 <div class="col-12 training-day-part-field">
-                    <label class="form-label">ช่วงวันเริ่ม</label>
-                    <select name="start_day_part" class="form-select">
+                    <label class="form-label" for="training_requestField5">ช่วงวันเริ่ม</label>
+                    <select id="training_requestField5" name="start_day_part" class="form-select">
                         <option value="">เลือกช่วงวัน</option>
                         <option value="full">เต็มวัน</option>
                         <option value="morning">ครึ่งวันเช้า</option>
@@ -55,12 +55,12 @@ require_once 'includes/header.php';
                 </div>
                 <input type="hidden" name="end_day_part" value="">
                 <div class="col-12">
-                    <label class="form-label fw-semibold">เหตุผล/วัตถุประสงค์ <span class="text-danger">*</span></label>
-                    <textarea name="objective" class="form-control" rows="3" required></textarea>
+                    <label class="form-label fw-semibold" for="training_requestField6">เหตุผล/วัตถุประสงค์ <span class="text-danger">*</span></label>
+                    <textarea id="training_requestField6" name="objective" class="form-control" rows="3" required></textarea>
                 </div>
                 <div class="col-12">
-                    <label class="form-label">เอกสารแนบ</label>
-                    <input type="file" name="attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                    <label class="form-label" for="training_requestField7">เอกสารแนบ</label>
+                    <input id="training_requestField7" type="file" name="attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
                     <div class="form-text">รองรับ PDF, JPG, PNG, WEBP ขนาดไม่เกิน 5MB</div>
                 </div>
             </div>

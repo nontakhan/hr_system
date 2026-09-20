@@ -210,9 +210,13 @@ function positionThaiDatePicker() {
     if (!thaiDatePickerPopover || !thaiDatePickerInput || thaiDatePickerPopover.hidden) return;
 
     const rect = thaiDatePickerInput.getBoundingClientRect();
-    thaiDatePickerPopover.style.left = `${window.scrollX + rect.left}px`;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const width = Math.min(Math.max(rect.width, 280), viewportWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, viewportWidth - width - 8));
+    thaiDatePickerPopover.style.left = `${window.scrollX + left}px`;
     thaiDatePickerPopover.style.top = `${window.scrollY + rect.bottom + 6}px`;
-    thaiDatePickerPopover.style.minWidth = `${Math.max(rect.width, 280)}px`;
+    thaiDatePickerPopover.style.width = `${width}px`;
+    thaiDatePickerPopover.style.minWidth = `${width}px`;
 }
 
 function renderThaiDatePicker() {
@@ -230,9 +234,9 @@ function renderThaiDatePicker() {
 
     let html = `
         <div class="thai-datepicker-header">
-            <button type="button" class="thai-datepicker-nav" data-thai-datepicker-action="prev" aria-label="Previous month">&lsaquo;</button>
+            <button type="button" class="thai-datepicker-nav" data-thai-datepicker-action="prev" aria-label="เดือนก่อนหน้า">&lsaquo;</button>
             <div class="thai-datepicker-title">${escapeHtml(thaiDatePickerMonthLabel(firstDate))}</div>
-            <button type="button" class="thai-datepicker-nav" data-thai-datepicker-action="next" aria-label="Next month">&rsaquo;</button>
+            <button type="button" class="thai-datepicker-nav" data-thai-datepicker-action="next" aria-label="เดือนถัดไป">&rsaquo;</button>
         </div>
         <div class="thai-datepicker-weekdays">
             ${weekdays.map(label => `<span>${escapeHtml(label)}</span>`).join('')}
@@ -250,7 +254,7 @@ function renderThaiDatePicker() {
             key === todayKey ? 'is-today' : '',
         ].filter(Boolean).join(' ');
 
-        html += `<button type="button" class="${classes}" data-thai-datepicker-date="${key}">${date.getDate()}</button>`;
+        html += `<button type="button" class="${classes}" data-thai-datepicker-date="${key}" aria-label="${date.getDate()} ${escapeHtml(thaiDatePickerMonthLabel(date))}" aria-pressed="${key === selectedKey}">${date.getDate()}</button>`;
     }
 
     html += `
@@ -371,4 +375,32 @@ function beginLatestRequest(channel, key, button = null) {
             if (button) button.disabled = state.wasDisabled;
         },
     };
+}
+
+function captureReportFilters(ids) {
+    return ids.map(id => {
+        const control = document.getElementById(id);
+        if (!control) return '';
+        const label = control.labels?.[0]?.textContent?.trim() || '';
+        let value = control.selectedOptions ? control.selectedOptions[0]?.textContent : control.value;
+        if (control.type === 'month' && /^\d{4}-\d{2}$/.test(value || '')) value = value.slice(5) + '/' + (Number(value.slice(0,4)) + 543);
+        return (label ? label + ': ' : '') + (value || 'ทั้งหมด');
+    }).filter(Boolean).join(' · ');
+}
+function showAppliedReportFilters(id, snapshot, state = 'ready') {
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.textContent = state === 'loading' ? 'กำลังโหลดผลตามตัวกรองที่เลือก...' : state === 'error' ? 'ยังไม่มีผลรายงานจากการโหลดครั้งนี้ กรุณากดแสดงรายงานเพื่อลองใหม่' : 'ผลล่าสุดใช้ตัวกรอง: ' + snapshot;
+}
+function captureClientTableState(table) {
+    return table ? {page:table.page(),length:table.page.len(),search:table.search(),order:table.order()} : null;
+}
+function restoreClientTableState(table, state) {
+    if (!table || !state) return;
+    table.page.len(state.length).search(state.search).order(state.order).draw();
+    table.page(Math.min(state.page, Math.max(0,table.page.info().pages - 1))).draw('page');
+}
+
+function attachmentUrl(type, id, fileId = 0) {
+    return ['leave','training_request','training_record'].includes(type) && Number.isInteger(Number(id)) && Number(id) > 0 ? 'attachment.php?type=' + type + '&id=' + Number(id) + (type === 'leave' && Number(fileId) > 0 ? '&file=' + Number(fileId) : '') : '';
 }

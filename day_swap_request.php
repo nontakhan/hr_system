@@ -36,7 +36,7 @@ require_once 'includes/header.php';
                                     <span class="badge bg-secondary" id="requesterSelectedLabel">ยังไม่เลือก</span>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">เดือนของวันหยุดเรา</label>
+                                    <label class="form-label" for="requesterMonth">เดือนของวันหยุดเรา</label>
                                     <input type="month" class="form-control" id="requesterMonth" value="<?php echo date('Y-m'); ?>">
                                 </div>
                                 <div id="requesterHolidayCalendar" class="day-swap-calendar"></div>
@@ -53,13 +53,13 @@ require_once 'includes/header.php';
                                 </div>
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-7">
-                                        <label class="form-label">พนักงานที่ต้องการสลับ</label>
+                                        <label class="form-label" for="targetEmployee">พนักงานที่ต้องการสลับ</label>
                                         <select class="form-select day-swap-select2" id="targetEmployee" name="target_employee_id" required>
                                             <option value="">เลือกพนักงาน</option>
                                         </select>
                                     </div>
                                     <div class="col-md-5">
-                                        <label class="form-label">เดือนของวันหยุดเพื่อน</label>
+                                        <label class="form-label" for="targetMonth">เดือนของวันหยุดเพื่อน</label>
                                         <input type="month" class="form-control" id="targetMonth" value="<?php echo date('Y-m'); ?>">
                                     </div>
                                 </div>
@@ -73,7 +73,7 @@ require_once 'includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">เหตุผล</label>
+                        <label class="form-label" for="daySwapReason">เหตุผล</label>
                         <textarea class="form-control" id="daySwapReason" name="reason" rows="3" required></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">

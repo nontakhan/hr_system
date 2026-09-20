@@ -16,7 +16,7 @@ require_once 'includes/header.php';
             <h1 class="h3 mb-0 text-gray-800">รายงานไม่สแกนเข้า/ออก</h1>
             <p class="text-muted small mb-0">ตรวจสอบพนักงานที่ไม่มีสแกนเข้า/ออก หรือสแกนไม่ครบ ตามสิทธิ์บริษัทและสาขาของผู้ใช้งาน</p>
         </div>
-        <a href="attendance.php" class="btn btn-outline-secondary">
+        <a href="attendance.php?view=team" class="btn btn-outline-secondary">
             <i class="fas fa-calendar-days me-1"></i> ดูปฏิทินรายคน
         </a>
     </div>
@@ -25,19 +25,19 @@ require_once 'includes/header.php';
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label">เดือน</label>
+                    <label class="form-label" for="attendanceMissingMonth">เดือน</label>
                     <input type="month" id="attendanceMissingMonth" class="form-control" data-native-date-picker="true">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">บริษัท</label>
+                    <label class="form-label" for="attendanceMissingCompany">บริษัท</label>
                     <select id="attendanceMissingCompany" class="form-select attendance-select2" data-placeholder="บริษัททั้งหมด"></select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">สาขา</label>
+                    <label class="form-label" for="attendanceMissingBranch">สาขา</label>
                     <select id="attendanceMissingBranch" class="form-select attendance-select2" data-placeholder="สาขาทั้งหมด"></select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">ประเภท</label>
+                    <label class="form-label" for="attendanceMissingType">ประเภท</label>
                     <select id="attendanceMissingType" class="form-select attendance-select2">
                         <option value="all">ทั้งหมด</option>
                         <option value="absent">ไม่มีสแกนเข้า/ออก</option>
@@ -64,7 +64,8 @@ require_once 'includes/header.php';
                     <i class="fas fa-triangle-exclamation me-1"></i> เพิ่มใบเตือน
                 </button>
             </div>
-            <div class="table-responsive">
+            <p id="attendanceMissingAppliedFilters" class="small text-muted" role="status">ยังไม่ได้แสดงรายงาน</p>
+                <div class="table-responsive">
                 <table id="attendanceMissingTable" class="table table-sm table-hover align-middle w-100">
                     <thead>
                         <tr>

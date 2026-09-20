@@ -79,20 +79,20 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<div class="modal fade" id="trainingRequestActionModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="trainingRequestActionModal" tabindex="-1" aria-labelledby="trainingRequestActionTitle">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <form id="trainingRequestApprovalForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="trainingRequestActionTitle">ดำเนินการ</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" aria-label="ปิด" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="request_id" id="trainingRequestId">
                     <input type="hidden" name="action_type" id="trainingRequestActionType">
-                    <p id="trainingRequestActionMessage"></p>
+                    <div id="trainingRequestActionMessage"></div>
                     <div class="mb-3" id="trainingRequestRejectReasonWrap" style="display: none;">
-                        <label class="form-label">เหตุผลที่ไม่อนุมัติ <span class="text-danger">*</span></label>
+                        <label class="form-label" for="trainingRequestRejectReason">เหตุผลที่ไม่อนุมัติ <span class="text-danger">*</span></label>
                         <textarea name="reason" id="trainingRequestRejectReason" class="form-control" rows="3"></textarea>
                     </div>
                 </div>

@@ -26,7 +26,7 @@ const header = fs.readFileSync('includes/header.php', 'utf8');
 assertInOrder(header, [
     'sidebar-section-label">ภาพรวม',
     'sidebar-section-label">ของฉัน',
-    'sidebar-section-label">ศูนย์คำขอ',
+    'sidebar-section-label">คำขอของฉัน',
     'sidebar-section-label">อนุมัติคำขอ',
     'sidebar-section-label">รายงาน',
     'sidebar-section-label">บริหารบุคลากร',
@@ -42,7 +42,7 @@ assertIncludes(header, 'href="late_early_history.php"', 'Request center should l
 assertIncludes(header, 'href="overtime_history.php"', 'Request center should link to the overtime workflow landing page.');
 assertIncludes(header, 'href="day_swap_history.php"', 'Request center should link to the day-swap workflow landing page.');
 assertIncludes(header, 'href="training_history.php"', 'Request center should link to the training workflow landing page.');
-assertIncludes(header, 'href="request_proxy.php"', 'Request center should include proxy requests for HR/admin.');
+assertIncludes(header, 'href="request_proxy.php"', 'HR daily work should include proxy requests.');
 
 assertIncludes(header, 'href="leave_approvals.php"', 'Approval center should link to leave approvals.');
 assertIncludes(header, 'href="late_early_approvals.php"', 'Approval center should link to late/early approvals.');

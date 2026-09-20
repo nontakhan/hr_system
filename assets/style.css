@@ -1187,7 +1187,7 @@ body {
 /* --- SweetAlert Custom Colors --- */
 .swal2-confirm {
     background-color: var(--secondary-color) !important;
-    color: #111827 !important;
+    color: #ffffff !important;
 }
 
 .swal2-cancel {
@@ -2019,3 +2019,29 @@ button.attendance-import-summary-card:focus-visible {
     border-radius: 6px;
     font-weight: 600;
 }
+
+/* Operational controls: visible focus, readable details and mobile navigation. */
+:where(a, button, input, select, textarea, summary):focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+#sidebarToggle, .sidebar-close { min-width: 44px; min-height: 44px; }
+.sidebar-close { position: absolute; right: 4px; top: 12px; z-index: 3; }
+#sidebarBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1035; }
+#sidebarBackdrop[hidden] { display: none; }
+.request-review-summary { font-size: .95rem; overflow-wrap: anywhere; }
+.request-review-summary dt { color: #4b5563; font-weight: 500; }
+.request-review-summary dd { margin-bottom: .5rem; white-space: pre-wrap; }
+.request-details { min-width: 180px; max-width: 34rem; overflow-wrap: anywhere; }
+.request-details summary { cursor: pointer; color: #991b1b; padding: .5rem 0; }
+.request-details p { white-space: pre-wrap; }
+@media (max-width: 991.98px) { body.sb-sidenav-toggled { overflow: hidden; } }
+@media (max-width: 575.98px) { .table-responsive .btn { min-height: 40px; margin-bottom: .25rem; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+@media (max-width: 991.98px) { body.sb-sidenav-toggled #sidebar-wrapper { z-index: 1055; } body.sb-sidenav-toggled #sidebarBackdrop { z-index: 1054; } }
+
+.swal2-html-container:has(.request-review-summary) { max-height: 55vh; overflow-y: auto; }
+
+.modal-dialog-scrollable .modal-content > form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; max-height: 100%; }
+
+#accountPermissions { scroll-margin-top: 90px; }
+
+.table-responsive button.btn { white-space: nowrap; }

@@ -4,14 +4,15 @@ require_once 'includes/auth_check.php';
 $page_title = "การมาทำงาน";
 $use_select2 = true;
 $use_fullcalendar = true;
-$can_manage_attendance = in_array($_SESSION['role'], ['admin', 'hr'], true);
+$can_manage_attendance = in_array($_SESSION['role'], ['admin', 'hr'], true) && (($_GET['view'] ?? '') === 'team');
+$page_title = $can_manage_attendance ? 'ตรวจเวลาพนักงาน' : 'เวลาทำงานของฉัน';
 require_once 'includes/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800">การมาทำงาน</h1>
-        <p class="text-muted small">ตรวจสอบสถานะรายวันตามกะการทำงานของพนักงาน</p>
+        <h1 class="h3 mb-0 text-gray-800"><?php echo htmlspecialchars($page_title); ?></h1>
+        <p class="text-muted small"><?php echo $can_manage_attendance ? 'เลือกพนักงานในขอบเขตที่คุณดูแล แล้วกดแสดงข้อมูล' : 'ตรวจสอบเวลาทำงานและสถานะรายวันของคุณ'; ?></p>
     </div>
     <?php if ($can_manage_attendance) : ?>
     <a href="attendance_import.php" class="btn btn-primary">
@@ -20,25 +21,28 @@ require_once 'includes/header.php';
     <?php endif; ?>
 </div>
 
+<?php if (!$can_manage_attendance && empty($_SESSION['employee_id'])): ?>
+<div class="alert alert-info">บัญชีนี้ยังไม่ได้เชื่อมกับข้อมูลพนักงาน จึงไม่มีเวลาทำงานส่วนตัว<?php if (in_array($_SESSION['role'], ['hr','admin'], true)): ?> <a href="attendance.php?view=team" class="alert-link">ตรวจเวลาพนักงาน</a><?php endif; ?></div>
+<?php require_once 'includes/footer.php'; exit; endif; ?>
 <div class="card shadow-sm border-0 mb-4" id="attendanceFilters" data-can-manage="<?php echo $can_manage_attendance ? '1' : '0'; ?>">
     <div class="card-body">
         <div class="row g-3 align-items-end">
             <?php if ($can_manage_attendance) : ?>
             <div class="col-md-3">
-                <label class="form-label">พนักงาน</label>
+                <label class="form-label" for="attendanceEmployee">พนักงาน</label>
                 <select id="attendanceEmployee" class="form-select attendance-select2" data-placeholder="เลือกพนักงาน">
                     <option value="">เลือกพนักงาน</option>
                 </select>
             </div>
             <?php endif; ?>
             <div class="col-md-3">
-                <label class="form-label">เดือนเริ่มต้น</label>
+                <label class="form-label" for="attendanceMonthStart">เดือนเริ่มต้น</label>
                 <select id="attendanceMonthStart" class="form-select attendance-select2" data-placeholder="เลือกเดือนเริ่มต้น">
                     <option value="">เลือกเดือน</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label">ถึงเดือน <span class="text-muted small">(สูงสุด 12 เดือน)</span></label>
+                <label class="form-label" for="attendanceMonthEnd">ถึงเดือน <span class="text-muted small">(สูงสุด 12 เดือน)</span></label>
                 <select id="attendanceMonthEnd" class="form-select attendance-select2" data-placeholder="เลือกเดือนสิ้นสุด">
                     <option value="">เดือนเดียว</option>
                 </select>
@@ -55,7 +59,7 @@ require_once 'includes/header.php';
 <div class="card shadow-sm border-0">
     <div class="card-body">
         <div id="attendanceSummary" class="mb-3 text-muted">เลือกเดือนเพื่อดูข้อมูลการมาทำงาน</div>
-        <div class="attendance-calendar-legend mb-3" aria-label="Attendance status colors">
+        <div class="attendance-calendar-legend mb-3" aria-label="สีแสดงสถานะการมาทำงาน">
             <span><i class="attendance-legend-dot status-present"></i> ปกติ</span>
             <span><i class="attendance-legend-dot status-late"></i> สาย</span>
             <span><i class="attendance-legend-dot status-absent"></i> ขาด</span>

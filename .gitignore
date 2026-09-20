@@ -9,3 +9,5 @@ assets/uploads/leaves/*
 /.playwright-cli/
 
 /output/playwright/
+
+!assets/uploads/leaves/.htaccess

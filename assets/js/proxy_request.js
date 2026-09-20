@@ -6,6 +6,8 @@
     const panels = Array.from(document.querySelectorAll('[data-proxy-panel]'));
     const allowedActions = new Set(['create_leave', 'create_late_early', 'create_overtime', 'create_day_swap', 'create_training']);
     let employees = [];
+    const submittingForms = new WeakSet();
+    let initialEmployeeApplied = false;
     let proxyLeaveTypes = [];
     const optionState = { employees: 'idle', leave: 'idle', activity: 'idle' };
 
@@ -37,9 +39,9 @@
     }
 
     function employeeOption(row) {
-        const code = row.citizen_id ? `${row.citizen_id} - ` : '';
+        const code = `#${Number(row.id)} - `;
         const name = `${row.first_name_th || ''} ${row.last_name_th || ''}`.trim();
-        return `<option value="${escapeHtml(row.id)}">${escapeHtml(code + name)}</option>`;
+        return `<option value="${escapeHtml(row.id)}">${escapeHtml(code + name + (row.company_name_th ? ' · ' + row.company_name_th + ' / ' + (row.branch_name_th || '-') : ''))}</option>`;
     }
 
     function initSelect2(select, placeholder) {
@@ -83,7 +85,13 @@
             if (employeeSelect) { employeeSelect.innerHTML = options; employeeSelect.value = employees.some(row => String(row.id) === selected) ? selected : ''; employeeSelect.disabled = !employees.length; }
             if (targetEmployeeSelect) { targetEmployeeSelect.innerHTML = options; targetEmployeeSelect.value = employees.some(row => String(row.id) === targetSelected) ? targetSelected : ''; targetEmployeeSelect.disabled = !employees.length; }
             optionState.employees = employees.length ? 'ready' : 'empty';
+            if (!initialEmployeeApplied && window.location?.href) {
+                const requestedId = new URL(window.location.href).searchParams.get('employee_id');
+                if (requestedId && employees.some(row => String(row.id) === requestedId)) employeeSelect.value = requestedId;
+                initialEmployeeApplied = true;
+            }
             initEmployeeSelect2();
+            updateActingContext();
             showOptionMessage('proxyEmployeeLoadStatus', employees.length ? '' : 'ไม่พบพนักงานในขอบเขตที่คุณดูแล กรุณาติดต่อผู้ดูแลระบบ', employees.length ? null : loadEmployees);
         } catch (error) {
             optionState.employees = 'error';
@@ -303,9 +311,29 @@
         form.querySelector('[name="request_end_time"]')?.addEventListener('input', renderProxyHourlyLeaveDuration);
     }
 
+    function updateActingContext() {
+        const target = document.getElementById('proxyActingContext');
+        if (!target) return;
+        const employee = employees.find(row => String(row.id) === selectedEmployeeId());
+        target.textContent = employee ? 'กำลังทำรายการให้: ' + [employee.first_name_th, employee.last_name_th].filter(Boolean).join(' ') + ' · ' + (employee.company_name_th || '-') + ' / ' + (employee.branch_name_th || '-') : 'เลือกพนักงานที่ต้องการทำรายการให้';
+    }
+
+    function proxyReviewSummary(form, employee) {
+        const rows = [['พนักงาน', [employee.first_name_th, employee.last_name_th].filter(Boolean).join(' ') + ' (#' + Number(employee.id) + ')'], ['หน่วยงาน', (employee.company_name_th || '-') + ' / ' + (employee.branch_name_th || '-')]];
+        for (const control of form.querySelectorAll('input,select,textarea')) {
+            if (!control.name || control.disabled || control.closest('.d-none') || control.type === 'hidden' || (['radio','checkbox'].includes(control.type) && !control.checked)) continue;
+            const label = control.labels?.[0]?.textContent?.trim();
+            if (!label) continue;
+            const value = control.type === 'file' ? [...control.files].map(file => file.name).join(', ') : control.selectedOptions ? control.selectedOptions[0]?.textContent : control.dataset.originalType === 'date' ? formatThaiDate(control.value) : control.value;
+            rows.push([label, value || '-']);
+        }
+        return '<dl class="request-review-summary text-start">' + rows.map(([label,value]) => '<dt>' + escapeHtml(label) + '</dt><dd>' + escapeHtml(value) + '</dd>').join('') + '</dl><p class="text-danger">รายการนี้จะมีสถานะอนุมัติทันที และเก็บประวัติว่าคุณเป็นผู้ทำรายการแทน</p>';
+    }
+
     async function submitProxyForm(event) {
         event.preventDefault();
         const form = event.currentTarget;
+        if (submittingForms.has(form)) return;
         const action = form.dataset.action;
         if (!allowedActions.has(action)) {
             Swal.fire('ไม่สำเร็จ', 'Invalid Action', 'error');
@@ -321,12 +349,26 @@
         }
 
         const submitBtn = form.querySelector('button[type="submit"]');
+        const submitLabel = submitBtn.textContent;
+        submittingForms.add(form);
         submitBtn.disabled = true;
         const data = new FormData(form);
         data.set('employee_id', selectedEmployeeId());
         data.set('action', action);
 
         try {
+            const employee = employees.find(row => String(row.id) === String(data.get('employee_id')));
+            if (!employee) return;
+            const confirmation = await Swal.fire({
+                title: 'ยืนยันบันทึกและอนุมัติแทนพนักงาน',
+                html: proxyReviewSummary(form, employee),
+                showCancelButton: true,
+                confirmButtonText: 'บันทึกและอนุมัติ',
+                cancelButtonText: 'กลับไปแก้ไข',
+                focusCancel: true,
+            });
+            if (!confirmation.isConfirmed) return;
+            submitBtn.textContent = 'กำลังบันทึก...';
             const result = await loadJson(`${apiBase}?action=${encodeURIComponent(action)}`, {
                 method: 'POST',
                 body: data,
@@ -343,7 +385,9 @@
             console.error(error);
             Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
         } finally {
+            submittingForms.delete(form);
             submitBtn.disabled = false;
+            submitBtn.textContent = submitLabel;
         }
     }
 
@@ -352,6 +396,8 @@
     });
     panels.forEach((panel) => panel.addEventListener('submit', submitProxyForm));
 
+    employeeSelect?.addEventListener('change', updateActingContext);
+    if (window.jQuery && employeeSelect) jQuery(employeeSelect).on('select2:select select2:clear', updateActingContext);
     loadEmployees();
     loadLeaveTypes();
     loadActivityTypes();

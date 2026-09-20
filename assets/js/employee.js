@@ -587,7 +587,7 @@ window.loadTrainingHistory = async function(empId) {
         tbody.innerHTML = result.data.map(row => {
             const payload = escapeAttr(JSON.stringify(row));
             const attachment = row.attachment_path
-                ? `<a href="${escapeAttr(safeUploadPath(row.attachment_path, '#'))}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">เปิดไฟล์</a>`
+                ? `<a href="${escapeAttr(attachmentUrl('training_record', row.id))}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">เปิดไฟล์</a>`
                 : '-';
             const actions = canManage ? `
                 <button type="button" class="btn btn-sm btn-warning me-1" data-training="${payload}" onclick="openTrainingHistoryEdit(this)">
@@ -626,7 +626,7 @@ window.openTrainingHistoryEdit = function(button) {
     document.getElementById('trainingNotes').value = row.notes || '';
     document.getElementById('trainingAttachment').value = '';
     document.getElementById('trainingCurrentAttachment').innerHTML = row.attachment_path
-        ? `ไฟล์ปัจจุบัน: <a href="${escapeAttr(safeUploadPath(row.attachment_path, '#'))}" target="_blank" rel="noopener">เปิดไฟล์</a>`
+        ? `ไฟล์ปัจจุบัน: <a href="${escapeAttr(attachmentUrl('training_record', row.id))}" target="_blank" rel="noopener">เปิดไฟล์</a>`
         : '';
     document.getElementById('trainingModalTitle').innerHTML = '<i class="fas fa-pencil-alt"></i> แก้ไขประวัติการฝึกอบรม';
     document.getElementById('trainingSubmitBtn').textContent = 'บันทึกการแก้ไข';
@@ -669,3 +669,18 @@ window.deleteTrainingHistory = async function(button) {
         Swal.fire('Error', error.message, 'error');
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const role = document.querySelector('select[name="role"]');
+    const help = document.getElementById('accountRoleHelp');
+    if (!role || !help) return;
+    const descriptions = {
+        employee: 'พนักงาน: ดูข้อมูลส่วนตัว ส่งคำขอ และติดตามผลของตนเอง',
+        manager: 'หัวหน้างาน: ทำรายการส่วนตัวและพิจารณาคำขอของผู้ใต้บังคับบัญชา ก่อนส่งต่อให้ HR',
+        hr: 'ฝ่ายบุคคล: จัดการพนักงานและอนุมัติขั้นสุดท้ายเฉพาะบริษัทหรือสาขาที่กำหนด สร้างและรีเซ็ตได้เฉพาะบัญชีพนักงานในขอบเขต',
+        admin: 'ผู้ดูแลระบบ: จัดการข้อมูล บัญชี สิทธิ์ และการตั้งค่าได้ทั้งระบบ',
+    };
+    const update = () => { help.textContent = descriptions[role.value] || ''; };
+    role.addEventListener('change', update);
+    update();
+});

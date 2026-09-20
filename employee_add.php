@@ -69,7 +69,7 @@ require_once 'includes/header.php';
                         <img id="previewImage" src="assets/img/user.png" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
                     </div>
                     <div class="col-md-6 mx-auto">
-                        <input type="file" class="form-control" name="profile_image" id="profileImageInput" accept="image/*">
+                        <input type="file" class="form-control" name="profile_image" id="profileImageInput" aria-label="อัปโหลดรูปโปรไฟล์" accept="image/*">
                         <small class="text-muted">รองรับ .jpg, .png</small>
                     </div>
                 </div>
@@ -81,60 +81,60 @@ require_once 'includes/header.php';
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-2">
-                            <label class="form-label">คำนำหน้า (ไทย) <span class="text-danger">*</span></label>
-                            <select name="title_th" class="form-select" required>
+                            <label class="form-label" for="employee_addField1">คำนำหน้า (ไทย) <span class="text-danger">*</span></label>
+                            <select id="employee_addField1" name="title_th" class="form-select" required>
                                 <option value="นาย">นาย</option>
                                 <option value="นาง">นาง</option>
                                 <option value="นางสาว">นางสาว</option>
                             </select>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label">ชื่อ (ไทย) <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="first_name_th" required>
+                            <label class="form-label" for="employee_addField2">ชื่อ (ไทย) <span class="text-danger">*</span></label>
+                            <input id="employee_addField2" type="text" class="form-control" name="first_name_th" required>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label">นามสกุล (ไทย) <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="last_name_th" required>
+                            <label class="form-label" for="employee_addField3">นามสกุล (ไทย) <span class="text-danger">*</span></label>
+                            <input id="employee_addField3" type="text" class="form-control" name="last_name_th" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">ชื่อเล่น</label>
-                            <input type="text" class="form-control" name="nickname" maxlength="100">
+                            <label class="form-label" for="employee_addField4">ชื่อเล่น</label>
+                            <input id="employee_addField4" type="text" class="form-control" name="nickname" maxlength="100">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">คำนำหน้า (Eng)</label>
-                            <select name="title_en" class="form-select">
+                            <label class="form-label" for="employee_addField5">คำนำหน้า (Eng)</label>
+                            <select id="employee_addField5" name="title_en" class="form-select">
                                 <option value="Mr.">Mr.</option>
                                 <option value="Mrs.">Mrs.</option>
                                 <option value="Miss">Miss</option>
                             </select>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label">ชื่อ (Eng)</label>
-                            <input type="text" class="form-control" name="first_name_en">
+                            <label class="form-label" for="employee_addField6">ชื่อ (Eng)</label>
+                            <input id="employee_addField6" type="text" class="form-control" name="first_name_en">
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label">นามสกุล (Eng)</label>
-                            <input type="text" class="form-control" name="last_name_en">
+                            <label class="form-label" for="employee_addField7">นามสกุล (Eng)</label>
+                            <input id="employee_addField7" type="text" class="form-control" name="last_name_en">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">เลขบัตรประชาชน <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="citizen_id" maxlength="13" required>
+                            <label class="form-label" for="employee_addField8">เลขบัตรประชาชน <span class="text-danger">*</span></label>
+                            <input id="employee_addField8" type="text" class="form-control" name="citizen_id" maxlength="13" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">วันเกิด <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="birth_date" required>
+                            <label class="form-label" for="employee_addField9">วันเกิด <span class="text-danger">*</span></label>
+                            <input id="employee_addField9" type="date" class="form-control" name="birth_date" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">เพศ <span class="text-danger">*</span></label>
-                            <select name="gender" class="form-select" required>
+                            <label class="form-label" for="employee_addField10">เพศ <span class="text-danger">*</span></label>
+                            <select id="employee_addField10" name="gender" class="form-select" required>
                                 <option value="male">ชาย</option>
                                 <option value="female">หญิง</option>
                                 <option value="other">อื่นๆ</option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">สถานภาพสมรส</label>
-                            <select name="marital_status" class="form-select">
+                            <label class="form-label" for="employee_addField11">สถานภาพสมรส</label>
+                            <select id="employee_addField11" name="marital_status" class="form-select">
                                 <option value="single">โสด</option>
                                 <option value="married">สมรส</option>
                                 <option value="divorced">หย่าร้าง</option>
@@ -142,8 +142,8 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">ศาสนา</label>
-                            <select name="religion" class="form-select">
+                            <label class="form-label" for="employee_addField12">ศาสนา</label>
+                            <select id="employee_addField12" name="religion" class="form-select">
                                 <option value="">-- ระบุศาสนา --</option>
                                 <option value="พุทธ">พุทธ</option>
                                 <option value="อิสลาม">อิสลาม</option>
@@ -155,8 +155,8 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">กรุ๊ปเลือด</label>
-                            <select name="blood_group" class="form-select">
+                            <label class="form-label" for="employee_addField13">กรุ๊ปเลือด</label>
+                            <select id="employee_addField13" name="blood_group" class="form-select">
                                 <option value="">-- ไม่ระบุ --</option>
                                 <option value="A">A</option>
                                 <option value="B">B</option>
@@ -174,28 +174,28 @@ require_once 'includes/header.php';
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-12">
-                            <label class="form-label">ที่อยู่ (บ้านเลขที่, หมู่, ถนน)</label>
-                            <textarea class="form-control" name="current_address" rows="1" placeholder="เช่น 123/45 หมู่ 1 ต.บ้านนา"></textarea>
+                            <label class="form-label" for="employee_addField14">ที่อยู่ (บ้านเลขที่, หมู่, ถนน)</label>
+                            <textarea id="employee_addField14" class="form-control" name="current_address" rows="1" placeholder="เช่น 123/45 หมู่ 1 ต.บ้านนา"></textarea>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">จังหวัด</label>
+                            <label class="form-label" for="provinceSelect">จังหวัด</label>
                             <select id="provinceSelect" name="province" class="form-select">
                                 <option value="">-- เลือกจังหวัด --</option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">อำเภอ/เขต</label>
+                            <label class="form-label" for="districtSelect">อำเภอ/เขต</label>
                             <select id="districtSelect" name="district" class="form-select" disabled>
                                 <option value="">-- เลือกอำเภอ --</option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">เบอร์โทรศัพท์มือถือ</label>
-                            <input type="text" class="form-control" name="phone_number" maxlength="10">
+                            <label class="form-label" for="employee_addField15">เบอร์โทรศัพท์มือถือ</label>
+                            <input id="employee_addField15" type="text" class="form-control" name="phone_number" maxlength="10">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">รหัสไปรษณีย์</label>
-                            <input type="text" class="form-control" name="postal_code" maxlength="10" inputmode="numeric">
+                            <label class="form-label" for="employee_addField16">รหัสไปรษณีย์</label>
+                            <input id="employee_addField16" type="text" class="form-control" name="postal_code" maxlength="10" inputmode="numeric">
                         </div>
                     </div>
                 </div>
@@ -207,7 +207,7 @@ require_once 'includes/header.php';
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">บริษัท <span class="text-danger">*</span></label>
+                            <label class="form-label" for="companySelect">บริษัท <span class="text-danger">*</span></label>
                             <select id="companySelect" name="company_id" class="form-select" required>
                                 <option value="">-- เลือกบริษัท --</option>
                                 <?php foreach ($companies as $item): ?>
@@ -216,7 +216,7 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">สาขา <span class="text-danger">*</span></label>
+                            <label class="form-label" for="branchSelect">สาขา <span class="text-danger">*</span></label>
                             <select id="branchSelect" name="branch_id" class="form-select" required disabled>
                                 <option value="">-- (กรุณาเลือกบริษัทก่อน) --</option>
                                 <?php foreach ($branches as $item): ?>
@@ -227,26 +227,26 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">แผนก <span class="text-danger">*</span></label>
-                            <select name="department_id" class="form-select" required>
+                            <label class="form-label" for="employee_addField17">แผนก <span class="text-danger">*</span></label>
+                            <select id="employee_addField17" name="department_id" class="form-select" required>
                                 <?php foreach ($departments as $item): ?><option value="<?php echo $item['id']; ?>"><?php echo $item['dept_name_th']; ?></option><?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">ตำแหน่ง <span class="text-danger">*</span></label>
-                            <select name="position_id" class="form-select" required>
+                            <label class="form-label" for="employee_addField18">ตำแหน่ง <span class="text-danger">*</span></label>
+                            <select id="employee_addField18" name="position_id" class="form-select" required>
                                 <?php foreach ($positions as $item): ?><option value="<?php echo $item['id']; ?>"><?php echo $item['position_name_th']; ?></option><?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">ประเภทการจ้างงาน <span class="text-danger">*</span></label>
-                            <select name="employment_type_id" class="form-select" required>
+                            <label class="form-label" for="employee_addField19">ประเภทการจ้างงาน <span class="text-danger">*</span></label>
+                            <select id="employee_addField19" name="employment_type_id" class="form-select" required>
                                 <?php foreach ($emp_types as $item): ?><option value="<?php echo $item['id']; ?>"><?php echo $item['type_name']; ?></option><?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">หัวหน้างาน</label>
-                            <select name="supervisor_id" class="form-select">
+                            <label class="form-label" for="employee_addField20">หัวหน้างาน</label>
+                            <select id="employee_addField20" name="supervisor_id" class="form-select">
                                 <option value="">-- ไม่มีหัวหน้างาน --</option>
                                 <?php foreach ($supervisors as $item): ?><option value="<?php echo $item['id']; ?>"><?php echo $item['first_name_th'] . ' ' . $item['last_name_th']; ?></option><?php endforeach; ?>
                             </select>
@@ -254,8 +254,8 @@ require_once 'includes/header.php';
                         
                         <!-- (NEW) กะการทำงาน (Default Shift) -->
                         <div class="col-md-6">
-                            <label class="form-label">กะการทำงาน (Default Shift) <span class="text-danger">*</span></label>
-                            <select name="default_shift_id" class="form-select" required>
+                            <label class="form-label" for="employee_addField21">กะการทำงาน (Default Shift) <span class="text-danger">*</span></label>
+                            <select id="employee_addField21" name="default_shift_id" class="form-select" required>
                                 <option value="">-- เลือกกะการทำงาน --</option>
                                 <?php foreach ($shifts as $s): ?>
                                     <option value="<?php echo $s['id']; ?>">
@@ -265,22 +265,22 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">วันที่เริ่มใช้กะ <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="shift_effective_from" data-shift-effective-from required>
+                            <label class="form-label" for="employee_addField22">วันที่เริ่มใช้กะ <span class="text-danger">*</span></label>
+                            <input id="employee_addField22" type="date" class="form-control" name="shift_effective_from" data-shift-effective-from required>
                             <small class="text-muted">สำหรับพนักงานใหม่ควรตรงกับวันที่เริ่มงาน</small>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">เหตุผลการกำหนดกะ</label>
-                            <input type="text" class="form-control" name="shift_assignment_reason" value="Initial shift assignment">
+                            <label class="form-label" for="employee_addField23">เหตุผลการกำหนดกะ</label>
+                            <input id="employee_addField23" type="text" class="form-control" name="shift_assignment_reason" value="Initial shift assignment">
                         </div>
 
                         <div class="col-md-3">
-                            <label class="form-label">วันที่เริ่มงาน <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="start_date" required>
+                            <label class="form-label" for="employee_addField24">วันที่เริ่มงาน <span class="text-danger">*</span></label>
+                            <input id="employee_addField24" type="date" class="form-control" name="start_date" required>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">สถานะพนักงาน <span class="text-danger">*</span></label>
-                            <select name="status" class="form-select" required>
+                            <label class="form-label" for="employee_addField25">สถานะพนักงาน <span class="text-danger">*</span></label>
+                            <select id="employee_addField25" name="status" class="form-select" required>
                                 <option value="probation">Probation (ทดลองงาน)</option>
                                 <option value="active">Active (ปฏิบัติงาน)</option>
                                 <option value="resigned">Resigned (ลาออก)</option>
@@ -296,8 +296,8 @@ require_once 'includes/header.php';
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">ระดับการศึกษา</label>
-                            <select name="education_level" class="form-select">
+                            <label class="form-label" for="employee_addField26">ระดับการศึกษา</label>
+                            <select id="employee_addField26" name="education_level" class="form-select">
                                 <option value="">-- ระบุระดับการศึกษา --</option>
                                 <option value="ต่ำกว่าปริญญาตรี">ต่ำกว่าปริญญาตรี</option>
                                 <option value="ปวช.">ปวช.</option>
@@ -308,12 +308,12 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">บุคคลติดต่อฉุกเฉิน</label>
-                            <input type="text" class="form-control" name="emergency_contact_name">
+                            <label class="form-label" for="employee_addField27">บุคคลติดต่อฉุกเฉิน</label>
+                            <input id="employee_addField27" type="text" class="form-control" name="emergency_contact_name">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">เบอร์โทรผู้ติดต่อฉุกเฉิน</label>
-                            <input type="text" class="form-control" name="emergency_contact_phone" maxlength="10">
+                            <label class="form-label" for="employee_addField28">เบอร์โทรผู้ติดต่อฉุกเฉิน</label>
+                            <input id="employee_addField28" type="text" class="form-control" name="emergency_contact_phone" maxlength="10">
                         </div>
                     </div>
                 </div>
@@ -336,24 +336,24 @@ require_once 'includes/header.php';
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Start time</label>
-                            <input type="time" class="form-control" name="shift_override_start_time">
+                            <label class="form-label" for="shiftOverrideStartTime">เวลาเริ่มงาน</label>
+                            <input type="time" class="form-control" name="shift_override_start_time" id="shiftOverrideStartTime">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">End time</label>
-                            <input type="time" class="form-control" name="shift_override_end_time">
+                            <label class="form-label" for="employee_addField29">เวลาเลิกงาน</label>
+                            <input id="employee_addField29" type="time" class="form-control" name="shift_override_end_time">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Late tolerance (mins)</label>
-                            <input type="number" min="0" class="form-control" name="shift_override_late_tolerance_mins" value="0">
+                            <label class="form-label" for="employee_addField30">ผ่อนผันมาสาย (นาที)</label>
+                            <input id="employee_addField30" type="number" min="0" class="form-control" name="shift_override_late_tolerance_mins" value="0">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Effective from</label>
-                            <input type="date" class="form-control" name="shift_override_effective_from" value="<?php echo date('Y-m-d'); ?>">
+                            <label class="form-label" for="employee_addField31">เริ่มมีผลวันที่</label>
+                            <input id="employee_addField31" type="date" class="form-control" name="shift_override_effective_from" value="<?php echo date('Y-m-d'); ?>">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Effective to</label>
-                            <input type="date" class="form-control" name="shift_override_effective_to">
+                            <label class="form-label" for="employee_addField32">Effective to</label>
+                            <input id="employee_addField32" type="date" class="form-control" name="shift_override_effective_to">
                         </div>
                     </div>
                 </div>
@@ -361,27 +361,28 @@ require_once 'includes/header.php';
 
             <!-- User Account -->
             <div class="card mb-3">
-                <div class="card-header bg-light">User Account (สำหรับ Login)</div>
+                <div class="card-header bg-light" id="accountPermissions" tabindex="-1">บัญชีผู้ใช้และสิทธิ์</div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control" name="username">
+                            <label class="form-label" for="employee_addField33">ชื่อผู้ใช้</label>
+                            <input id="employee_addField33" type="text" class="form-control" name="username">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-control" name="password">
+                            <label class="form-label" for="employee_addField34">Password</label>
+                            <input id="employee_addField34" type="password" class="form-control" name="password">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Role</label>
-                            <select name="role" class="form-select">
-                                <option value="employee">Employee</option>
+                            <label class="form-label" for="employee_addField35">สิทธิ์การใช้งาน</label>
+                            <select id="employee_addField35" name="role" class="form-select" aria-describedby="accountRoleHelp">
+                                <option value="employee">พนักงาน</option>
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
-                                <option value="manager">Manager</option>
-                                <option value="hr">HR</option>
-                                <option value="admin">Admin</option>
+                                <option value="manager">หัวหน้างาน</option>
+                                <option value="hr">ฝ่ายบุคคล</option>
+                                <option value="admin">ผู้ดูแลระบบ</option>
                                 <?php endif; ?>
                             </select>
+                            <p class="small text-muted mt-2 mb-0" id="accountRoleHelp" role="status"></p>
                         </div>
                         <?php if ($_SESSION['role'] === 'admin'): ?>
                         <div class="col-12 hr-scope-section" style="display: none;">
@@ -389,8 +390,8 @@ require_once 'includes/header.php';
                                 <div class="fw-semibold mb-2">ขอบเขตสิทธิ์ HR</div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label">HR บริษัท</label>
-                                        <select name="hr_company_ids[]" class="form-select" multiple size="6">
+                                        <label class="form-label" for="employee_addField36">HR บริษัท</label>
+                                        <select id="employee_addField36" name="hr_company_ids[]" class="form-select" multiple size="6">
                                             <?php foreach ($hrCompanies as $company): ?>
                                                 <option value="<?php echo (int)$company['id']; ?>">
                                                     <?php echo htmlspecialchars($company['company_name_th']); ?>
@@ -400,8 +401,8 @@ require_once 'includes/header.php';
                                         <small class="text-muted">เลือกได้มากกว่า 1 บริษัท</small>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">HR สาขา</label>
-                                        <select name="hr_branch_ids[]" class="form-select" multiple size="6">
+                                        <label class="form-label" for="employee_addField37">HR สาขา</label>
+                                        <select id="employee_addField37" name="hr_branch_ids[]" class="form-select" multiple size="6">
                                             <?php foreach ($hrBranches as $branch): ?>
                                                 <option value="<?php echo (int)$branch['id']; ?>" data-company-id="<?php echo (int)$branch['company_id']; ?>">
                                                     <?php echo htmlspecialchars($branch['company_name_th'] . ' - ' . $branch['branch_name_th']); ?>

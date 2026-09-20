@@ -16,7 +16,7 @@ require_once 'includes/header.php';
             <h1 class="h3 mb-0 text-gray-800">รายงานมาสาย/ออกก่อน</h1>
             <p class="text-muted small mb-0">ตรวจสอบเวลาที่เกินกะหลังหักนาทีคำขอมาสายหรือออกก่อนที่อนุมัติแล้ว ตามสิทธิ์บริษัทและสาขา</p>
         </div>
-        <a href="attendance.php" class="btn btn-outline-secondary">
+        <a href="attendance.php?view=team" class="btn btn-outline-secondary">
             <i class="fas fa-calendar-days me-1"></i> ดูปฏิทินรายคน
         </a>
     </div>
@@ -25,19 +25,19 @@ require_once 'includes/header.php';
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label">เดือน</label>
+                    <label class="form-label" for="attendanceLateEarlyMonth">เดือน</label>
                     <input type="month" id="attendanceLateEarlyMonth" class="form-control" data-native-date-picker="true">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">บริษัท</label>
+                    <label class="form-label" for="attendanceLateEarlyCompany">บริษัท</label>
                     <select id="attendanceLateEarlyCompany" class="form-select attendance-select2" data-placeholder="บริษัททั้งหมด"></select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">สาขา</label>
+                    <label class="form-label" for="attendanceLateEarlyBranch">สาขา</label>
                     <select id="attendanceLateEarlyBranch" class="form-select attendance-select2" data-placeholder="สาขาทั้งหมด"></select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">ประเภท</label>
+                    <label class="form-label" for="attendanceLateEarlyType">ประเภท</label>
                     <select id="attendanceLateEarlyType" class="form-select attendance-select2">
                         <option value="all">ทั้งหมด</option>
                         <option value="late">มาสาย</option>
@@ -63,7 +63,8 @@ require_once 'includes/header.php';
                     <i class="fas fa-triangle-exclamation me-1"></i> เพิ่มใบเตือน
                 </button>
             </div>
-            <div class="table-responsive">
+            <p id="attendanceLateEarlyAppliedFilters" class="small text-muted" role="status">ยังไม่ได้แสดงรายงาน</p>
+                <div class="table-responsive">
                 <table id="attendanceLateEarlyTable" class="table table-sm table-hover align-middle w-100">
                     <thead>
                         <tr>

@@ -465,8 +465,12 @@ async function loadAttendanceMissingReport() {
         branch_id: document.getElementById('attendanceMissingBranch')?.value || '',
         missing_type: document.getElementById('attendanceMissingType')?.value || 'all',
     });
+    const filterSnapshot = captureReportFilters(['attendanceMissingMonth','attendanceMissingCompany','attendanceMissingBranch','attendanceMissingType']);
     const request = beginLatestRequest('attendance-missing', params.toString(), document.getElementById('attendanceMissingLoadBtn'));
     if (!request) return;
+    showAppliedReportFilters('attendanceMissingAppliedFilters', '', 'loading');
+    document.getElementById('attendanceMissingSummary').innerHTML = '';
+    attendanceMissingRows = [];
     attendanceMissingWarningBulk?.clearSelection();
 
 
@@ -484,11 +488,14 @@ async function loadAttendanceMissingReport() {
             throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
         }
         attendanceMissingRows = res.data || [];
+        showAppliedReportFilters('attendanceMissingAppliedFilters', filterSnapshot);
         renderAttendanceMissingSummary(res.summary || {});
         renderAttendanceMissingRows(attendanceMissingRows);
         attendanceMissingWarningBulk?.replaceRows(attendanceMissingRows);
     } catch (err) {
         if (!request.isCurrent()) return;
+        document.getElementById('attendanceMissingSummary').innerHTML = '';
+        showAppliedReportFilters('attendanceMissingAppliedFilters', '', 'error');
         attendanceMissingRows = [];
         attendanceMissingWarningBulk?.replaceRows([]);
         rowsEl.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
@@ -560,12 +567,14 @@ function buildAttendanceMissingWarningEvent(row) {
 }
 
 function completeAttendanceMissingWarnings(result) {
+    const tableState = captureClientTableState(attendanceMissingDataTable);
     const completed = new Set([...(result.created_keys || []), ...(result.duplicate_keys || [])].map(String));
     attendanceMissingRows.forEach((row) => {
         if (completed.has(String(row.warning_source_key || ''))) row.already_warned = true;
     });
     attendanceMissingWarningBulk?.clearSelection();
     renderAttendanceMissingRows(attendanceMissingRows);
+    restoreClientTableState(attendanceMissingDataTable, tableState);
     attendanceMissingWarningBulk?.replaceRows(attendanceMissingRows);
 }
 
@@ -659,8 +668,12 @@ async function loadAttendanceLateEarlyReport() {
         branch_id: document.getElementById('attendanceLateEarlyBranch')?.value || '',
         incident_type: document.getElementById('attendanceLateEarlyType')?.value || 'all',
     });
+    const filterSnapshot = captureReportFilters(['attendanceLateEarlyMonth','attendanceLateEarlyCompany','attendanceLateEarlyBranch','attendanceLateEarlyType']);
     const request = beginLatestRequest('attendance-late-early', params.toString(), document.getElementById('attendanceLateEarlyLoadBtn'));
     if (!request) return;
+    showAppliedReportFilters('attendanceLateEarlyAppliedFilters', '', 'loading');
+    document.getElementById('attendanceLateEarlySummary').innerHTML = '';
+    attendanceLateEarlyRows = [];
     attendanceLateEarlyWarningBulk?.clearSelection();
 
     resetAttendanceLateEarlyDataTable();
@@ -673,11 +686,14 @@ async function loadAttendanceLateEarlyReport() {
         const res = JSON.parse(responseText);
         if (res.status !== 'success') throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
         attendanceLateEarlyRows = res.data || [];
+        showAppliedReportFilters('attendanceLateEarlyAppliedFilters', filterSnapshot);
         renderAttendanceLateEarlySummary(res.summary || {});
         renderAttendanceLateEarlyRows(attendanceLateEarlyRows);
         attendanceLateEarlyWarningBulk?.replaceRows(attendanceLateEarlyRows);
     } catch (err) {
         if (!request.isCurrent()) return;
+        document.getElementById('attendanceLateEarlySummary').innerHTML = '';
+        showAppliedReportFilters('attendanceLateEarlyAppliedFilters', '', 'error');
         attendanceLateEarlyRows = [];
         attendanceLateEarlyWarningBulk?.replaceRows([]);
         rowsEl.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
@@ -754,12 +770,14 @@ function buildAttendanceLateEarlyWarningEvent(row) {
 }
 
 function completeAttendanceLateEarlyWarnings(result) {
+    const tableState = captureClientTableState(attendanceLateEarlyDataTable);
     const completed = new Set([...(result.created_keys || []), ...(result.duplicate_keys || [])].map(String));
     attendanceLateEarlyRows.forEach((row) => {
         if (completed.has(String(row.warning_source_key || ''))) row.already_warned = true;
     });
     attendanceLateEarlyWarningBulk?.clearSelection();
     renderAttendanceLateEarlyRows(attendanceLateEarlyRows);
+    restoreClientTableState(attendanceLateEarlyDataTable, tableState);
     attendanceLateEarlyWarningBulk?.replaceRows(attendanceLateEarlyRows);
 }
 

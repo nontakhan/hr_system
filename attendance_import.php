@@ -15,7 +15,7 @@ require_once 'includes/header.php';
         <h1 class="h3 mb-0 text-gray-800">นำเข้าข้อมูลลงเวลา</h1>
         <p class="text-muted small">อัปโหลดไฟล์ CSV จากเครื่องสแกนนิ้ว ระบบจะใช้เดือนจากวันที่ในไฟล์และข้ามข้อมูลที่เคยนำเข้าแล้ว</p>
     </div>
-    <a href="attendance.php" class="btn btn-outline-primary">
+    <a href="attendance.php?view=team" class="btn btn-outline-primary">
         <i class="fas fa-calendar-check me-1"></i> ดูการมาทำงาน
     </a>
 </div>

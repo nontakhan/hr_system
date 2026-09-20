@@ -37,3 +37,67 @@ function formatHourMinuteDuration(minutes) {
     if (remaining > 0 || !parts.length) parts.push(`${remaining} นาที`);
     return parts.join(' ');
 }
+
+// Request snapshots keep confirmation context independent of escaped table markup.
+const approvalRequestSnapshots = new Map();
+const approvalReasonDrafts = new Map();
+const approvalSubmissions = new WeakSet();
+function rememberApprovalRequest(kind, item) {
+    approvalRequestSnapshots.set(kind + ':' + Number(item.id), { ...item });
+}
+function approvalRequestSummary(kind, id) {
+    const item = approvalRequestSnapshots.get(kind + ':' + Number(id));
+    if (!item) return '<p class="text-danger">ไม่พบรายละเอียดคำขอ กรุณาปิดแล้วโหลดรายการใหม่</p>';
+    const fullName = item.employee_name || item.requester_name || [item.first_name_th, item.last_name_th].filter(Boolean).join(' ');
+    const fields = [['พนักงาน', fullName], ['เลขคำขอ', '#' + Number(item.id)]];
+    if (kind === 'day_swap') {
+        fields.push(['ประเภท', 'สลับวันหยุด'], ['คู่สลับ', item.target_name], ['วันหยุดของผู้ขอ', formatThaiDate(item.requester_date)], ['วันหยุดของคู่สลับ', formatThaiDate(item.target_date)], ['เหตุผล', item.reason]);
+    } else if (kind === 'training') {
+        fields.push(['ประเภท', item.activity_type_name || 'กิจกรรม'], ['กิจกรรม', item.course_name], ['ช่วงวันที่', formatThaiDate(item.start_date) + ' – ' + formatThaiDate(item.end_date)], ['ช่วงวัน', [item.start_day_part, item.end_day_part].map(part => ({full:'เต็มวัน',morning:'ช่วงเช้า',afternoon:'ช่วงบ่าย'}[part] || 'เต็มวัน')).join(' – ')], ['สถานที่', item.location], ['วัตถุประสงค์', item.objective]);
+    } else {
+        fields.push(['ประเภท', item.type_name], ['ช่วงวันที่', formatThaiDate(item.start_date) + ' – ' + formatThaiDate(item.end_date)], ['ช่วงวัน', [item.start_day_part, item.end_day_part].map(part => ({full:'เต็มวัน',morning:'ช่วงเช้า',afternoon:'ช่วงบ่าย'}[part] || 'เต็มวัน')).join(' – ')], ['จำนวน / เวลา', formatLeaveDuration(item)], ['เหตุผล', item.reason]);
+    }
+    if (item.cancel_reason || item.cancellation_reason) fields.push(['เหตุผลขอยกเลิก', item.cancel_reason || item.cancellation_reason]);
+    const rows = fields.map(([label,value]) => '<dt>' + escapeHtml(label) + '</dt><dd>' + escapeHtml(value || '-') + '</dd>').join('');
+    const path = (item.file_path || item.attachment_path) ? attachmentUrl(kind === 'training' ? 'training_request' : 'leave', item.id) : '';
+    const files = kind === 'leave' && Array.isArray(item.attachments) ? item.attachments : [];
+    const attachment = files.length ? files.map((file,index) => '<div><a href="' + escapeAttr(attachmentUrl('leave', item.id, file.id)) + '" target="_blank" rel="noopener">เอกสารแนบ ' + (index + 1) + ': ' + escapeHtml(file.file_name || 'เปิดไฟล์') + ' (เปิดแท็บใหม่)</a></div>').join('') : path ? '<a href="' + escapeAttr(path) + '" target="_blank" rel="noopener">ดูเอกสารแนบ (เปิดแท็บใหม่)</a>' : '';
+    return '<dl class="request-review-summary text-start border rounded p-3 mt-3">' + rows + '</dl>' + attachment;
+}
+function approvalRequestDetails(kind, id) {
+    return '<details class="request-details"><summary>ดูรายละเอียดคำขอ</summary>' + approvalRequestSummary(kind,id) + '</details>';
+}
+function prepareApprovalReason(input, key) {
+    if (input.dataset.approvalDraftKey) approvalReasonDrafts.set(input.dataset.approvalDraftKey, input.value);
+    input.dataset.approvalDraftKey = key;
+    input.value = approvalReasonDrafts.get(key) || '';
+    if (!input.dataset.approvalDraftBound) {
+        input.addEventListener('input', () => approvalReasonDrafts.set(input.dataset.approvalDraftKey, input.value));
+        input.dataset.approvalDraftBound = 'true';
+    }
+}
+function clearApprovalReason(form) {
+    const input = form.querySelector('[data-approval-draft-key]');
+    if (input) { approvalReasonDrafts.delete(input.dataset.approvalDraftKey); input.value = ''; }
+}
+function beginApprovalSubmission(form) {
+    if (approvalSubmissions.has(form)) return null;
+    approvalSubmissions.add(form);
+    const buttons = [...form.querySelectorAll('button')].map(button => [button, button.disabled, button.textContent]);
+    buttons.forEach(([button]) => { button.disabled = true; if (button.type === 'submit') button.textContent = 'กำลังบันทึก...'; });
+    form.setAttribute('aria-busy', 'true');
+    let finished = false;
+    return () => {
+        if (finished) return;
+        finished = true;
+        approvalSubmissions.delete(form);
+        buttons.forEach(([button, disabled, label]) => { button.disabled = disabled; button.textContent = label; });
+        form.removeAttribute('aria-busy');
+    };
+}
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('hide.bs.modal', event => {
+        const form = modal.querySelector('form');
+        if (form && approvalSubmissions.has(form)) event.preventDefault();
+    }));
+});

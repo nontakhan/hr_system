@@ -1,0 +1,18 @@
+const assert=require('assert'),fs=require('fs'),vm=require('vm');
+const ctx=vm.createContext({console,document:{addEventListener(){}},WeakSet,Map,window:{}});
+vm.runInContext(fs.readFileSync('assets/js/request_display.js','utf8'),ctx);
+const button={disabled:false,textContent:'ยืนยันอนุมัติ'};
+const form={querySelectorAll:()=>[button],setAttribute(){},removeAttribute(){}};
+ctx.form=form;
+assert.equal(vm.runInContext('typeof beginApprovalSubmission',ctx),'function','Approval actions need a shared duplicate guard');
+const release=vm.runInContext('beginApprovalSubmission(form)',ctx);
+assert.equal(button.disabled,true);
+assert.equal(vm.runInContext('beginApprovalSubmission(form)',ctx),null,'Second activation must not submit');
+release();assert.equal(button.disabled,false);assert.equal(button.textContent,'ยืนยันอนุมัติ');
+ctx.item={id:12,first_name_th:'สมชาย <script>',last_name_th:"O'Neil",type_name:'ลากิจ',reason:'เหตุผลเต็ม '.repeat(40),start_date:'2026-09-20',end_date:'2026-09-21',total_days:2};
+ctx.escapeHtml=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+ctx.formatThaiDate=s=>s; ctx.formatLeaveDuration=()=> '2 วัน';ctx.formatLeaveDateRange=()=> '20–21/09/2569';ctx.safeUploadPath=()=>'';
+vm.runInContext("rememberApprovalRequest('leave',item)",ctx);
+const html=vm.runInContext("approvalRequestSummary('leave',12)",ctx);
+assert(html.includes('&lt;script&gt;'));assert(!html.includes('<script>'));assert(html.includes('เหตุผลเต็ม '.repeat(40)));
+console.log('PASS decision context escaping, full reason and duplicate submission guard');

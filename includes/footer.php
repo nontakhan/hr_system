@@ -31,20 +31,7 @@ $pageAssets = hrPageAssets(basename($_SERVER['PHP_SELF']));
 <script src="assets/js/<?php echo $script; ?>.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/' . $script . '.js'); ?>"></script>
 <?php endforeach; ?>
 
-<!-- (NEW) Script สำหรับ Toggle Sidebar -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var el = document.getElementById("wrapper");
-        var toggleButton = document.getElementById("sidebarToggle");
-
-        if (el && toggleButton) {
-            toggleButton.onclick = function () {
-                el.classList.toggle("sb-sidenav-toggled");
-                document.body.classList.toggle("sb-sidenav-toggled");
-            };
-        }
-    });
-</script>
+<script src="assets/js/navigation.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/navigation.js'); ?>"></script>
 
 </body>
 </html>

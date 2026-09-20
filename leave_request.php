@@ -50,15 +50,15 @@ require_once 'includes/header.php';
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6" id="startDateField">
-                            <label class="form-label" id="startDateLabel">วันที่เริ่มลา <span class="text-danger">*</span></label>
+                            <label class="form-label" id="startDateLabel" for="startDate">วันที่เริ่มลา <span class="text-danger">*</span></label>
                             <input type="date" name="start_date" id="startDate" class="form-control leave-date-picker" required>
                         </div>
                         <div class="col-md-6 day-leave-field">
-                            <label class="form-label">ถึงวันที่ <span class="text-danger">*</span></label>
+                            <label class="form-label" for="endDate">ถึงวันที่ <span class="text-danger">*</span></label>
                             <input type="date" name="end_date" id="endDate" class="form-control leave-date-picker" required>
                         </div>
                         <div class="col-md-6 day-leave-field">
-                            <label class="form-label">ช่วงเวลาเริ่มลา <span class="text-danger">*</span></label>
+                            <label class="form-label" for="startDayPart">ช่วงเวลาเริ่มลา <span class="text-danger">*</span></label>
                             <select name="start_day_part" id="startDayPart" class="form-select" required>
                                 <option value="full">เต็มวัน</option>
                                 <option value="morning">ครึ่งวันเช้า</option>
@@ -66,7 +66,7 @@ require_once 'includes/header.php';
                             </select>
                         </div>
                         <div class="col-md-6 day-leave-field">
-                            <label class="form-label">ช่วงเวลาสิ้นสุดลา <span class="text-danger">*</span></label>
+                            <label class="form-label" for="endDayPart">ช่วงเวลาสิ้นสุดลา <span class="text-danger">*</span></label>
                             <select name="end_day_part" id="endDayPart" class="form-select" required>
                                 <option value="full">เต็มวัน</option>
                                 <option value="morning">ครึ่งวันเช้า</option>
@@ -76,11 +76,11 @@ require_once 'includes/header.php';
                         <div class="col-md-12 d-none" id="hourlyLeaveFields">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">เวลาเริ่มลา <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="requestStartTime">เวลาเริ่มลา <span class="text-danger">*</span></label>
                                     <input type="time" name="request_start_time" id="requestStartTime" class="form-control">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">เวลาสิ้นสุดลา <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="requestEndTime">เวลาสิ้นสุดลา <span class="text-danger">*</span></label>
                                     <input type="time" name="request_end_time" id="requestEndTime" class="form-control">
                                 </div>
                             </div>
@@ -98,12 +98,12 @@ require_once 'includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">เหตุผลการลา <span class="text-danger">*</span></label>
-                        <textarea name="reason" class="form-control" rows="3" required placeholder="ระบุสาเหตุที่ต้องการลา..."></textarea>
+                        <label class="form-label" for="leave_requestField1">เหตุผลการลา <span class="text-danger">*</span></label>
+                        <textarea id="leave_requestField1" name="reason" class="form-control" rows="3" required placeholder="ระบุสาเหตุที่ต้องการลา..."></textarea>
                     </div>
 
                     <div class="mb-4 d-none" id="attachmentSection">
-                        <label class="form-label">
+                        <label class="form-label" for="attachmentInput">
                             เอกสารแนบ (ถ้ามี)
                         </label>
                         <input type="file" name="attachment" id="attachmentInput" class="form-control">

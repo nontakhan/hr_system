@@ -88,20 +88,20 @@ window.leaveApprovalTimeRequestType = 'late_early';
     </div>
 </div>
 
-<div class="modal fade" id="actionModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="actionModal" tabindex="-1" aria-labelledby="actionModalTitle">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <form id="approvalForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="actionModalTitle">ดำเนินการ</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" aria-label="ปิด" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="request_id" id="requestId">
                     <input type="hidden" name="action_type" id="actionType">
-                    <p id="actionMessage"></p>
+                    <div id="actionMessage"></div>
                     <div class="mb-3" id="rejectReasonDiv" style="display: none;">
-                        <label class="form-label">ระบุเหตุผลที่ไม่อนุมัติ <span class="text-danger">*</span></label>
+                        <label class="form-label" for="rejectReason">ระบุเหตุผลที่ไม่อนุมัติ <span class="text-danger">*</span></label>
                         <textarea name="reason" id="rejectReason" class="form-control" rows="3"></textarea>
                     </div>
                 </div>

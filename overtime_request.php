@@ -37,17 +37,17 @@ window.timeRequestFixedType = 'overtime_after_work';
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">วันที่ทำ OT <span class="text-danger">*</span></label>
+                            <label class="form-label" for="timeRequestDate">วันที่ทำ OT <span class="text-danger">*</span></label>
                             <input type="date" name="work_date" id="timeRequestDate" class="form-control" required>
                         </div>
 
                         <div class="col-md-3" id="overtimeStartField">
-                            <label class="form-label">เวลาเริ่ม OT <span class="text-danger">*</span></label>
+                            <label class="form-label" for="overtimeStartTime">เวลาเริ่ม OT <span class="text-danger">*</span></label>
                             <input type="time" name="overtime_start_time" id="overtimeStartTime" class="form-control" required>
                         </div>
 
                         <div class="col-md-3" id="overtimeEndField">
-                            <label class="form-label">เวลาสิ้นสุด OT <span class="text-danger">*</span></label>
+                            <label class="form-label" for="overtimeEndTime">เวลาสิ้นสุด OT <span class="text-danger">*</span></label>
                             <input type="time" name="overtime_end_time" id="overtimeEndTime" class="form-control" required>
                         </div>
                     </div>
@@ -61,8 +61,8 @@ window.timeRequestFixedType = 'overtime_after_work';
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">เหตุผล <span class="text-danger">*</span></label>
-                        <textarea name="reason" class="form-control" rows="3" required placeholder="ระบุเหตุผลที่ต้องการทำ OT"></textarea>
+                        <label class="form-label" for="overtime_requestField1">เหตุผล <span class="text-danger">*</span></label>
+                        <textarea id="overtime_requestField1" name="reason" class="form-control" rows="3" required placeholder="ระบุเหตุผลที่ต้องการทำ OT"></textarea>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">

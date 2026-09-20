@@ -32,7 +32,7 @@ require_once 'includes/header.php';
                     <input type="hidden" name="action" value="submit">
 
                     <div class="mb-3">
-                        <label class="form-label">ประเภทคำขอ <span class="text-danger">*</span></label>
+                        <label class="form-label" for="timeRequestLate">ประเภทคำขอ <span class="text-danger">*</span></label>
                         <div class="btn-group time-request-type-group w-100" role="group" aria-label="ประเภทคำขอ">
                             <input type="radio" name="time_request_type" id="timeRequestLate" value="late_arrival" class="btn-check time-request-type-option" autocomplete="off" checked required>
                             <label class="btn btn-outline-primary py-3 time-request-type-btn" for="timeRequestLate">
@@ -51,12 +51,12 @@ require_once 'includes/header.php';
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">วันที่ <span class="text-danger">*</span></label>
+                            <label class="form-label" for="timeRequestDate">วันที่ <span class="text-danger">*</span></label>
                             <input type="date" name="work_date" id="timeRequestDate" class="form-control" required>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">เวลาที่ต้องการ <span class="text-danger">*</span></label>
+                            <label class="form-label" for="timeRequestTime">เวลาที่ต้องการ <span class="text-danger">*</span></label>
                             <input type="time" name="request_time" id="timeRequestTime" class="form-control" required>
                         </div>
 
@@ -69,8 +69,8 @@ require_once 'includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">เหตุผล <span class="text-danger">*</span></label>
-                        <textarea name="reason" class="form-control" rows="3" required placeholder="ระบุเหตุผลที่ต้องการขอมาสายหรือออกก่อนเวลา"></textarea>
+                        <label class="form-label" for="late_early_requestField1">เหตุผล <span class="text-danger">*</span></label>
+                        <textarea id="late_early_requestField1" name="reason" class="form-control" rows="3" required placeholder="ระบุเหตุผลที่ต้องการขอมาสายหรือออกก่อนเวลา"></textarea>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">

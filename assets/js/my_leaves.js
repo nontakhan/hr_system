@@ -56,6 +56,7 @@ function renderMyLeaveRow(item) {
                 
                 // Badge สถานะ
                 let actionBtn = '';
+                if (item.status === 'pending_hr') actionBtn = '<small class="text-muted d-block">รอฝ่ายบุคคลพิจารณา หากต้องการถอนใบลา กรุณาติดต่อ HR</small>';
                 const statusBadge = myLeavesRenderLeaveStatusBadge(item.status);
                 const canCancel = item.status === 'pending' || item.status === 'pending_manager' || item.status === 'approved';
 

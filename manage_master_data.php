@@ -46,7 +46,7 @@ require_once 'includes/header.php';
                             <th>ID</th>
                             <th>ชื่อบริษัท</th>
                             <th>ที่อยู่</th>
-                            <th>Actions</th>
+                            <th>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="companyTableBody"></tbody>
@@ -70,7 +70,7 @@ require_once 'includes/header.php';
                             <th>ID</th>
                             <th>ชื่อสาขา</th>
                             <th>สังกัดบริษัท</th>
-                            <th>Actions</th>
+                            <th>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="branchTableBody"></tbody>
@@ -94,7 +94,7 @@ require_once 'includes/header.php';
                             <th>ID</th>
                             <th>ชื่อแผนก (ไทย)</th>
                             <th>ชื่อแผนก (อังกฤษ)</th>
-                            <th>Actions</th>
+                            <th>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="departmentTableBody"></tbody>
@@ -118,7 +118,7 @@ require_once 'includes/header.php';
                             <th>ID</th>
                             <th>ชื่อตำแหน่ง (ไทย)</th>
                             <th>ชื่อตำแหน่ง (อังกฤษ)</th>
-                            <th>Actions</th>
+                            <th>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="positionTableBody"></tbody>

@@ -42,14 +42,12 @@ try {
                        lr.cancellation_reason AS cancel_reason,
                        e.first_name_th, e.last_name_th, e.citizen_id as employee_code, e.profile_img_url,
                        lt.type_name,
-                       la.file_path, la.file_name,
                        CONCAT_WS(' ', ma.first_name_th, ma.last_name_th) AS manager_approver_name,
                        CONCAT_WS(' ', ha.first_name_th, ha.last_name_th) AS hr_approver_name,
                        CONCAT_WS(' ', ca.first_name_th, ca.last_name_th) AS cancelled_by_name
                 FROM leave_requests lr
                 JOIN employees e ON lr.employee_id = e.id
                 JOIN leave_types lt ON lr.leave_type_id = lt.id
-                LEFT JOIN leave_attachments la ON lr.id = la.leave_request_id
                 LEFT JOIN employees ma ON lr.manager_approver_id = ma.id
                 LEFT JOIN employees ha ON lr.hr_approver_id = ha.id
                 LEFT JOIN employees ca ON lr.cancelled_by_employee_id = ca.id
@@ -105,7 +103,21 @@ try {
             ['created_at','approval_date',"CONCAT_WS(' ', first_name_th, last_name_th)", 'employee_code', 'type_name', 'start_date', 'end_date', 'reason', 'rejection_reason', 'cancellation_reason', hrRequestStatusSearchExpression()],
             $orderColumns);
         $rows = $page['data'];
+        // Fetch documents once for the authorized page; one row remains one request.
+        $attachments = [];
+        $requestIds = array_map('intval', array_column($rows, 'id'));
+        if ($requestIds) {
+            $placeholders = implode(',', array_fill(0, count($requestIds), '?'));
+            $files = $mysqli->prepare("SELECT id,leave_request_id,file_path,file_name FROM leave_attachments WHERE leave_request_id IN ($placeholders) ORDER BY id");
+            hrScopeBindParams($files, str_repeat('i', count($requestIds)), $requestIds);
+            $files->execute();
+            foreach ($files->get_result()->fetch_all(MYSQLI_ASSOC) as $file) $attachments[(int)$file['leave_request_id']][] = $file;
+            $files->close();
+        }
         foreach ($rows as &$row) {
+            $row['attachments'] = $attachments[(int)$row['id']] ?? [];
+            $row['file_path'] = $row['attachments'][0]['file_path'] ?? null;
+            $row['file_name'] = $row['attachments'][0]['file_name'] ?? null;
             $row['can_reviewer_cancel'] = $type === 'history'
                 && in_array($my_role, ['hr', 'admin'], true)
                 && ($row['status'] ?? '') === 'approved';
@@ -126,6 +138,9 @@ try {
 
         if (!in_array($action, ['approve', 'reject'], true)) {
             sendJsonError('Invalid Action');
+        }
+        if ($action === 'reject' && $reason === '') {
+            sendJsonError('กรุณาระบุเหตุผลที่ไม่อนุมัติ');
         }
         if ($req_id <= 0) {
             sendJsonError('Invalid request ID');

@@ -97,7 +97,8 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
 <div class="d-flex" id="wrapper">
     
     <!-- ================= Sidebar ================= -->
-    <div class="bg-white" id="sidebar-wrapper">
+    <div class="bg-white" id="sidebar-wrapper" role="navigation" aria-label="เมนูหลัก">
+        <button type="button" id="sidebarClose" class="btn btn-light sidebar-close d-lg-none" aria-label="ปิดเมนูหลัก"><i class="fas fa-xmark" aria-hidden="true"></i></button>
         <div class="sidebar-heading text-center py-4 primary-text fs-4 fw-bold text-uppercase border-bottom bg-primary-custom text-white">
             <i class="fas fa-hospital-user me-2"></i> HR System
         </div>
@@ -115,7 +116,6 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 'day_swap_request.php',
                 'training_history.php',
                 'training_request.php',
-                'request_proxy.php',
             ];
             $approvalCenterPages = [
                 'leave_approvals.php',
@@ -124,7 +124,9 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 'day_swap_approvals.php',
                 'training_approvals.php',
             ];
+            $attendanceTeamContext = basename($_SERVER['PHP_SELF']) === 'attendance.php' && (($_GET['view'] ?? '') === 'team') && in_array($_SESSION['role'] ?? '', ['hr', 'admin'], true);
             $peopleAdminPages = [
+                'employee_add.php', 'employee_edit.php', 'employee_view.php', 'request_proxy.php',
                 'employees.php',
                 'attendance_import.php',
                 'attendance_adjustments.php',
@@ -144,7 +146,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             $requestCenterActive = isAnyActive($requestCenterPages);
             $approvalCenterActive = isAnyActive($approvalCenterPages);
             $reportCenterActive = isAnyActive($reportCenterPages);
-            $peopleAdminActive = isAnyActive($peopleAdminPages);
+            $peopleAdminActive = isAnyActive($peopleAdminPages) || $attendanceTeamContext;
             ?>
             
             <div class="sidebar-section-label">ภาพรวม</div>
@@ -157,8 +159,8 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
             </a>
 
             <div class="sidebar-section-label">ของฉัน</div>
-            <a href="attendance.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('attendance.php'); ?>">
-                <i class="fas fa-clock me-2"></i> เวลาทำงาน
+            <a href="attendance.php" class="list-group-item list-group-item-action bg-transparent <?php echo !$attendanceTeamContext ? isActive('attendance.php') : ''; ?>">
+                <i class="fas fa-clock me-2"></i> เวลาทำงานของฉัน
             </a>
             <a href="my_warnings.php" class="list-group-item list-group-item-action bg-transparent <?php echo isActive('my_warnings.php'); ?>">
                 <i class="fas fa-user-shield me-2"></i> ใบเตือนของฉัน
@@ -167,7 +169,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <i class="fas fa-id-card me-2"></i> โปรไฟล์
             </a>
 
-            <div class="sidebar-section-label">ศูนย์คำขอ</div>
+            <div class="sidebar-section-label">คำขอของฉัน</div>
             <a href="#requestCenterSubmenu" data-bs-toggle="collapse" aria-expanded="<?php echo $requestCenterActive ? 'true' : 'false'; ?>" class="list-group-item list-group-item-action bg-transparent dropdown-toggle <?php echo $requestCenterActive ? 'active' : ''; ?>">
                 <i class="fas fa-file-signature me-2"></i> รายการคำขอ
             </a>
@@ -187,11 +189,6 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <a href="training_history.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo (isActive('training_history.php') || isActive('training_request.php')) ? 'active' : ''; ?>">
                     <small><i class="fas fa-people-arrows me-2"></i> กิจกรรม</small>
                 </a>
-                <?php if (in_array($_SESSION['role'], ['admin', 'hr'], true)) : ?>
-                <a href="request_proxy.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('request_proxy.php'); ?>">
-                    <small><i class="fas fa-user-pen me-2"></i> ทำรายการแทนพนักงาน</small>
-                </a>
-                <?php endif; ?>
             </div>
 
             <?php if (in_array($_SESSION['role'] ?? '', ['manager', 'admin', 'hr'], true)) : ?>
@@ -246,9 +243,12 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
 
             <div class="sidebar-section-label">บริหารบุคลากร</div>
             <a href="#peopleAdminSubmenu" data-bs-toggle="collapse" aria-expanded="<?php echo $peopleAdminActive ? 'true' : 'false'; ?>" class="list-group-item list-group-item-action bg-transparent dropdown-toggle <?php echo $peopleAdminActive ? 'active' : ''; ?>">
-                <i class="fas fa-people-group me-2"></i> งาน HR/Admin
+                <i class="fas fa-people-group me-2"></i> งานฝ่ายบุคคล
             </a>
             <div class="collapse sidebar-submenu <?php echo $peopleAdminActive ? 'show' : ''; ?>" id="peopleAdminSubmenu" data-bs-parent="#sidebarMenu">
+                <div class="sidebar-section-label ps-5">งานประจำ</div>
+                <a href="attendance.php?view=team" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo $attendanceTeamContext ? 'active' : ''; ?>"><small><i class="fas fa-clock me-2"></i> ตรวจเวลาพนักงาน</small></a>
+                <a href="request_proxy.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('request_proxy.php'); ?>"><small><i class="fas fa-user-pen me-2"></i> ทำรายการแทนพนักงาน</small></a>
                 <a href="employees.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('employees.php'); ?>">
                     <small><i class="fas fa-users me-2"></i> พนักงาน</small>
                 </a>
@@ -261,6 +261,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
                 <a href="employee_warnings.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('employee_warnings.php'); ?>">
                     <small><i class="fas fa-triangle-exclamation me-2"></i> ใบเตือนพนักงาน</small>
                 </a>
+                <div class="sidebar-section-label ps-5">ตั้งค่า</div>
                 <a href="leave_types.php" class="list-group-item list-group-item-action bg-transparent border-0 ps-5 <?php echo isActive('leave_types.php'); ?>">
                     <small><i class="fas fa-list-check me-2"></i> ประเภทการลา</small>
                 </a>
@@ -287,6 +288,7 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
         </div>
     </div>
     <!-- /#sidebar-wrapper -->
+    <div id="sidebarBackdrop" hidden></div>
 
     <!-- ================= Page Content ================= -->
     <div id="page-content-wrapper">
@@ -295,18 +297,18 @@ if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['manager'
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom navbar-top">
             <div class="container-fluid">
                 <!-- Toggle Button -->
-                <button class="btn btn-light text-white" id="sidebarToggle">
+                <button class="btn btn-light text-white" id="sidebarToggle" type="button" aria-label="เปิดเมนูหลัก" aria-controls="sidebar-wrapper" aria-expanded="false">
                     <i class="fas fa-bars fa-lg"></i>
                 </button>
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="เมนูบัญชีของฉัน">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav ms-auto mt-2 mt-lg-0">
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" aria-label="บัญชีของฉัน" aria-expanded="false" role="button" data-bs-toggle="dropdown">
                                 <div class="bg-light text-danger rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
                                     <i class="fas fa-user"></i>
                                 </div>

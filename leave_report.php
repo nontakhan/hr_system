@@ -25,19 +25,19 @@ require_once 'includes/header.php';
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label">เดือน</label>
+                    <label class="form-label" for="approvedLeaveReportMonth">เดือน</label>
                     <input type="month" id="approvedLeaveReportMonth" class="form-control" data-native-date-picker="true">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">บริษัท</label>
+                    <label class="form-label" for="approvedLeaveReportCompany">บริษัท</label>
                     <select id="approvedLeaveReportCompany" class="form-select leave-report-select2" data-placeholder="บริษัททั้งหมด"></select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">สาขา</label>
+                    <label class="form-label" for="approvedLeaveReportBranch">สาขา</label>
                     <select id="approvedLeaveReportBranch" class="form-select leave-report-select2" data-placeholder="สาขาทั้งหมด"></select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">ประเภทการลา</label>
+                    <label class="form-label" for="approvedLeaveReportType">ประเภทการลา</label>
                     <select id="approvedLeaveReportType" class="form-select leave-report-select2" data-placeholder="ประเภทการลาทั้งหมด"></select>
                 </div>
                 <div class="col-md-3">
@@ -59,7 +59,8 @@ require_once 'includes/header.php';
                     <i class="fas fa-triangle-exclamation me-1"></i> เพิ่มใบเตือน
                 </button>
             </div>
-            <div class="table-responsive">
+            <p id="approvedLeaveReportAppliedFilters" class="small text-muted" role="status">ยังไม่ได้แสดงรายงาน</p>
+                <div class="table-responsive">
                 <table id="approvedLeaveReportTable" class="table table-sm table-hover align-middle w-100">
                     <thead>
                         <tr>

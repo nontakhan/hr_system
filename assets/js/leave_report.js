@@ -92,8 +92,12 @@ async function loadApprovedLeaveReport() {
         branch_id: document.getElementById('approvedLeaveReportBranch')?.value || '',
         leave_type_id: document.getElementById('approvedLeaveReportType')?.value || '',
     });
+    const filterSnapshot = captureReportFilters(['approvedLeaveReportMonth','approvedLeaveReportCompany','approvedLeaveReportBranch','approvedLeaveReportType']);
     const request = beginLatestRequest('approved-leave', params.toString(), document.getElementById('approvedLeaveReportLoadBtn'));
     if (!request) return;
+    showAppliedReportFilters('approvedLeaveReportAppliedFilters', '', 'loading');
+    document.getElementById('approvedLeaveReportSummary').innerHTML = '';
+    approvedLeaveReportRows = [];
     approvedLeaveWarningBulk?.clearSelection();
 
     resetApprovedLeaveReportDataTable();
@@ -106,11 +110,14 @@ async function loadApprovedLeaveReport() {
         const res = JSON.parse(responseText);
         if (res.status !== 'success') throw new Error(res.message || 'โหลดรายงานไม่สำเร็จ');
         approvedLeaveReportRows = res.data || [];
+        showAppliedReportFilters('approvedLeaveReportAppliedFilters', filterSnapshot);
         renderApprovedLeaveReportSummary(res.summary || {});
         renderApprovedLeaveReportRows(approvedLeaveReportRows);
         approvedLeaveWarningBulk?.replaceRows(approvedLeaveReportRows);
     } catch (error) {
         if (!request.isCurrent()) return;
+        document.getElementById('approvedLeaveReportSummary').innerHTML = '';
+        showAppliedReportFilters('approvedLeaveReportAppliedFilters', '', 'error');
         renderApprovedLeaveReportError(error.message);
     } finally {
         request.finish();
@@ -204,11 +211,13 @@ function buildApprovedLeaveWarningEvent(row) {
 }
 
 function completeApprovedLeaveWarnings(result) {
+    const tableState = captureClientTableState(approvedLeaveReportDataTable);
     const completed = new Set([...(result.created_keys || []), ...(result.duplicate_keys || [])].map(String));
     approvedLeaveReportRows.forEach((row) => {
         if (completed.has(String(row.warning_source_key || ''))) row.already_warned = true;
     });
     approvedLeaveWarningBulk?.clearSelection();
     renderApprovedLeaveReportRows(approvedLeaveReportRows);
+    restoreClientTableState(approvedLeaveReportDataTable, tableState);
     approvedLeaveWarningBulk?.replaceRows(approvedLeaveReportRows);
 }

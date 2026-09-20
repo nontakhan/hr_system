@@ -68,6 +68,8 @@ async function loadPendingLeaves() {
 }
 
 function renderPendingLeaveRow(item) {
+                rememberApprovalRequest('leave', item);
+                item = { ...item };
                 const sDate = formatThaiDate(item.start_date);
                 const eDate = formatThaiDate(item.end_date);
                 const dateRange = formatLeaveDateRange(item.start_date, item.end_date, item.start_day_part, item.end_day_part);
@@ -90,23 +92,11 @@ function renderPendingLeaveRow(item) {
                 item.cancel_reason = cancelReason;
                 item.total_days = totalDays;
                 
-                // รูปไฟล์แนบ
-                let fileLink = '';
-                if (item.file_path) {
-                    fileLink = `<a href="${item.file_path}" target="_blank" class="btn btn-sm btn-outline-info ms-1" title="ดูเอกสารแนบ"><i class="fas fa-paperclip"></i></a>`;
-                }
-
                 const avatarHtml = renderEmployeeAvatar(item.profile_img_url);
 
                 const isCancellationRequest = item.status === 'pending_cancel_hr';
-                const reasonHtml = isCancellationRequest
-                    ? `<small class="d-block text-danger">เหตุผลขอยกเลิก: ${item.cancel_reason || '-'}</small>`
-                    : `<small class="d-block text-muted text-truncate" style="max-width: 200px;">${item.reason}</small>`;
-                const otDetailHtml = item.time_request_type === 'overtime_after_work'
-                    ? `<small class="d-block text-primary">ช่วงเวลา OT: ${formatApprovalTime(item.request_start_time)}-${formatApprovalTime(item.request_end_time)}</small>`
-                    : '';
                 const approveLabel = isCancellationRequest ? 'อนุมัติยกเลิก' : 'อนุมัติ';
-                const rejectLabel = isCancellationRequest ? 'ไม่อนุมัติยกเลิก' : 'ไม่';
+                const rejectLabel = isCancellationRequest ? 'ไม่อนุมัติยกเลิก' : 'ไม่อนุมัติ';
 
                 return `
                     <tr>
@@ -124,9 +114,7 @@ function renderPendingLeaveRow(item) {
                         <td>${dateRange || `${sDate} - ${eDate}`}</td>
                         <td><strong>${durationText}</strong></td>
                         <td>
-                            ${reasonHtml}
-                            ${otDetailHtml}
-                            ${fileLink}
+                            ${approvalRequestDetails('leave', item.id)}
                         </td>
                         <td>
                             <button class="btn btn-sm btn-success me-1" data-id="${item.id}" data-action="approve" data-status="${escapeAttr(item.status)}" data-name="${escapeAttr(item.first_name_th)}" onclick="openActionModalFromButton(this)">
@@ -229,7 +217,9 @@ window.openActionModal = function(id, type, name, status) {
 
     document.getElementById('requestId').value = id;
     document.getElementById('actionType').value = type;
-    reasonInput.value = ''; // Clear
+    prepareApprovalReason(reasonInput, 'leave:' + id);
+    const snapshot = approvalRequestSnapshots.get('leave:' + Number(id));
+    if (snapshot) name = [snapshot.first_name_th, snapshot.last_name_th].filter(Boolean).join(' ');
 
     name = escapeHtml(name);
     const requestLabel = getLeaveApprovalRequestLabel();
@@ -257,6 +247,7 @@ window.openActionModal = function(id, type, name, status) {
         reasonInput.required = true;
     }
 
+    msg.innerHTML += approvalRequestSummary('leave', id);
     modal.show();
 }
 
@@ -307,6 +298,8 @@ function formatApprovalTime(value) {
 
 async function handleSubmitApproval(e) {
     e.preventDefault();
+    const finish = beginApprovalSubmission(e.target);
+    if (!finish) return;
     const formData = new FormData(e.target);
     const action = formData.get('action_type'); // approve / reject
     const data = Object.fromEntries(formData.entries());
@@ -325,6 +318,8 @@ async function handleSubmitApproval(e) {
         const res = await response.json();
 
         if (res.status === 'success') {
+            finish();
+            clearApprovalReason(e.target);
             Swal.fire('สำเร็จ', res.message, 'success');
             bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
             loadPendingLeaves(); // Reload ตาราง
@@ -332,6 +327,8 @@ async function handleSubmitApproval(e) {
             Swal.fire('ผิดพลาด', res.message, 'error');
         }
     } catch (err) {
-        Swal.fire('Error', err.message, 'error');
+        Swal.fire('ผิดพลาด', err.message, 'error');
+    } finally {
+        finish();
     }
 }

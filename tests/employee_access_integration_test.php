@@ -112,7 +112,7 @@ try {
         if ($page==='employee_add.php') {
             $check(str_contains($r['body'],'Branch B1') || str_contains($r['body'],'Branch B'),'Branch-only assignment offered');
             $check(!str_contains($r['body'],'Branch B2'),'Out-of-scope branch not offered');
-            preg_match('/<select name="role"[^>]*>(.*?)<\/select>/s',$r['body'],$roleSelect);
+            preg_match('/<select\b[^>]*\bname="role"[^>]*>(.*?)<\/select>/s',$r['body'],$roleSelect);
             $check(str_contains($roleSelect[1]??'', 'value="employee"') && !str_contains($roleSelect[1]??'', 'value="admin"'),'HR role selector is employee-only');
         }
         if ($page==='employee_edit.php') $check(!str_contains($r['body'],'name="password"'),'HR cannot edit protected account via form');
